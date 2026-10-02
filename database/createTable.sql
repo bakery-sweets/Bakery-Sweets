@@ -9,13 +9,10 @@ DROP TABLE IF EXISTS order_status_logs;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS order_detail;
 DROP TABLE IF EXISTS order_promotions;
-DROP TABLE IF EXISTS order_shipping;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS cart;
 DROP TABLE IF EXISTS import_receipt_details;
 DROP TABLE IF EXISTS import_receipts;
-DROP TABLE IF EXISTS promotion_vouchers;
-DROP TABLE IF EXISTS promotion_products;
 DROP TABLE IF EXISTS invoice_promotions;
 DROP TABLE IF EXISTS promotions;
 DROP TABLE IF EXISTS suppliers;
@@ -24,9 +21,7 @@ DROP TABLE IF EXISTS product;
 DROP TABLE IF EXISTS size;
 DROP TABLE IF EXISTS category;
 DROP TABLE IF EXISTS employees;
-DROP TABLE IF EXISTS positions;
 DROP TABLE IF EXISTS departments;
-DROP TABLE IF EXISTS customer_addresses;
 DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS users;
 SET FOREIGN_KEY_CHECKS = 1;
@@ -235,12 +230,13 @@ CREATE TABLE cart (
     FOREIGN KEY (size_id)     REFERENCES size(size_id)          ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 15. Bảng orders: Quản lý đơn hàng (Tích hợp địa chỉ giao nhận trực tiếp & khuyến mãi hóa đơn)
+-- 15. Bảng orders: Quản lý đơn hàng (Tích hợp địa chỉ giao nhận trực tiếp & nhân viên giao hàng)
 CREATE TABLE orders (
     order_id           INT PRIMARY KEY AUTO_INCREMENT,
     order_code         VARCHAR(20) UNIQUE NULL,                                 -- Mã đơn: DH001... (PHP/BE tự sinh)
     customer_id        INT NOT NULL,                                            -- Khách hàng đặt mua
-    employee_id        INT NULL,                                                -- Nhân viên phụ trách / duyệt đơn
+    employee_id        INT NULL,                                                -- Nhân viên xác nhận / duyệt đơn
+    shipper_id         INT NULL,                                                -- Nhân viên phụ trách giao hàng (Shipper)
     recipient_name     VARCHAR(100) NOT NULL,                                   -- Họ tên người nhận hàng
     recipient_phone    VARCHAR(20) NOT NULL,                                    -- Số điện thoại người nhận
     shipping_address   VARCHAR(255) NOT NULL,                                   -- Địa chỉ giao hàng cụ thể (số nhà, tên đường, phường, quận, tỉnh)
@@ -263,6 +259,7 @@ CREATE TABLE orders (
     updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id)  REFERENCES customers(customer_id)   ON DELETE CASCADE,
     FOREIGN KEY (employee_id)  REFERENCES employees(employee_id)   ON DELETE SET NULL,
+    FOREIGN KEY (shipper_id)   REFERENCES employees(employee_id)   ON DELETE SET NULL,
     FOREIGN KEY (promotion_id) REFERENCES promotions(promotion_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

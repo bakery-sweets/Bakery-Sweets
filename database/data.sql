@@ -18,13 +18,15 @@ INSERT INTO category (category_name) VALUES
 INSERT INTO departments (department_name, description) VALUES
 ('Quản Lý',             'Điều hành và quản lý hoạt động cửa hàng'),
 ('Bán Hàng & Thu Ngân', 'Tư vấn, bán hàng tại quầy và online'),
-('Bếp Bánh',            'Sản xuất và đóng gói các loại bánh');
+('Bếp Bánh',            'Sản xuất và đóng gói các loại bánh'),
+('Giao Hàng',           'Vận chuyển và giao bánh đến khách hàng');
 
 -- 4. Tài khoản mẫu (password: 123 đã hash bcrypt)
 INSERT INTO users (user_name, email, password, role, status) VALUES
-('admin',        'admin@thesweets.com',   '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'admin',    'active'),
-('staff_sales1', 'sales1@thesweets.com',  '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'staff',    'active'),
-('cus1',         'customer1@gmail.com',   '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'customer', 'active');
+('admin',          'admin@thesweets.com',    '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'admin',    'active'),
+('staff_sales1',   'sales1@thesweets.com',   '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'staff',    'active'),
+('staff_shipper1', 'shipper1@thesweets.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'staff',    'active'),
+('cus1',           'customer1@gmail.com',    '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'customer', 'active');
 
 -- 5. Hồ sơ khách hàng
 INSERT INTO customers (user_name, first_name, last_name, phone, loyalty_points) VALUES
@@ -32,7 +34,8 @@ INSERT INTO customers (user_name, first_name, last_name, phone, loyalty_points) 
 
 -- 6. Hồ sơ nhân viên (dùng trực tiếp cột position)
 INSERT INTO employees (employee_code, user_name, first_name, last_name, phone, citizen_id, department_id, position, hire_date) VALUES
-('NV001', 'staff_sales1', 'Nguyễn Thị', 'Hoa', '0909888777', '079123456789', 2, 'Nhân Viên Bán Hàng', '2025-01-10');
+('NV001', 'staff_sales1',   'Nguyễn Thị', 'Hoa',  '0909888777', '079123456789', 2, 'Nhân Viên Bán Hàng',  '2025-01-10'),
+('NV002', 'staff_shipper1', 'Trần Văn',   'Bình', '0909111222', '079987654321', 4, 'Nhân Viên Giao Hàng', '2025-01-15');
 
 -- 7. Nhà cung cấp mẫu
 INSERT INTO suppliers (supplier_code, supplier_name, contact_name, phone, email, address) VALUES
