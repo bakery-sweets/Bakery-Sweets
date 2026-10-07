@@ -1,1 +1,169 @@
-.qodo
+# ==============================================================================
+# THE SWEETS — .gitignore
+# Hỗ trợ toàn diện: Python (FastAPI), Flutter (Mobile), Node/React, C# (.NET), PHP
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Môi trường & Bí mật (Environments & Secrets)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# ------------------------------------------------------------------------------
+# 2. Python & FastAPI (Backend Mobile)
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+myENV/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+htmlcov/
+
+# ------------------------------------------------------------------------------
+# 3. Node.js & React Frontend (Web Frontend)
+# ------------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+dist/
+dist-ssr/
+*.local
+.npm
+
+# ------------------------------------------------------------------------------
+# 4. Flutter & Dart (Mobile Frontend)
+# ------------------------------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+*.iml
+
+# Flutter build artifacts
+mobile/frontend/build/
+**/build/
+**/coverage/
+app.*.symbols
+app.*.map.json
+
+# Android Studio / Gradle artifacts
+.gradle/
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+
+# iOS artifacts
+**/ios/.generated/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Pods/
+**/ios/.symlinks/
+
+# ------------------------------------------------------------------------------
+# 5. C# & ASP.NET Core (Web Backend)
+# ------------------------------------------------------------------------------
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.userosv
+*.suo
+*.userprefs
+.vs/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ------------------------------------------------------------------------------
+# 6. PHP & Legacy Web
+# ------------------------------------------------------------------------------
+vendor/
+composer.phar
+
+# ------------------------------------------------------------------------------
+# 7. Docker & Database
+# ------------------------------------------------------------------------------
+db_data/
+*.sqlite3
+*.sql.bak
+*.dump
+
+# ------------------------------------------------------------------------------
+# 8. IDEs & Editors
+# ------------------------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.qodo/
+.gemini/
+
+# ------------------------------------------------------------------------------
+# 9. Hệ điều hành (OS Files)
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
