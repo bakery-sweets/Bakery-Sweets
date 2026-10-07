@@ -3,7 +3,7 @@
 # Kiáº¿n trÃºc:
 #   Web:    React (FE: port 3000) + C# ASP.NET Core (BE: port 5000)
 #   Mobile: Flutter (FE - cháº¡y trÃªn thiáº¿t bá»‹) + Python FastAPI (BE: port 8000)
-#   DB:     MySQL 8.0 (port 3308) + phpMyAdmin (port 8081)
+#   DB:     MariaDB 10.11 (port 3308)
 #   Legacy: PHP Web cÅ© (port 8080)
 # ==============================================================================
 
@@ -25,6 +25,8 @@ services:
       - "3308:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./database/createTable.sql:/docker-entrypoint-initdb.d/01_createTable.sql:ro
+      - ./database/data.sql:/docker-entrypoint-initdb.d/02_data.sql:ro
     networks:
       - thesweets_network
     healthcheck:

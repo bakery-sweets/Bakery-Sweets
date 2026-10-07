@@ -34,25 +34,14 @@ def _format_order_out(o: Order) -> OrderOut:
 
     log_list = []
     for log in o.status_logs:
-        emp_name = None
-        if log.employee:
-            emp_name = f"{log.employee.first_name} {log.employee.last_name}"
         log_list.append(OrderStatusLogOut(
             log_id=log.log_id,
             old_status=log.old_status,
             new_status=log.new_status,
             note=log.note,
             changed_at=log.changed_at,
-            employee_name=emp_name,
+            changed_by=log.changed_by,
         ))
-
-    confirmed_by = None
-    if o.employee:
-        confirmed_by = f"{o.employee.first_name} {o.employee.last_name}"
-
-    delivered_by = None
-    if o.shipper:
-        delivered_by = f"{o.shipper.first_name} {o.shipper.last_name}"
 
     return OrderOut(
         order_id=o.order_id,
@@ -60,13 +49,9 @@ def _format_order_out(o: Order) -> OrderOut:
         customer_id=o.customer_id,
         recipient_name=o.recipient_name,
         recipient_phone=o.recipient_phone,
-        shipping_address=o.shipping_address,
-        shipping_city=o.shipping_city,
-        shipping_district=o.shipping_district,
-        shipping_ward=o.shipping_ward,
-        delivery_date=o.delivery_date,
-        delivery_time=o.delivery_time,
-        shipping_fee=o.shipping_fee,
+        pickup_time=o.pickup_time,
+        notes=o.notes,
+        promotion_id=o.promotion_id,
         discount_amount=o.discount_amount,
         total_quantity=o.total_quantity,
         total_cost=o.total_cost,
@@ -75,8 +60,6 @@ def _format_order_out(o: Order) -> OrderOut:
         payment_status=o.payment_status,
         status=o.status,
         order_date=o.order_date,
-        confirmed_by=confirmed_by,
-        delivered_by=delivered_by,
         details=detail_list,
         status_logs=log_list,
     )
@@ -140,8 +123,7 @@ async def create_order(
             else:
                 discount_amount = calculated_discount
 
-    shipping_fee = Decimal("25000.00") if total_cost < 300000 else Decimal("0.0")
-    final_cost = total_cost + shipping_fee - discount_amount
+    final_cost = total_cost - discount_amount
     if final_cost < 0:
         final_cost = Decimal("0.0")
 
@@ -152,13 +134,7 @@ async def create_order(
         customer_id=customer_id,
         recipient_name=req.recipient_name,
         recipient_phone=req.recipient_phone,
-        shipping_address=req.shipping_address,
-        shipping_city=req.shipping_city,
-        shipping_district=req.shipping_district,
-        shipping_ward=req.shipping_ward,
-        delivery_date=req.delivery_date,
-        delivery_time=req.delivery_time,
-        shipping_fee=shipping_fee,
+        pickup_time=req.pickup_time,
         notes=req.notes,
         promotion_id=req.promotion_id,
         discount_amount=discount_amount,
@@ -185,9 +161,10 @@ async def create_order(
 
     initial_log = OrderStatusLog(
         order_id=new_order.order_id,
+        changed_by=current_user.user_name,
         old_status=None,
         new_status="Pending",
-        note="Đơn hàng được tạo mới bởi khách hàng",
+        note="Đơn hàng được đặt thành công, chờ xác nhận",
     )
     db.add(initial_log)
 
@@ -228,9 +205,7 @@ def get_my_orders(
     query = db.query(Order).options(
         joinedload(Order.details).joinedload(OrderDetail.product),
         joinedload(Order.details).joinedload(OrderDetail.size),
-        joinedload(Order.status_logs).joinedload(OrderStatusLog.employee),
-        joinedload(Order.employee),
-        joinedload(Order.shipper),
+        joinedload(Order.status_logs),
     )
 
     if current_user.role == "customer":
@@ -252,9 +227,7 @@ def get_order_detail(
     o = db.query(Order).options(
         joinedload(Order.details).joinedload(OrderDetail.product),
         joinedload(Order.details).joinedload(OrderDetail.size),
-        joinedload(Order.status_logs).joinedload(OrderStatusLog.employee),
-        joinedload(Order.employee),
-        joinedload(Order.shipper),
+        joinedload(Order.status_logs),
     ).filter(Order.order_id == order_id).first()
 
     if not o:
@@ -271,13 +244,15 @@ async def update_order_status(
     order_id: int,
     new_status: str,
     note: str = "",
-    shipper_id: int = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    valid_statuses = ["Pending", "Processing", "Shipping", "Completed", "Cancelled"]
+    valid_statuses = ["Pending", "Processing", "Ready", "Completed", "Cancelled"]
     if new_status not in valid_statuses:
-        raise HTTPException(status_code=400, detail="Trạng thái không hợp lệ")
+        raise HTTPException(
+            status_code=400,
+            detail="Trạng thái không hợp lệ. Các trạng thái hợp lệ: Pending, Processing, Ready, Completed, Cancelled"
+        )
 
     o = db.query(Order).filter(Order.order_id == order_id).first()
     if not o:
@@ -286,21 +261,12 @@ async def update_order_status(
     old_status = o.status
     o.status = new_status
 
-    emp_id = None
-    if current_user.employee:
-        emp_id = current_user.employee.employee_id
-        if not o.employee_id and new_status == "Processing":
-            o.employee_id = emp_id
-
-    if shipper_id:
-        o.shipper_id = shipper_id
-
     if new_status == "Completed":
         o.payment_status = "Paid"
 
     log = OrderStatusLog(
         order_id=o.order_id,
-        employee_id=emp_id,
+        changed_by=current_user.user_name,
         old_status=old_status,
         new_status=new_status,
         note=note or f"Chuyển trạng thái sang {new_status}",

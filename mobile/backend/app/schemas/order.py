@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, date, time
+from datetime import datetime
 from decimal import Decimal
 
 # Cart Schemas
@@ -36,12 +36,7 @@ class OrderItemCreate(BaseModel):
 class OrderCreate(BaseModel):
     recipient_name: str
     recipient_phone: str
-    shipping_address: str
-    shipping_city: Optional[str] = None
-    shipping_district: Optional[str] = None
-    shipping_ward: Optional[str] = None
-    delivery_date: Optional[date] = None
-    delivery_time: Optional[time] = None
+    pickup_time: Optional[datetime] = None
     notes: Optional[str] = None
     promotion_id: Optional[int] = None
     payment_method: str = "COD"
@@ -67,7 +62,7 @@ class OrderStatusLogOut(BaseModel):
     new_status: str
     note: Optional[str] = None
     changed_at: datetime
-    employee_name: Optional[str] = None
+    changed_by: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -78,13 +73,9 @@ class OrderOut(BaseModel):
     customer_id: int
     recipient_name: str
     recipient_phone: str
-    shipping_address: str
-    shipping_city: Optional[str] = None
-    shipping_district: Optional[str] = None
-    shipping_ward: Optional[str] = None
-    delivery_date: Optional[date] = None
-    delivery_time: Optional[time] = None
-    shipping_fee: Decimal
+    pickup_time: Optional[datetime] = None
+    notes: Optional[str] = None
+    promotion_id: Optional[int] = None
     discount_amount: Decimal
     total_quantity: int
     total_cost: Decimal
@@ -93,8 +84,6 @@ class OrderOut(BaseModel):
     payment_status: str
     status: str
     order_date: datetime
-    confirmed_by: Optional[str] = None
-    delivered_by: Optional[str] = None
     details: List[OrderDetailOut] = []
     status_logs: List[OrderStatusLogOut] = []
 

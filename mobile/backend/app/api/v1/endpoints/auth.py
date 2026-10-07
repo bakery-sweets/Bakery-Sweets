@@ -15,10 +15,10 @@ def _build_profile_out(user: User) -> UserProfileOut:
         role=user.role,
         status=user.status,
         customer_id=customer.customer_id if customer else None,
-        first_name=customer.first_name if customer else (user.employee.first_name if user.employee else None),
-        last_name=customer.last_name if customer else (user.employee.last_name if user.employee else None),
-        phone=customer.phone if customer else (user.employee.phone if user.employee else None),
-        gender=customer.gender if customer else (user.employee.gender if user.employee else None),
+        first_name=customer.first_name if customer else None,
+        last_name=customer.last_name if customer else None,
+        phone=customer.phone if customer else None,
+        gender=customer.gender if customer else None,
         loyalty_points=customer.loyalty_points if customer else 0,
     )
 
