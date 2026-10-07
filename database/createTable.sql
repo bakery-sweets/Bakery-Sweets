@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- HỆ THỐNG CƠ SỞ DỮ LIỆU CỬA HÀNG BÁNH "THE SWEETS"
--- Kiến trúc: React (FE) + Backend API (BE) / Mobile (Flutter)
--- Phiên bản: MySQL 8.0+ | Charset: utf8mb4_unicode_ci
+-- Kiến trúc: Bán hàng trực tuyến (Web React + Mobile Flutter + Backend API)
+-- Phiên bản: MySQL 8.0+ / MariaDB | Charset: utf8mb4_unicode_ci
 -- ==============================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -35,7 +35,7 @@ CREATE TABLE users (
     user_name    VARCHAR(255) PRIMARY KEY,
     email        VARCHAR(255) UNIQUE NOT NULL,
     password     VARCHAR(255) NOT NULL,
-    role         ENUM('customer', 'staff', 'admin') DEFAULT 'customer',
+    role         ENUM('customer', 'admin') DEFAULT 'customer',
     status       ENUM('active', 'locked') DEFAULT 'active',
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -60,43 +60,10 @@ CREATE TABLE customers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
--- PHẦN 3: QUẢN LÝ NHÂN SỰ (HRM)
+-- PHẦN 3: NHÀ CUNG CẤP & QUẢN LÝ NHẬP HÀNG (KHO)
 -- ==============================================================================
 
--- 3. Bảng departments: Phòng ban / Bộ phận trong cửa hàng
-CREATE TABLE departments (
-    department_id    INT PRIMARY KEY AUTO_INCREMENT,
-    department_name  VARCHAR(100) NOT NULL UNIQUE,
-    description      TEXT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 4. Bảng employees: Hồ sơ nhân viên (liên kết users để đăng nhập nội bộ)
-CREATE TABLE employees (
-    employee_id    INT PRIMARY KEY AUTO_INCREMENT,
-    employee_code  VARCHAR(20) UNIQUE NOT NULL,                                -- Mã NV: NV001, NV002...
-    user_name      VARCHAR(255) UNIQUE NULL,                                   -- Tài khoản đăng nhập nội bộ
-    first_name     VARCHAR(100) NOT NULL,
-    last_name      VARCHAR(100) NOT NULL,
-    phone          VARCHAR(20) UNIQUE,
-    citizen_id     VARCHAR(20) UNIQUE,                                         -- Số CCCD/CMND
-    gender         ENUM('Male', 'Female', 'Other') DEFAULT 'Male',
-    date_of_birth  DATE,
-    department_id  INT NULL,
-    position       VARCHAR(100) NULL,                                          -- Chức vụ (Quản lý, Bán hàng, Thu ngân, Thợ bánh...)
-    hire_date      DATE NOT NULL,                                              -- Ngày vào làm
-    contract_type  ENUM('Full-time', 'Part-time', 'Probation') DEFAULT 'Full-time',
-    status         ENUM('Active', 'On Leave', 'Resigned') DEFAULT 'Active',
-    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_name)      REFERENCES users(user_name)           ON DELETE SET NULL,
-    FOREIGN KEY (department_id)  REFERENCES departments(department_id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ==============================================================================
--- PHẦN 4: NHÀ CUNG CẤP & QUẢN LÝ NHẬP HÀNG (KHO)
--- ==============================================================================
-
--- 5. Bảng suppliers: Nhà cung cấp nguyên vật liệu / sản phẩm bánh
+-- 3. Bảng suppliers: Nhà cung cấp nguyên vật liệu / sản phẩm bánh
 CREATE TABLE suppliers (
     supplier_id    INT PRIMARY KEY AUTO_INCREMENT,
     supplier_code  VARCHAR(20) UNIQUE NOT NULL,                                -- Mã NCC: NCC001, NCC002...
@@ -110,8 +77,37 @@ CREATE TABLE suppliers (
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 4. Bảng import_receipts: Phiếu nhập hàng từ nhà cung cấp
+CREATE TABLE import_receipts (
+    import_id       INT PRIMARY KEY AUTO_INCREMENT,
+    import_code     VARCHAR(20) UNIQUE NOT NULL,                                -- Mã phiếu nhập: PN001, PN002...
+    supplier_id     INT NOT NULL,                                               -- Nhà cung cấp
+    total_amount    DECIMAL(20,2) NOT NULL DEFAULT 0 CHECK (total_amount >= 0), -- Tổng tiền nhập
+    import_date     DATETIME DEFAULT CURRENT_TIMESTAMP,                         -- Thời gian nhập
+    status          ENUM('Pending', 'Completed', 'Cancelled') DEFAULT 'Completed',
+    notes           TEXT,                                                       -- Ghi chú nhập hàng
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Bảng import_receipt_details: Chi tiết phiếu nhập hàng (sản phẩm, số lượng, giá nhập)
+CREATE TABLE import_receipt_details (
+    import_id     INT NOT NULL,
+    product_id    INT NOT NULL,
+    size_id       INT NOT NULL,
+    quantity      INT NOT NULL CHECK (quantity > 0),                            -- Số lượng nhập
+    import_price  DECIMAL(15,2) NOT NULL CHECK (import_price >= 0),            -- Đơn giá nhập
+    total_price   DECIMAL(20,2) NOT NULL CHECK (total_price >= 0),             -- Thành tiền = quantity * import_price
+    note          TEXT,
+    PRIMARY KEY (import_id, product_id, size_id),
+    FOREIGN KEY (import_id)  REFERENCES import_receipts(import_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES product(product_id)        ON DELETE CASCADE,
+    FOREIGN KEY (size_id)    REFERENCES size(size_id)              ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ==============================================================================
--- PHẦN 5: SẢN PHẨM & BIẾN THỂ KÍCH CỠ
+-- PHẦN 4: SẢN PHẨM & BIẾN THỂ KÍCH CỠ
 -- ==============================================================================
 
 -- 6. Bảng category: Danh mục bánh (Mousse, Croissant, Drink...)
@@ -154,42 +150,11 @@ CREATE TABLE product_sizes (
     FOREIGN KEY (size_id)    REFERENCES size(size_id)       ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 10. Bảng import_receipts: Phiếu nhập hàng từ nhà cung cấp
-CREATE TABLE import_receipts (
-    import_id       INT PRIMARY KEY AUTO_INCREMENT,
-    import_code     VARCHAR(20) UNIQUE NOT NULL,                                -- Mã phiếu nhập: PN001, PN002...
-    supplier_id     INT NOT NULL,                                               -- Nhà cung cấp
-    employee_id     INT NULL,                                                   -- Nhân viên lập phiếu
-    total_amount    DECIMAL(20,2) NOT NULL DEFAULT 0 CHECK (total_amount >= 0), -- Tổng tiền nhập
-    import_date     DATETIME DEFAULT CURRENT_TIMESTAMP,                         -- Thời gian nhập
-    status          ENUM('Pending', 'Completed', 'Cancelled') DEFAULT 'Completed',
-    notes           TEXT,                                                       -- Ghi chú nhập hàng
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE RESTRICT,
-    FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 11. Bảng import_receipt_details: Chi tiết phiếu nhập hàng (sản phẩm, số lượng, giá nhập)
-CREATE TABLE import_receipt_details (
-    import_id     INT NOT NULL,
-    product_id    INT NOT NULL,
-    size_id       INT NOT NULL,
-    quantity      INT NOT NULL CHECK (quantity > 0),                            -- Số lượng nhập
-    import_price  DECIMAL(15,2) NOT NULL CHECK (import_price >= 0),            -- Đơn giá nhập
-    total_price   DECIMAL(20,2) NOT NULL CHECK (total_price >= 0),             -- Thành tiền = quantity * import_price
-    note          TEXT,
-    PRIMARY KEY (import_id, product_id, size_id),
-    FOREIGN KEY (import_id)  REFERENCES import_receipts(import_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES product(product_id)        ON DELETE CASCADE,
-    FOREIGN KEY (size_id)    REFERENCES size(size_id)              ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- ==============================================================================
--- PHẦN 6: CHƯƠNG TRÌNH KHUYẾN MÃI & KHUYẾN MÃI THEO HÓA ĐƠN
+-- PHẦN 5: CHƯƠNG TRÌNH KHUYẾN MÃI & KHUYẾN MÃI THEO HÓA ĐƠN
 -- ==============================================================================
 
--- 12. Bảng promotions (CTKM): Chương trình khuyến mãi chung (Bảng cha)
+-- 10. Bảng promotions (CTKM): Chương trình khuyến mãi chung (Bảng cha)
 CREATE TABLE promotions (
     promotion_id    INT PRIMARY KEY AUTO_INCREMENT,                             -- MaCTKM: Khóa chính
     promotion_code  VARCHAR(50) UNIQUE NOT NULL,                                -- Mã code chương trình (VD: CTKM01, TET2026...)
@@ -202,7 +167,7 @@ CREATE TABLE promotions (
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 13. Bảng invoice_promotions (KM TTHD): Khuyến mãi theo mức tổng tiền hóa đơn
+-- 11. Bảng invoice_promotions (KM TTHD): Khuyến mãi theo mức tổng tiền hóa đơn
 --     Sơ đồ: KM TTHD (MaCTKM, muc TTHD, %gg)
 CREATE TABLE invoice_promotions (
     promotion_id        INT NOT NULL,                                            -- MaCTKM: Khóa ngoại tham chiếu promotions
@@ -214,10 +179,10 @@ CREATE TABLE invoice_promotions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
--- PHẦN 7: GIỎ HÀNG & ĐƠN HÀNG (HÓA ĐƠN)
+-- PHẦN 6: GIỎ HÀNG & ĐƠN HÀNG (HÓA ĐƠN)
 -- ==============================================================================
 
--- 14. Bảng cart: Giỏ hàng của khách hàng (lưu rõ size bánh đã chọn)
+-- 12. Bảng cart: Giỏ hàng của khách hàng (lưu rõ size bánh đã chọn)
 CREATE TABLE cart (
     cart_id     INT PRIMARY KEY AUTO_INCREMENT,
     customer_id INT NOT NULL,
@@ -230,13 +195,11 @@ CREATE TABLE cart (
     FOREIGN KEY (size_id)     REFERENCES size(size_id)          ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 15. Bảng orders: Quản lý đơn hàng (Tích hợp địa chỉ giao nhận trực tiếp & nhân viên giao hàng)
+-- 13. Bảng orders: Quản lý đơn hàng (Tập trung bán hàng & giao hàng cho khách)
 CREATE TABLE orders (
     order_id           INT PRIMARY KEY AUTO_INCREMENT,
-    order_code         VARCHAR(20) UNIQUE NULL,                                 -- Mã đơn: DH001... (PHP/BE tự sinh)
+    order_code         VARCHAR(20) UNIQUE NULL,                                 -- Mã đơn: DH001...
     customer_id        INT NOT NULL,                                            -- Khách hàng đặt mua
-    employee_id        INT NULL,                                                -- Nhân viên xác nhận / duyệt đơn
-    shipper_id         INT NULL,                                                -- Nhân viên phụ trách giao hàng (Shipper)
     recipient_name     VARCHAR(100) NOT NULL,                                   -- Họ tên người nhận hàng
     recipient_phone    VARCHAR(20) NOT NULL,                                    -- Số điện thoại người nhận
     shipping_address   VARCHAR(255) NOT NULL,                                   -- Địa chỉ giao hàng cụ thể (số nhà, tên đường, phường, quận, tỉnh)
@@ -258,12 +221,10 @@ CREATE TABLE orders (
     order_date         DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id)  REFERENCES customers(customer_id)   ON DELETE CASCADE,
-    FOREIGN KEY (employee_id)  REFERENCES employees(employee_id)   ON DELETE SET NULL,
-    FOREIGN KEY (shipper_id)   REFERENCES employees(employee_id)   ON DELETE SET NULL,
     FOREIGN KEY (promotion_id) REFERENCES promotions(promotion_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 16. Bảng order_promotions: Nhật ký khuyến mãi áp dụng cho từng hóa đơn
+-- 14. Bảng order_promotions: Nhật ký khuyến mãi áp dụng cho từng hóa đơn
 CREATE TABLE order_promotions (
     id               INT PRIMARY KEY AUTO_INCREMENT,
     order_id         INT NOT NULL,
@@ -274,7 +235,7 @@ CREATE TABLE order_promotions (
     FOREIGN KEY (promotion_id) REFERENCES promotions(promotion_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 17. Bảng order_detail: Chi tiết từng món bánh trong đơn hàng
+-- 15. Bảng order_detail: Chi tiết từng món bánh trong đơn hàng
 CREATE TABLE order_detail (
     order_id    INT NOT NULL,
     product_id  INT NOT NULL,
@@ -284,15 +245,15 @@ CREATE TABLE order_detail (
     note        TEXT,
     PRIMARY KEY (order_id, product_id, size_id),
     FOREIGN KEY (order_id)   REFERENCES orders(order_id)   ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
-    FOREIGN KEY (size_id)    REFERENCES size(size_id)       ON DELETE CASCADE
+    FOREIGN KEY (product_id) REFERENCES product(product_id)        ON DELETE CASCADE,
+    FOREIGN KEY (size_id)    REFERENCES size(size_id)              ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
--- PHẦN 8: THÔNG BÁO & LỊCH SỬ THAY ĐỔI TRẠNG THÁI
+-- PHẦN 7: THÔNG BÁO & LỊCH SỬ THAY ĐỔI TRẠNG THÁI
 -- ==============================================================================
 
--- 18. Bảng notifications: Thông báo đẩy cho Web & Mobile
+-- 16. Bảng notifications: Thông báo đẩy cho Web & Mobile
 CREATE TABLE notifications (
     notification_id  INT PRIMARY KEY AUTO_INCREMENT,
     user_name        VARCHAR(255) NOT NULL,
@@ -305,15 +266,14 @@ CREATE TABLE notifications (
     FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 19. Bảng order_status_logs: Lịch sử thay đổi trạng thái đơn hàng
+-- 17. Bảng order_status_logs: Lịch sử thay đổi trạng thái đơn hàng
 CREATE TABLE order_status_logs (
     log_id       INT PRIMARY KEY AUTO_INCREMENT,
     order_id     INT NOT NULL,
-    employee_id  INT NULL,                                                      -- Nhân viên thao tác (NULL = khách hàng / hệ thống)
+    changed_by   VARCHAR(100) NULL,                                             -- Người thao tác (Khách hàng, Admin, Hệ thống)
     old_status   ENUM('Pending', 'Processing', 'Shipping', 'Completed', 'Cancelled') NULL,
     new_status   ENUM('Pending', 'Processing', 'Shipping', 'Completed', 'Cancelled') NOT NULL,
     note         TEXT,                                                          -- Lý do hủy, ghi chú xử lý...
     changed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (order_id)    REFERENCES orders(order_id)       ON DELETE CASCADE,
-    FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE SET NULL
+    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
