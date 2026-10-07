@@ -2,63 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/navigation/screens/main_navigation_screen.dart';
+import 'features/products/screens/product_detail_screen.dart';
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ─── GoRouter Configuration ───────────────────────────────────────────────────
 final _router = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/',
   routes: [
-    GoRoute(path: '/login',   builder: (ctx, state) => const _PlaceholderScreen(title: 'Đăng nhập')),
-    GoRoute(path: '/home',    builder: (ctx, state) => const _PlaceholderScreen(title: 'Trang chủ')),
-    GoRoute(path: '/cart',    builder: (ctx, state) => const _PlaceholderScreen(title: 'Giỏ hàng')),
-    GoRoute(path: '/orders',  builder: (ctx, state) => const _PlaceholderScreen(title: 'Đơn hàng')),
-    GoRoute(path: '/profile', builder: (ctx, state) => const _PlaceholderScreen(title: 'Hồ sơ')),
+    GoRoute(
+      path: '/',
+      builder: (ctx, state) => const MainNavigationScreen(),
+    ),
+    GoRoute(
+      path: '/product/:id',
+      builder: (ctx, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '1') ?? 1;
+        return ProductDetailScreen(productId: id);
+      },
+    ),
   ],
 );
 
 // ─── App Entry Point ──────────────────────────────────────────────────────────
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     const ProviderScope(
-      child: TheSweets(),
+      child: TheSweetsApp(),
     ),
   );
 }
 
-class TheSweets extends StatelessWidget {
-  const TheSweets({super.key});
+class TheSweetsApp extends StatelessWidget {
+  const TheSweetsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'The Sweets',
+      title: 'The Sweets — Bakery & Cafe',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: _router,
-    );
-  }
-}
-
-// ─── Placeholder (Tạm thời để test chạy được) ─────────────────────────────────
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const _PlaceholderScreen({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('🍰', style: TextStyle(fontSize: 64)),
-            const SizedBox(height: 16),
-            Text(title, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            const Text('The Sweets — Coming soon...'),
-          ],
-        ),
-      ),
     );
   }
 }
