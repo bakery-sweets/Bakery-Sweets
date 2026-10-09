@@ -27,7 +27,6 @@ class Customer(Base):
     last_name = Column(String(100), nullable=False)
     phone = Column(String(20), unique=True, nullable=True)
     gender = Column(SQLEnum("Male", "Female", "Other", name="customer_gender"), default="Other")
-    loyalty_points = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

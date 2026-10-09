@@ -46,7 +46,6 @@ CREATE TABLE customers (
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) UNIQUE,
     gender ENUM('Male', 'Female', 'Other') DEFAULT 'Other',
-    loyalty_points INT DEFAULT 0 CHECK (loyalty_points >= 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE CASCADE
