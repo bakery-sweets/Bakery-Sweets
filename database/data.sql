@@ -40,25 +40,25 @@ INSERT INTO users (user_name, email, password, role, status) VALUES
 ('cus2', 'customer2@gmail.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'customer', 'active');
 
 -- 6. Hồ sơ khách hàng
-INSERT INTO customers (customer_id, user_name, first_name, last_name, phone, gender, loyalty_points) VALUES
-(1, 'cus1', 'Nguyễn', 'Văn An', '0912345678', 'Male', 50),
-(2, 'cus2', 'Trần', 'Thị Bích', '0987654321', 'Female', 20);
+INSERT INTO customers (customer_id, user_name, first_name, last_name, phone, gender) VALUES
+(1, 'cus1', 'Nguyễn', 'Văn An', '0912345678', 'Male'),
+(2, 'cus2', 'Trần', 'Thị Bích', '0987654321', 'Female');
 
--- 7. Nhà cung cấp
+-- 7. Nhà cung cấp (Xưởng bánh / Đơn vị cung cấp bánh thành phẩm)
 INSERT INTO suppliers (supplier_id, supplier_code, supplier_name, contact_name, phone, email, address, status) VALUES
-(1, 'NCC001', 'Công ty TNHH Bơ Sữa Tân An', 'Trần Minh Quân', '02838123456', 'tanan.dairy@gmail.com', '45 KCN Tân Thuận, Quận 7, TP.HCM', 'Active'),
-(2, 'NCC002', 'Đại lý Bột Mì & Đường Biên Hòa', 'Lê Thị Thu', '02839998888', 'botmi.bienhoa@gmail.com', '120 Quốc Lộ 1K, Biên Hòa, Đồng Nai', 'Active');
+(1, 'NCC001', 'Xưởng Bánh Tươi Mousse & Pastry Paris', 'Trần Minh Quân', '02838123456', 'paris.pastry@gmail.com', '45 KCN Tân Thuận, Quận 7, TP.HCM', 'Active'),
+(2, 'NCC002', 'Công ty Phân Phối Bánh Ngọt Sweets SG', 'Lê Thị Thu', '02839998888', 'sweetssg.bakery@gmail.com', '120 Quốc Lộ 1K, TP. Thủ Đức, TP.HCM', 'Active');
 
--- 8. Phiếu nhập hàng (Kho)
+-- 8. Phiếu nhập hàng (Kho bánh thành phẩm)
 INSERT INTO import_receipts (import_id, import_code, supplier_id, total_amount, import_date, status, notes) VALUES
-(1, 'PN001', 1, 3500000.00, '2026-10-01 08:30:00', 'Completed', 'Nhập kem tươi và bơ lạt Pháp cho tuần đầu tháng 10'),
-(2, 'PN002', 2, 2100000.00, '2026-10-03 09:00:00', 'Completed', 'Nhập bột mì làm bánh sừng bò');
+(1, 'PN001', 1, 3500000.00, '2026-10-01 08:30:00', 'Completed', 'Nhập bánh Mousse tươi các vị cho tuần đầu tháng 10'),
+(2, 'PN002', 2, 2100000.00, '2026-10-03 09:00:00', 'Completed', 'Nhập mẻ bánh Croissant bơ Pháp mới nướng');
 
 -- 9. Chi tiết phiếu nhập hàng
 INSERT INTO import_receipt_details (import_id, product_id, size_id, quantity, import_price, total_price, note) VALUES
 (1, 1, 1, 20, 70000.00, 1400000.00, 'Bánh mousse socola cỡ nhỏ'),
 (1, 1, 2, 15, 110000.00, 1650000.00, 'Bánh mousse socola cỡ vừa'),
-(2, 3, 1, 100, 18000.00, 1800000.00, 'Nguyên liệu bánh croissant');
+(2, 3, 1, 100, 18000.00, 1800000.00, 'Bánh croissant bơ cao cấp');
 
 -- 10. Chương trình khuyến mãi (CTKM)
 INSERT INTO promotions (promotion_id, promotion_code, promotion_name, description, start_date, end_date, status) VALUES

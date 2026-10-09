@@ -19,7 +19,6 @@ def _build_profile_out(user: User) -> UserProfileOut:
         last_name=customer.last_name if customer else (user.employee.last_name if user.employee else None),
         phone=customer.phone if customer else (user.employee.phone if user.employee else None),
         gender=customer.gender if customer else (user.employee.gender if user.employee else None),
-        loyalty_points=customer.loyalty_points if customer else 0,
     )
 
 @router.post("/login", response_model=TokenResponse)
@@ -84,7 +83,6 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
             last_name=req.last_name,
             phone=req.phone,
             gender=req.gender or "Other",
-            loyalty_points=0,
         )
         db.add(new_customer)
         db.commit()
