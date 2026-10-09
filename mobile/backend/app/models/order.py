@@ -33,7 +33,7 @@ class Order(Base):
     total_quantity = Column(Integer, default=1, nullable=False)
     total_cost = Column(Numeric(20, 2), default=0, nullable=False)
     final_cost = Column(Numeric(20, 2), default=0, nullable=False)
-    payment_method = Column(SQLEnum("COD", "Momo", "Credit Card", "VNPay", name="payment_method"), default="COD")
+    payment_method = Column(SQLEnum("COD", "Banking", "Momo", "Credit Card", "VNPay", name="payment_method"), default="COD")
     payment_status = Column(SQLEnum("Unpaid", "Paid", "Refunded", name="payment_status"), default="Unpaid")
     status = Column(SQLEnum("Pending", "Processing", "Ready", "Completed", "Cancelled", name="order_status"), default="Pending")
     order_date = Column(DateTime, server_default=func.now())

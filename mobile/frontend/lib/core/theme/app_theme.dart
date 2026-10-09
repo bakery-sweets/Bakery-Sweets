@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class AppColors {
-  // Brand Colors (Rút trích chuẩn xác từ web The Sweets)
-  static const Color primary = Color(0xFFD4845A);       // Cam đất / Warm Terracotta
-  static const Color primaryDark = Color(0xFFB5623A);   // Burnt Caramel / Hover CTA
-  static const Color primaryLight = Color(0xFFFDF5F0);  // Nền kem ấm (warm tint)
+  // Brand Colors (Màu chủ đạo #ED8A9F)
+  static const Color primary = Color(0xFFED8A9F);       // Hồng dâu ngọt ngào / Nút bấm chính
+  static const Color primaryDark = Color(0xFFD76E85);   // Hồng đậm hơn / Hover & Pressed CTA
+  static const Color primaryLight = Color(0xFFFDF2F4);  // Nền hồng phấn nhẹ nhàng
   
   static const Color navy = Color(0xFF1A2639);          // Xanh đen / Deep Slate Navy
   static const Color darkBg = Color(0xFF1A1A2E);        // Nền tối / Midnight

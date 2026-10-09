@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.models.user import User, Customer
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserProfileOut
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserProfileOut, UpdateProfileRequest
 from app.core.security import verify_password, get_password_hash, create_access_token, get_current_user
 
 router = APIRouter()
@@ -15,10 +15,10 @@ def _build_profile_out(user: User) -> UserProfileOut:
         role=user.role,
         status=user.status,
         customer_id=customer.customer_id if customer else None,
-        first_name=customer.first_name if customer else (user.employee.first_name if user.employee else None),
-        last_name=customer.last_name if customer else (user.employee.last_name if user.employee else None),
-        phone=customer.phone if customer else (user.employee.phone if user.employee else None),
-        gender=customer.gender if customer else (user.employee.gender if user.employee else None),
+        first_name=customer.first_name if customer else (user.employee.first_name if hasattr(user, 'employee') and user.employee else None),
+        last_name=customer.last_name if customer else (user.employee.last_name if hasattr(user, 'employee') and user.employee else None),
+        phone=customer.phone if customer else (user.employee.phone if hasattr(user, 'employee') and user.employee else None),
+        gender=customer.gender if customer else (user.employee.gender if hasattr(user, 'employee') and user.employee else None),
     )
 
 @router.post("/login", response_model=TokenResponse)
@@ -104,3 +104,56 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserProfileOut)
 def get_profile(current_user: User = Depends(get_current_user)):
     return _build_profile_out(current_user)
+
+@router.put("/profile", response_model=UserProfileOut)
+@router.put("/me", response_model=UserProfileOut)
+def update_profile(
+    req: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if req.email and req.email != current_user.email:
+        existing_email = db.query(User).filter(User.email == req.email, User.user_name != current_user.user_name).first()
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email này đã được sử dụng bởi tài khoản khác",
+            )
+        current_user.email = req.email
+
+    customer = current_user.customer
+    if not customer:
+        customer = Customer(
+            user_name=current_user.user_name,
+            first_name=req.first_name or "",
+            last_name=req.last_name or "",
+            phone=req.phone,
+            gender=req.gender or "Other",
+        )
+        db.add(customer)
+    else:
+        if req.first_name is not None:
+            customer.first_name = req.first_name.strip()
+        if req.last_name is not None:
+            customer.last_name = req.last_name.strip()
+        if req.phone is not None:
+            phone_val = req.phone.strip() if req.phone.strip() else None
+            if phone_val and phone_val != customer.phone:
+                existing_phone = db.query(Customer).filter(
+                    Customer.phone == phone_val,
+                    Customer.user_name != current_user.user_name,
+                ).first()
+                if existing_phone:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Số điện thoại này đã được sử dụng bởi tài khoản khác",
+                    )
+            customer.phone = phone_val
+        if req.gender is not None:
+            if req.gender in ["Male", "Female", "Other"]:
+                customer.gender = req.gender
+
+    db.commit()
+    db.refresh(current_user)
+    return _build_profile_out(current_user)
+

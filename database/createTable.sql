@@ -51,77 +51,22 @@ CREATE TABLE customers (
     FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 -- ==============================================================================
--- PHẦN 3: NHÀ CUNG CẤP & QUẢN LÝ NHẬP HÀNG (KHO)
+-- PHẦN 3: SẢN PHẨM & BIẾN THỂ KÍCH CỠ
 -- ==============================================================================
--- 3. Bảng suppliers: Nhà cung cấp nguyên vật liệu / sản phẩm bánh
-CREATE TABLE suppliers (
-    supplier_id INT PRIMARY KEY AUTO_INCREMENT,
-    supplier_code VARCHAR(20) UNIQUE NOT NULL,
-    -- Mã NCC: NCC001, NCC002...
-    supplier_name VARCHAR(255) NOT NULL,
-    -- Tên nhà cung cấp
-    contact_name VARCHAR(100),
-    -- Người đại diện liên hệ
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    -- Số điện thoại
-    email VARCHAR(255),
-    -- Email
-    address VARCHAR(255),
-    -- Địa chỉ nhà cung cấp
-    status ENUM('Active', 'Inactive') DEFAULT 'Active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
--- 4. Bảng import_receipts: Phiếu nhập hàng từ nhà cung cấp
-CREATE TABLE import_receipts (
-    import_id INT PRIMARY KEY AUTO_INCREMENT,
-    import_code VARCHAR(20) UNIQUE NOT NULL,
-    -- Mã phiếu nhập: PN001, PN002...
-    supplier_id INT NOT NULL,
-    -- Nhà cung cấp
-    total_amount DECIMAL(20, 2) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
-    -- Tổng tiền nhập
-    import_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    -- Thời gian nhập
-    status ENUM('Pending', 'Completed', 'Cancelled') DEFAULT 'Completed',
-    notes TEXT,
-    -- Ghi chú nhập hàng
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE RESTRICT
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
--- 5. Bảng import_receipt_details: Chi tiết phiếu nhập hàng (sản phẩm, số lượng, giá nhập)
-CREATE TABLE import_receipt_details (
-    import_id INT NOT NULL,
-    product_id INT NOT NULL,
-    size_id INT NOT NULL,
-    quantity INT NOT NULL CHECK (quantity > 0),
-    -- Số lượng nhập
-    import_price DECIMAL(15, 2) NOT NULL CHECK (import_price >= 0),
-    -- Đơn giá nhập
-    total_price DECIMAL(20, 2) NOT NULL CHECK (total_price >= 0),
-    -- Thành tiền = quantity * import_price
-    note TEXT,
-    PRIMARY KEY (import_id, product_id, size_id),
-    FOREIGN KEY (import_id) REFERENCES import_receipts(import_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
-    FOREIGN KEY (size_id) REFERENCES size(size_id) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
--- ==============================================================================
--- PHẦN 4: SẢN PHẨM & BIẾN THỂ KÍCH CỠ
--- ==============================================================================
--- 6. Bảng category: Danh mục bánh (Mousse, Croissant, Drink...)
+-- 3. Bảng category: Danh mục bánh (Mousse, Croissant, Drink...)
 CREATE TABLE category (
     category_id INT PRIMARY KEY AUTO_INCREMENT,
     category_name VARCHAR(255) UNIQUE NOT NULL,
     description TEXT DEFAULT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
--- 7. Bảng size: Danh mục kích cỡ (Size S 16cm, Size M 20cm...)
+
+-- 4. Bảng size: Danh mục kích cỡ (Size S 16cm, Size M 20cm...)
 CREATE TABLE size (
     size_id INT PRIMARY KEY AUTO_INCREMENT,
     size_name VARCHAR(50) UNIQUE NOT NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
--- 8. Bảng product: Thông tin chung của bánh
+
+-- 5. Bảng product: Thông tin chung của bánh
 CREATE TABLE product (
     product_id INT PRIMARY KEY AUTO_INCREMENT,
     product_name VARCHAR(255) NOT NULL,
@@ -144,7 +89,8 @@ CREATE TABLE product (
     FOREIGN KEY (category_id) REFERENCES category(category_id) ON DELETE
     SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
--- 9. Bảng product_sizes: Biến thể bánh theo size (Giá bán & Tồn kho riêng từng size)
+
+-- 6. Bảng product_sizes: Biến thể bánh theo size (Giá bán & Tồn kho riêng từng size)
 CREATE TABLE product_sizes (
     id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
@@ -152,6 +98,66 @@ CREATE TABLE product_sizes (
     price DECIMAL(15, 2) NOT NULL CHECK (price >= 0),
     stock_quantity INT NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
     UNIQUE KEY unique_product_size (product_id, size_id),
+    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
+    FOREIGN KEY (size_id) REFERENCES size(size_id) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ==============================================================================
+-- PHẦN 4: NHÀ CUNG CẤP & QUẢN LÝ NHẬP HÀNG (KHO)
+-- ==============================================================================
+-- 7. Bảng suppliers: Nhà cung cấp nguyên vật liệu / sản phẩm bánh
+CREATE TABLE suppliers (
+    supplier_id INT PRIMARY KEY AUTO_INCREMENT,
+    supplier_code VARCHAR(20) UNIQUE NOT NULL,
+    -- Mã NCC: NCC001, NCC002...
+    supplier_name VARCHAR(255) NOT NULL,
+    -- Tên nhà cung cấp
+    contact_name VARCHAR(100),
+    -- Người đại diện liên hệ
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    -- Số điện thoại
+    email VARCHAR(255),
+    -- Email
+    address VARCHAR(255),
+    -- Địa chỉ nhà cung cấp
+    status ENUM('Active', 'Inactive') DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- 8. Bảng import_receipts: Phiếu nhập hàng từ nhà cung cấp
+CREATE TABLE import_receipts (
+    import_id INT PRIMARY KEY AUTO_INCREMENT,
+    import_code VARCHAR(20) UNIQUE NOT NULL,
+    -- Mã phiếu nhập: PN001, PN002...
+    supplier_id INT NOT NULL,
+    -- Nhà cung cấp
+    total_amount DECIMAL(20, 2) NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
+    -- Tổng tiền nhập
+    import_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    -- Thời gian nhập
+    status ENUM('Pending', 'Completed', 'Cancelled') DEFAULT 'Completed',
+    notes TEXT,
+    -- Ghi chú nhập hàng
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE RESTRICT
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- 9. Bảng import_receipt_details: Chi tiết phiếu nhập hàng (sản phẩm, số lượng, giá nhập)
+CREATE TABLE import_receipt_details (
+    import_id INT NOT NULL,
+    product_id INT NOT NULL,
+    size_id INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    -- Số lượng nhập
+    import_price DECIMAL(15, 2) NOT NULL CHECK (import_price >= 0),
+    -- Đơn giá nhập
+    total_price DECIMAL(20, 2) NOT NULL CHECK (total_price >= 0),
+    -- Thành tiền = quantity * import_price
+    note TEXT,
+    PRIMARY KEY (import_id, product_id, size_id),
+    FOREIGN KEY (import_id) REFERENCES import_receipts(import_id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
     FOREIGN KEY (size_id) REFERENCES size(size_id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
@@ -233,7 +239,7 @@ CREATE TABLE orders (
     -- Tổng tiền hàng trước giảm giá
     final_cost DECIMAL(20, 2) NOT NULL CHECK (final_cost >= 0),
     -- Tổng tiền thanh toán = total_cost - discount_amount
-    payment_method ENUM('COD', 'Momo', 'Credit Card', 'VNPay') DEFAULT 'COD',
+    payment_method ENUM('COD', 'Banking', 'Momo', 'Credit Card', 'VNPay') DEFAULT 'COD',
     payment_status ENUM('Unpaid', 'Paid', 'Refunded') DEFAULT 'Unpaid',
     status ENUM(
         'Pending',
