@@ -179,6 +179,10 @@ CREATE TABLE promotions (
     end_date DATETIME NOT NULL,
     -- Ngày kết thúc
     status ENUM('Draft', 'Active', 'Paused', 'Expired') DEFAULT 'Active',
+    usage_limit_per_user INT DEFAULT 1,
+    -- Số lần tối đa mỗi tài khoản được sử dụng (mặc định: 1 lần)
+    total_usage_limit INT NULL,
+    -- Tổng số lượt sử dụng tối đa của toàn hệ thống (NULL: không giới hạn)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;

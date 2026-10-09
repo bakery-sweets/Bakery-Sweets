@@ -9,7 +9,7 @@ from app.config.database import get_db
 from app.models.user import User
 from app.models.order import Order, OrderDetail, OrderStatusLog, Cart
 from app.models.product import ProductSize
-from app.models.promotion import InvoicePromotion
+from app.models.promotion import Promotion, InvoicePromotion
 from app.models.notification import Notification
 from app.schemas.order import OrderCreate, OrderOut, OrderDetailOut, OrderStatusLogOut
 from app.core.security import get_current_user
@@ -111,17 +111,57 @@ async def create_order(
 
     discount_amount = Decimal("0.0")
     if req.promotion_id:
+        promo = db.query(Promotion).filter(Promotion.promotion_id == req.promotion_id).first()
+        if not promo or promo.status != "Active":
+            raise HTTPException(status_code=400, detail="Mã ưu đãi không hợp lệ hoặc đã hết hạn")
+
+        now = datetime.now()
+        if promo.start_date and promo.start_date > now:
+            raise HTTPException(status_code=400, detail="Chương trình ưu đãi chưa bắt đầu")
+        if promo.end_date and promo.end_date < now:
+            raise HTTPException(status_code=400, detail="Chương trình ưu đãi đã kết thúc")
+
+        # Kiểm tra giới hạn số lần sử dụng cho mỗi tài khoản
+        limit_per_user = promo.usage_limit_per_user if promo.usage_limit_per_user is not None else 1
+        user_used_count = db.query(Order).filter(
+            Order.customer_id == customer_id,
+            Order.promotion_id == req.promotion_id,
+            Order.status != "Cancelled"
+        ).count()
+        if user_used_count >= limit_per_user:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bạn đã sử dụng mã ưu đãi này rồi. Mỗi tài khoản chỉ được áp dụng tối đa {limit_per_user} lần!"
+            )
+
+        # Kiểm tra tổng số lượt sử dụng toàn hệ thống (nếu có giới hạn)
+        if promo.total_usage_limit is not None and promo.total_usage_limit > 0:
+            total_used_count = db.query(Order).filter(
+                Order.promotion_id == req.promotion_id,
+                Order.status != "Cancelled"
+            ).count()
+            if total_used_count >= promo.total_usage_limit:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Mã ưu đãi này đã hết lượt sử dụng trên hệ thống!"
+                )
+
         inv_promo = db.query(InvoicePromotion).filter(
             InvoicePromotion.promotion_id == req.promotion_id,
             InvoicePromotion.min_order_value <= total_cost
         ).order_by(InvoicePromotion.min_order_value.desc()).first()
 
-        if inv_promo:
-            calculated_discount = total_cost * (inv_promo.discount_percentage / Decimal("100.0"))
-            if inv_promo.max_discount_value and calculated_discount > inv_promo.max_discount_value:
-                discount_amount = inv_promo.max_discount_value
-            else:
-                discount_amount = calculated_discount
+        if not inv_promo:
+            raise HTTPException(
+                status_code=400,
+                detail="Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã ưu đãi này"
+            )
+
+        calculated_discount = total_cost * (inv_promo.discount_percentage / Decimal("100.0"))
+        if inv_promo.max_discount_value and calculated_discount > inv_promo.max_discount_value:
+            discount_amount = inv_promo.max_discount_value
+        else:
+            discount_amount = calculated_discount
 
     final_cost = total_cost - discount_amount
     if final_cost < 0:

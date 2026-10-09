@@ -306,6 +306,45 @@ Tệp này tự động lưu lại toàn bộ các lần phát hiện và sửa 
     - Đảm bảo co giãn linh hoạt 100% trên mọi kích thước màn hình điện thoại mà không bao giờ bị overflow.
 - **Tệp tin đã thay đổi**:
   - `mobile/frontend/lib/features/cart/screens/checkout_modal.dart`
-- **Trạng thái**: `flutter analyze lib` đạt 0 lỗi, 0 cảnh báo; Đã giải quyết triệt để lỗi tràn viền.
+### [2026-10-09 23:10] Chuẩn hóa Nghiệp Vụ & Sửa lỗi API: Giới hạn 1 Voucher chỉ dùng 1 lần / mỗi tài khoản (`GET /api/v1/promotions` & `POST /api/v1/orders`)
+- **Mô tả lỗi / Nghiệp vụ**:
+  1. Người dùng có thể áp dụng cùng một mã voucher nhiều lần liên tiếp trên các đơn hàng khác nhau mà không bị giới hạn.
+  2. Khi import `OrderStatus` trong [promotions.py](file:///d:/DATA/Code/Bakery-Sweets/mobile/backend/app/api/v1/endpoints/promotions.py) xảy ra lỗi `ImportError: cannot import name 'OrderStatus' from 'app.models.order'` khiến backend crash khi khởi động router.
+- **Nguyên nhân gốc rễ (Root Cause)**:
+  - Bảng `promotions` trong cơ sở dữ liệu chưa có trường kiểm soát số lần sử dụng cho mỗi khách hàng (`usage_limit_per_user`) và tổng số lần (`total_usage_limit`).
+  - Trong model [order.py](file:///d:/DATA/Code/Bakery-Sweets/mobile/backend/app/models/order.py), cột `status` là `SQLEnum` trực tiếp chứ không định nghĩa class `OrderStatus`, do đó import `OrderStatus` gây lỗi `ImportError`.
+  - Endpoint `POST /api/v1/orders` chưa kiểm tra lịch sử đặt hàng của khách hàng đối với mã khuyến mãi được chọn trước khi lưu đơn.
+- **Giải pháp xử lý (Solution)**:
+  1. **Cơ sở dữ liệu (Database)**:
+     - Thêm cột `usage_limit_per_user INT DEFAULT 1` và `total_usage_limit INT NULL` vào bảng `promotions` trong [createTable.sql](file:///d:/DATA/Code/Bakery-Sweets/database/createTable.sql), [data.sql](file:///d:/DATA/Code/Bakery-Sweets/database/data.sql) và MariaDB container `thesweets_db`.
+     - Cập nhật toàn bộ các voucher mặc định (`SWEET10`, `BANHNGOT`, `CTKM01`, `CTKM02`) có `usage_limit_per_user = 1`.
+  2. **Backend Server (`mobile/backend`)**:
+     - Sửa lỗi import trong [promotions.py](file:///d:/DATA/Code/Bakery-Sweets/mobile/backend/app/api/v1/endpoints/promotions.py), sử dụng chuỗi trực tiếp `"Cancelled"` khi lọc đơn hàng hợp lệ.
+     - Nâng cấp [promotion.py](file:///d:/DATA/Code/Bakery-Sweets/mobile/backend/app/schemas/promotion.py) bổ sung các trường: `usage_limit_per_user`, `total_usage_limit`, `used_by_current_user`, `is_used`, `can_use`.
+     - Tích hợp dependency `get_optional_current_user` trong [security.py](file:///d:/DATA/Code/Bakery-Sweets/mobile/backend/app/core/security.py) và [promotions.py](file:///d:/DATA/Code/Bakery-Sweets/mobile/backend/app/api/v1/endpoints/promotions.py): Tự động đếm số đơn hàng hợp lệ (`status != 'Cancelled'`) của khách hàng hiện tại và tính toán `is_used = True`, `can_use = False` nếu đã đạt giới hạn.
+     - Cập nhật [orders.py](file:///d:/DATA/Code/Bakery-Sweets/mobile/backend/app/api/v1/endpoints/orders.py): Trong `POST /orders`, kiểm tra chặt chẽ số lần khách hàng đã sử dụng voucher; nếu $\ge$ `usage_limit_per_user`, từ chối tạo đơn với mã lỗi 400 và thông báo thân thiện: `"Bạn đã sử dụng mã ưu đãi này rồi. Mỗi tài khoản chỉ được áp dụng tối đa 1 lần!"`.
+  3. **Mobile Client (Flutter)**:
+     - Cập nhật [promotion_model.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/promotions/models/promotion_model.dart): Thêm `isUsed`, `canUse`, `usageLimitPerUser`, `usedByCurrentUser`. `isEligible()` trả về `false` nếu `isUsed == true`.
+     - Cập nhật [promotions_provider.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/promotions/providers/promotions_provider.dart): Lắng nghe trạng thái đăng nhập của `authProvider` để tự động làm mới danh sách voucher khi đăng nhập / đăng xuất.
+     - Cập nhật [voucher_selector_modal.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/promotions/screens/voucher_selector_modal.dart):
+       - Hiển thị nhãn `[ĐÃ DÙNG]`, icon đã dùng và làm mờ voucher đã sử dụng.
+       - Chặn không cho chọn voucher đã dùng khi bấm vào thẻ hoặc nhập mã thủ công.
+     - Cập nhật [promotions_screen.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/promotions/screens/promotions_screen.dart): Hiển thị nhãn `[ĐÃ SỬ DỤNG]` và nút xám vô hiệu hóa `"Đã sử dụng"`.
+     - Cập nhật [checkout_modal.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/cart/screens/checkout_modal.dart): Tự động invalidate `promotionsProvider` sau khi đặt hàng thành công và trích xuất chi tiết lỗi từ backend nếu có.
+- **Tệp tin đã thay đổi**:
+  - `database/createTable.sql`
+  - `database/data.sql`
+  - `mobile/backend/app/models/promotion.py`
+  - `mobile/backend/app/schemas/promotion.py`
+  - `mobile/backend/app/core/security.py`
+  - `mobile/backend/app/api/v1/endpoints/promotions.py`
+  - `mobile/backend/app/api/v1/endpoints/orders.py`
+  - `mobile/frontend/lib/features/promotions/models/promotion_model.dart`
+  - `mobile/frontend/lib/features/promotions/providers/promotions_provider.dart`
+  - `mobile/frontend/lib/features/promotions/screens/voucher_selector_modal.dart`
+  - `mobile/frontend/lib/features/promotions/screens/promotions_screen.dart`
+  - `mobile/frontend/lib/features/cart/screens/checkout_modal.dart`
+- **Trạng thái**: Đã test API trả về chuẩn xác theo tài khoản đăng nhập (`cus1` đã dùng 2 mã thì hiển thị `is_used: true, can_use: false`); Test chặn đặt hàng trùng voucher trả về 400; `flutter analyze lib` đạt 0 lỗi.
+
 
 

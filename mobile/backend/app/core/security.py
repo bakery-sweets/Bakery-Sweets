@@ -64,3 +64,23 @@ def get_current_user(
             detail="Tài khoản đã bị khóa",
         )
     return user
+
+def get_optional_current_user(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Dependency lấy user hiện tại nếu có token hợp lệ, không bắt buộc (trả về None nếu chưa đăng nhập)"""
+    if not auth or not auth.credentials:
+        return None
+    try:
+        payload = jwt.decode(auth.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if not username:
+            return None
+        user = db.query(User).filter(User.user_name == username).first()
+        if user and user.status == "active":
+            return user
+        return None
+    except Exception:
+        return None
+

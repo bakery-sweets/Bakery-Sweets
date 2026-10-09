@@ -27,8 +27,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
+!mobile/frontend/lib/
 parts/
 sdist/
 var/
@@ -169,3 +170,5 @@ ehthumbs.db
 Thumbs.db
 
 .agents/
+
+__pycache__/

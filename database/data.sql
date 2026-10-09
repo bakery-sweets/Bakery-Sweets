@@ -137,11 +137,11 @@ INSERT INTO import_receipt_details (import_id, product_id, size_id, quantity, im
 (2, 10, 4, 100, 18000.00, 1800000.00, 'Bánh croissant bơ cao cấp');
 
 -- 10. Chương trình khuyến mãi (CTKM)
-INSERT INTO promotions (promotion_id, promotion_code, promotion_name, description, start_date, end_date, status) VALUES
-(1, 'CTKM01', 'Ưu đãi Khách hàng Thân thiết', 'Giảm giá theo mức tổng tiền hóa đơn', '2026-01-01 00:00:00', '2026-12-31 23:59:59', 'Active'),
-(2, 'CTKM02', 'Tri ân Mùa Lễ Hội', 'Khuyến mãi đặc biệt mừng mùa bánh cuối năm', '2026-10-01 00:00:00', '2026-12-31 23:59:59', 'Active'),
-(3, 'SWEET10', 'Voucher Chào Bạn Mới', 'Giảm 10% tối đa 20.000đ cho đơn từ 80.000đ', '2026-01-01 00:00:00', '2026-12-31 23:59:59', 'Active'),
-(4, 'BANHNGOT', 'Tuần Lễ Bánh Ngọt', 'Giảm 15% tối đa 35.000đ cho đơn từ 150.000đ', '2026-01-01 00:00:00', '2026-12-31 23:59:59', 'Active');
+INSERT INTO promotions (promotion_id, promotion_code, promotion_name, description, start_date, end_date, status, usage_limit_per_user, total_usage_limit) VALUES
+(1, 'CTKM01', 'Ưu đãi Khách hàng Thân thiết', 'Giảm giá theo mức tổng tiền hóa đơn (1 lần/khách)', '2026-01-01 00:00:00', '2026-12-31 23:59:59', 'Active', 1, 500),
+(2, 'CTKM02', 'Tri ân Mùa Lễ Hội', 'Khuyến mãi đặc biệt mừng mùa bánh cuối năm (1 lần/khách)', '2026-10-01 00:00:00', '2026-12-31 23:59:59', 'Active', 1, 200),
+(3, 'SWEET10', 'Voucher Chào Bạn Mới', 'Giảm 10% tối đa 20.000đ cho đơn từ 80.000đ (Dành cho tài khoản mới, 1 lần duy nhất)', '2026-01-01 00:00:00', '2026-12-31 23:59:59', 'Active', 1, 1000),
+(4, 'BANHNGOT', 'Tuần Lễ Bánh Ngọt', 'Giảm 15% tối đa 35.000đ cho đơn từ 150.000đ (1 lần/khách)', '2026-01-01 00:00:00', '2026-12-31 23:59:59', 'Active', 1, 300);
 
 -- 11. Khuyến mãi theo tổng tiền hóa đơn
 INSERT INTO invoice_promotions (promotion_id, min_order_value, discount_percentage, max_discount_value) VALUES

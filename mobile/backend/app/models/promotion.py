@@ -13,6 +13,8 @@ class Promotion(Base):
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
     status = Column(SQLEnum("Draft", "Active", "Paused", "Expired", name="promo_status"), default="Active")
+    usage_limit_per_user = Column(Integer, default=1, nullable=True)
+    total_usage_limit = Column(Integer, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
