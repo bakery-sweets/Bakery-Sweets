@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_image.dart';
+import '../../../core/widgets/no_internet_widget.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_modal.dart';
 import '../models/order_model.dart';
@@ -101,8 +102,14 @@ class OrdersScreen extends ConsumerWidget {
               ? const Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 )
-              : ordersState.orders.isEmpty
-                  ? _buildEmptyOrdersView(context)
+              : ordersState.errorMessage != null && ordersState.orders.isEmpty
+                  ? NoInternetWidget(
+                      title: 'Không thể tải đơn hàng',
+                      message: 'Vui lòng kết nối WiFi để xem lịch sử đơn hàng của bạn.',
+                      onRetry: () => ref.read(ordersProvider.notifier).fetchOrders(),
+                    )
+                  : ordersState.orders.isEmpty
+                      ? _buildEmptyOrdersView(context)
                   : RefreshIndicator(
                       color: AppColors.primary,
                       onRefresh: () => ref.read(ordersProvider.notifier).fetchOrders(),

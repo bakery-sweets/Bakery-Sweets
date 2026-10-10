@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/no_internet_widget.dart';
 import '../../navigation/screens/main_navigation_screen.dart';
 import '../models/promotion_model.dart';
 import '../providers/promotions_provider.dart';
@@ -21,7 +22,11 @@ class PromotionsScreen extends ConsumerWidget {
       ),
       body: promosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (e, s) => Center(child: Text('Lỗi tải danh sách ưu đãi: $e')),
+        error: (e, s) => NoInternetWidget(
+          title: 'Không thể tải kho voucher',
+          message: 'Vui lòng kết nối WiFi để tải danh sách ưu đãi mới nhất từ tiệm bánh.',
+          onRetry: () => ref.invalidate(promotionsProvider),
+        ),
         data: (promos) {
           if (promos.isEmpty) {
             return Center(

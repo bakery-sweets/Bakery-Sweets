@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/no_internet_widget.dart';
 import '../models/promotion_model.dart';
 import '../providers/promotions_provider.dart';
 
@@ -200,7 +201,11 @@ class _VoucherSelectorModalState extends ConsumerState<VoucherSelectorModal> {
             Expanded(
               child: promosAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                error: (e, s) => Center(child: Text('Lỗi tải voucher: $e')),
+                error: (e, s) => NoInternetWidget(
+                  isCompact: true,
+                  message: 'Không thể tải voucher. Vui lòng kết nối WiFi.',
+                  onRetry: () => ref.invalidate(promotionsProvider),
+                ),
                 data: (promos) {
                   if (promos.isEmpty) {
                     return const Center(child: Text('Chưa có mã khuyến mãi nào'));

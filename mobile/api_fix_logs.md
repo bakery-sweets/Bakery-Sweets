@@ -346,5 +346,42 @@ Tệp này tự động lưu lại toàn bộ các lần phát hiện và sửa 
   - `mobile/frontend/lib/features/cart/screens/checkout_modal.dart`
 - **Trạng thái**: Đã test API trả về chuẩn xác theo tài khoản đăng nhập (`cus1` đã dùng 2 mã thì hiển thị `is_used: true, can_use: false`); Test chặn đặt hàng trùng voucher trả về 400; `flutter analyze lib` đạt 0 lỗi.
 
+---
+
+### [2026-10-10 12:20] Tối ưu hóa Dung Lượng Ứng Dụng (Bundle Slimming) & Xây dựng Giao diện Mất Kết Nối Mạng (`NoInternetWidget`)
+- **Mô tả yêu cầu / Vấn đề**:
+  1. Người dùng yêu cầu loại bỏ hoàn toàn dữ liệu giả/dự phòng offline nhúng cứng trong app để tránh làm phình to dung lượng ứng dụng (bundle size) khi build.
+  2. Toàn bộ dữ liệu sản phẩm, danh mục và voucher phải được tải 100% từ Backend Server khi có kết nối Internet / WiFi.
+  3. Khi không có kết nối WiFi hoặc rớt mạng, ứng dụng phải hiển thị giao diện thông báo chuyên nghiệp: *"Vui lòng kết nối WiFi để dùng"* kèm nút *"Thử lại ngay"* để làm mới dữ liệu.
+- **Giải pháp xử lý (Solution)**:
+  1. **Giảm dung lượng ứng dụng (Bundle Slimming)**:
+     - Xóa bỏ toàn bộ ảnh bánh tĩnh (`Croissant`, `Drink`, `Mousse`) và banner (`banner1.jpg`, `banner2.jpg`) khỏi thư mục `mobile/frontend/assets/Img/`, giải phóng **hơn 30 Megabytes** dung lượng thừa trong file cài đặt app.
+     - Cập nhật [pubspec.yaml](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/pubspec.yaml) chỉ đóng gói logo (`Sweets.png`), icon cổng thanh toán (`Pay_final`) và app icon.
+     - Xóa bỏ hơn 400 dòng mã nguồn dữ liệu mẫu nhúng cứng `_defaultProducts`, `_defaultCategories` trong [product_provider.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/products/providers/product_provider.dart) và `_defaultPromotions` trong [promotions_provider.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/promotions/providers/promotions_provider.dart).
+  2. **Xây dựng Widget Mất Kết Nối Mạng [no_internet_widget.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/core/widgets/no_internet_widget.dart)**:
+     - Thiết kế theo nhận diện thương hiệu The Sweets với biểu tượng WiFi gạch chéo (`Icons.wifi_off_rounded`) trên nền hồng nhạt, font chữ Poppins cao cấp.
+     - Tiêu đề thông báo: *"Vui lòng kết nối WiFi để dùng"*.
+     - Mô tả: *"Không thể kết nối đến máy chủ The Sweets Bakery. Vui lòng bật WiFi hoặc dữ liệu di động (4G/5G) để cập nhật thực đơn bánh mới nhất."*
+     - Nút hành động nổi bật: *"Thử lại ngay"* hỗ trợ invalidation provider tự động tải lại dữ liệu tức thì.
+  3. **Tích hợp cơ chế phát hiện & xử lý lỗi mạng trên toàn bộ ứng dụng**:
+     - Điều chỉnh `connectTimeout = 5000ms` trong [app_config.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/core/config/app_config.dart) giúp nhận diện rớt mạng tức thì chỉ sau 5 giây.
+     - [home_screen.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/home/screens/home_screen.dart): Khi mất mạng, hiển thị ngay `NoInternetWidget` toàn màn hình kèm cơ chế vuốt kéo để làm mới (Pull-to-refresh).
+     - [promotions_screen.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/promotions/screens/promotions_screen.dart): Hiển thị `NoInternetWidget` khi không tải được voucher.
+     - [voucher_selector_modal.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/promotions/screens/voucher_selector_modal.dart): Hiển thị phiên bản compact của `NoInternetWidget` bên trong bottom sheet chọn voucher.
+     - [orders_screen.dart](file:///d:/DATA/Code/Bakery-Sweets/mobile/frontend/lib/features/orders/screens/orders_screen.dart): Hiển thị thông báo mất kết nối kèm nút thử lại khi không tải được đơn hàng.
+- **Tệp tin đã thay đổi**:
+  - `mobile/frontend/pubspec.yaml`
+  - `mobile/frontend/lib/core/config/app_config.dart`
+  - `mobile/frontend/lib/core/widgets/no_internet_widget.dart`
+  - `mobile/frontend/lib/features/products/providers/product_provider.dart`
+  - `mobile/frontend/lib/features/promotions/providers/promotions_provider.dart`
+  - `mobile/frontend/lib/features/home/screens/home_screen.dart`
+  - `mobile/frontend/lib/features/promotions/screens/promotions_screen.dart`
+  - `mobile/frontend/lib/features/promotions/screens/voucher_selector_modal.dart`
+  - `mobile/frontend/lib/features/orders/screens/orders_screen.dart`
+  - Xóa bỏ các thư mục ảnh tĩnh: `mobile/frontend/assets/Img/Croissant/`, `Drink/`, `Mousse/`, `banner1.jpg`, `banner2.jpg`
+- **Trạng thái**: Đã phân tích `flutter analyze lib` đạt **0 lỗi, 0 cảnh báo**. Giảm hơn 30MB dung lượng app; dữ liệu lấy 100% từ server khi có WiFi; hiển thị giao diện báo kết nối WiFi chuẩn UX khi mất mạng.
+
+
 
 

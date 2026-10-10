@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_image.dart';
+import '../../../core/widgets/no_internet_widget.dart';
 import '../../products/models/product_model.dart';
 import '../../products/providers/product_provider.dart';
 import '../../products/screens/product_detail_screen.dart';
 import '../../notifications/providers/notifications_provider.dart';
-import '../../../core/widgets/app_image.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   final Function(int)? onNavigateTab;
@@ -35,6 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final productsAsync = ref.watch(productsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final filter = ref.watch(productFilterProvider);
     final filteredProductsAsync = ref.watch(filteredProductsProvider);
@@ -137,16 +139,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          ref.invalidate(productsProvider);
-          ref.invalidate(categoriesProvider);
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
+      body: productsAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+        error: (error, stackTrace) => RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            ref.invalidate(productsProvider);
+            ref.invalidate(categoriesProvider);
+          },
+          child: NoInternetWidget(
+            onRetry: () {
+              ref.invalidate(productsProvider);
+              ref.invalidate(categoriesProvider);
+            },
+          ),
+        ),
+        data: (_) => RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            ref.invalidate(productsProvider);
+            ref.invalidate(categoriesProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. THANH TÌM KIẾM & NÚT BỘ LỌC
@@ -554,7 +573,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildActiveFilterTag({
