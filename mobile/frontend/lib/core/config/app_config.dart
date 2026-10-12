@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
-  /// Địa chỉ IP mạng LAN của máy tính chạy Docker Backend (Wi-Fi hiện tại)
-  /// Giúp cả điện thoại thật (khi kết nối chung Wi-Fi) và máy ảo đều nhận dữ liệu trực tiếp.
-  static const String serverHost = '192.168.1.2';
+  /// Host của Backend khi chạy trên Android/iOS.
+  /// Mặc định `10.0.2.2` = máy tính host khi chạy trên Android Emulator (không phụ thuộc mạng Wi-Fi/4G).
+  /// Chạy trên điện thoại thật: truyền IP LAN của máy tính, ví dụ
+  /// `flutter run --dart-define=SERVER_HOST=10.78.16.22`
+  static const String serverHost = String.fromEnvironment('SERVER_HOST', defaultValue: '10.0.2.2');
   static const int serverPort = 8000;
 
   static String get baseUrl {
