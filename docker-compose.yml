@@ -21,6 +21,7 @@ services:
       MYSQL_DATABASE: thesweets_db
       MYSQL_USER: user
       MYSQL_PASSWORD: 123
+      TZ: Asia/Ho_Chi_Minh
     ports:
       - "3308:3306"
     volumes:
@@ -101,6 +102,7 @@ services:
       - DB_PASSWORD=123
       - SECRET_KEY=your_jwt_secret_key_here
       - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - TZ=Asia/Ho_Chi_Minh
     depends_on:
       db:
         condition: service_healthy

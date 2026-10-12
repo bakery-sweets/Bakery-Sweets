@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/date_format_utils.dart';
 import '../../../core/widgets/app_image.dart';
 import '../../../core/widgets/no_internet_widget.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -13,21 +13,7 @@ class OrdersScreen extends ConsumerWidget {
   final VoidCallback? onStartShopping;
   const OrdersScreen({super.key, this.onStartShopping});
 
-  String _formatDateTime(String? raw) {
-    if (raw == null || raw.isEmpty) return '--';
-    try {
-      final dt = DateTime.parse(raw).toLocal();
-      final now = DateTime.now();
-      final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
-      final timeStr = DateFormat('HH:mm').format(dt);
-      if (isToday) {
-        return 'Hôm nay lúc $timeStr';
-      }
-      return '${DateFormat('dd/MM/yyyy').format(dt)} lúc $timeStr';
-    } catch (_) {
-      return raw;
-    }
-  }
+  String _formatDateTime(String? raw) => AppDateFormat.dateTime(raw);
 
   Widget _buildStatusBadge(String status) {
     Color bg;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/date_format_utils.dart';
 import '../../../core/widgets/app_image.dart';
 import '../../../core/widgets/no_internet_widget.dart';
 import '../../products/models/product_model.dart';
@@ -1200,9 +1201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   icon: item.type == 'order' ? Icons.cake_outlined : Icons.notifications_outlined,
                                   title: item.title,
                                   content: item.message,
-                                  time: item.createdAt != null
-                                      ? item.createdAt!.substring(11, 16)
-                                      : 'Vừa xong',
+                                  time: AppDateFormat.short(item.createdAt),
                                   isUnread: !item.isRead,
                                 ),
                               );
