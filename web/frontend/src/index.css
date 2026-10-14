@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 
 /* ẨN THANH CUỘN (SCROLLBAR) TOÀN BỘ TRANG WEB NHƯNG VẪN CUỘN MƯỢT */
 html, body {
@@ -14,8 +14,14 @@ body::-webkit-scrollbar,
   height: 0 !important;
 }
 
-
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: "Poppins", sans-serif; }
+* { 
+  margin: 0; 
+  padding: 0; 
+  box-sizing: border-box; 
+  font-family: "Plus Jakarta Sans", "Montserrat", system-ui, -apple-system, sans-serif; 
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 body { width: 100%; min-height: 100vh; overflow-x: hidden; background-color: #ffffff; }
 #root { display: flex; flex-direction: column; min-height: 100vh; }

@@ -7,7 +7,8 @@ import ProductDetail from "./pages/ProductDetail";
 import Receipt from "./pages/Receipt";
 import Pay from "./pages/Pay";
 import About from "./pages/About";
-import Search from "./pages/Search";
+import { Navigate } from "react-router-dom";
+// (Search page removed as per user request, advanced search integrated into Home)
 
 // Admin Imports
 import AdminLogin from "./admin/pages/AdminLogin";
@@ -35,7 +36,7 @@ function App() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/receipt" element={<Receipt />} />
           <Route path="/pay" element={<Pay />} />
-          <Route path="/search" element={<Search />} />
+          <Route path="/search" element={<Navigate to="/" replace />} />
         </Route>
 
         {/* Trang Đăng nhập Quản trị */}
