@@ -4,15 +4,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace WebBackend.Models;
 
 // ============================================================
-// PHẦN 1: TÀI KHOẢN XÁC THỰC
+// PHẦN 1: TÀI KHOẢN XÁC THỰC (ĐỊNH DANH BẰNG SỐ ĐIỆN THOẠI)
 // ============================================================
 [Table("users")]
 public class User
 {
     [Key]
-    [Column("user_name")]
-    [MaxLength(255)]
-    public string UserName { get; set; } = string.Empty;
+    [Column("phone")]
+    [MaxLength(20)]
+    public string Phone { get; set; } = string.Empty;
 
     [Column("email")]
     [MaxLength(255)]
@@ -51,9 +51,9 @@ public class Customer
     [Column("customer_id")]
     public int CustomerId { get; set; }
 
-    [Column("user_name")]
-    [MaxLength(255)]
-    public string UserName { get; set; } = string.Empty;
+    [Column("phone")]
+    [MaxLength(20)]
+    public string Phone { get; set; } = string.Empty;
 
     [Column("first_name")]
     [MaxLength(100)]
@@ -63,14 +63,6 @@ public class Customer
     [MaxLength(100)]
     public string LastName { get; set; } = string.Empty;
 
-    [Column("phone")]
-    [MaxLength(20)]
-    public string? Phone { get; set; }
-
-    [Column("gender")]
-    [MaxLength(10)]
-    public string Gender { get; set; } = "Other";
-
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -78,7 +70,7 @@ public class Customer
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    [ForeignKey("UserName")]
+    [ForeignKey("Phone")]
     public User User { get; set; } = null!;
     public ICollection<Cart> Carts { get; set; } = new List<Cart>();
     public ICollection<Order> Orders { get; set; } = new List<Order>();
@@ -557,9 +549,9 @@ public class Notification
     [Column("notification_id")]
     public int NotificationId { get; set; }
 
-    [Column("user_name")]
-    [MaxLength(255)]
-    public string UserName { get; set; } = string.Empty;
+    [Column("phone")]
+    [MaxLength(20)]
+    public string Phone { get; set; } = string.Empty;
 
     [Column("title")]
     [MaxLength(255)]
@@ -582,7 +574,7 @@ public class Notification
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    [ForeignKey("UserName")]
+    [ForeignKey("Phone")]
     public User User { get; set; } = null!;
 }
 

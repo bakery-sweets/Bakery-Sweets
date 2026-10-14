@@ -109,16 +109,16 @@ INSERT INTO product_sizes (product_id, size_id, price, stock_quantity) VALUES
 (26, 4, 52000.00, 35), (26, 5, 62000.00, 35),
 (27, 4, 48000.00, 40), (27, 5, 58000.00, 40);
 
--- 5. Tài khoản người dùng (mật khẩu: 123)
-INSERT INTO users (user_name, email, password, role, status) VALUES
-('admin', 'admin@thesweets.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'admin', 'active'),
-('cus1', 'customer1@gmail.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'customer', 'active'),
-('cus2', 'customer2@gmail.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'customer', 'active');
+-- 5. Tài khoản người dùng (mật khẩu: 123, định danh chính bằng Số điện thoại)
+INSERT INTO users (phone, email, password, role, status) VALUES
+('0900000000', 'admin@thesweets.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'admin', 'active'),
+('0912345678', 'customer1@gmail.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'customer', 'active'),
+('0987654321', 'customer2@gmail.com', '$2y$10$0QZVDBb/jOeoCdhAdB4JB.Sbjc.DSuksus.QtCPiXh0oEnOFOQCc2', 'customer', 'active');
 
--- 6. Hồ sơ khách hàng
-INSERT INTO customers (customer_id, user_name, first_name, last_name, phone, gender) VALUES
-(1, 'cus1', 'Nguyễn', 'Văn An', '0912345678', 'Male'),
-(2, 'cus2', 'Trần', 'Thị Bích', '0987654321', 'Female');
+-- 6. Hồ sơ khách hàng (Liên kết 1-1 qua số điện thoại)
+INSERT INTO customers (customer_id, phone, first_name, last_name) VALUES
+(1, '0912345678', 'Nguyễn', 'Văn An'),
+(2, '0987654321', 'Trần', 'Thị Bích');
 
 -- 7. Nhà cung cấp
 INSERT INTO suppliers (supplier_id, supplier_code, supplier_name, contact_name, phone, email, address, status) VALUES
@@ -183,8 +183,8 @@ INSERT INTO order_status_logs (order_id, changed_by, old_status, new_status, not
 (3, 'admin', 'Ready', 'Completed', 'Khách đã ghé quầy nhận bánh thành công', '2026-10-06 15:05:00');
 
 -- 17. Thông báo gửi cho người dùng
-INSERT INTO notifications (user_name, title, message, type, reference_id, is_read) VALUES
-('cus1', 'Bánh của bạn đã sẵn sàng!', 'Đơn hàng #DH2026100101 đã hoàn thành và sẵn sàng tại quầy. Mời bạn ghé cửa hàng nhận bánh nhé!', 'order', 1, FALSE),
-('cus2', 'Đang nướng bánh cho bạn', 'Đơn hàng #DH2026100102 đang được chuẩn bị. Chúng tôi sẽ thông báo ngay khi bánh ra lò.', 'order', 2, FALSE);
+INSERT INTO notifications (phone, title, message, type, reference_id, is_read) VALUES
+('0912345678', 'Bánh của bạn đã sẵn sàng!', 'Đơn hàng #DH2026100101 đã hoàn thành và sẵn sàng tại quầy. Mời bạn ghé cửa hàng nhận bánh nhé!', 'order', 1, FALSE),
+('0987654321', 'Đang nướng bánh cho bạn', 'Đơn hàng #DH2026100102 đang được chuẩn bị. Chúng tôi sẽ thông báo ngay khi bánh ra lò.', 'order', 2, FALSE);
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -7,7 +7,7 @@ namespace WebBackend.Services;
 
 public interface IJwtService
 {
-    string GenerateAccessToken(string userName, string role);
+    string GenerateAccessToken(string phone, string role);
     string GenerateRefreshToken();
     ClaimsPrincipal? ValidateToken(string token);
 }
@@ -21,7 +21,7 @@ public class JwtService : IJwtService
         _config = config;
     }
 
-    public string GenerateAccessToken(string userName, string role)
+    public string GenerateAccessToken(string phone, string role)
     {
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_config["JwtSettings:SecretKey"]!));
@@ -29,7 +29,7 @@ public class JwtService : IJwtService
 
         var claims = new[]
         {
-            new Claim(ClaimTypes.Name, userName),
+            new Claim(ClaimTypes.Name, phone),
             new Claim(ClaimTypes.Role, role),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

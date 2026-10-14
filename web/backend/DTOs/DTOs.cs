@@ -3,15 +3,15 @@ namespace WebBackend.DTOs;
 // ============================================================
 // Auth DTOs
 // ============================================================
-public record LoginRequest(string UserName, string Password);
-public record RegisterRequest(string UserName, string Email, string Password, string FirstName, string LastName, string? Phone, string? Gender);
-public record AuthResponse(string Token, string RefreshToken, string UserName, string Role, DateTime ExpiresAt);
+public record LoginRequest(string Phone, string Password);
+public record RegisterRequest(string Phone, string Email, string Password, string FirstName, string LastName);
+public record AuthResponse(string Token, string RefreshToken, string Phone, string Role, DateTime ExpiresAt);
 
 // ============================================================
 // Admin — User Management
 // ============================================================
-public record UserDto(string UserName, string Email, string Role, string Status, DateTime CreatedAt, CustomerInfoDto? Customer);
-public record CustomerInfoDto(int CustomerId, string FirstName, string LastName, string? Phone, string? Gender);
+public record UserDto(string Phone, string Email, string Role, string Status, DateTime CreatedAt, CustomerInfoDto? Customer);
+public record CustomerInfoDto(int CustomerId, string FirstName, string LastName, string Phone);
 public record UpdateUserStatusRequest(string Status); // "active" or "locked"
 public record UpdateUserRoleRequest(string Role); // "customer" or "admin"
 

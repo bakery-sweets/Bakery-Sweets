@@ -50,9 +50,6 @@ public class AppDbContext : DbContext
             .HasIndex(u => u.Email).IsUnique();
 
         modelBuilder.Entity<Models.Customer>()
-            .HasIndex(c => c.UserName).IsUnique();
-
-        modelBuilder.Entity<Models.Customer>()
             .HasIndex(c => c.Phone).IsUnique();
 
         modelBuilder.Entity<Models.Category>()
@@ -85,7 +82,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Models.User>()
             .HasOne(u => u.Customer)
             .WithOne(c => c.User)
-            .HasForeignKey<Models.Customer>(c => c.UserName);
+            .HasForeignKey<Models.Customer>(c => c.Phone);
 
         modelBuilder.Entity<Models.Product>()
             .HasOne(p => p.Category)

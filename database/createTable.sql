@@ -25,9 +25,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ==============================================================================
 -- PHẦN 1: TÀI KHOẢN XÁC THỰC
 -- ==============================================================================
--- 1. Bảng users: Tài khoản đăng nhập (Chỉ lo xác thực & phân quyền)
+-- 1. Bảng users: Tài khoản đăng nhập (Chỉ lo xác thực & phân quyền, định danh chính bằng Số điện thoại)
 CREATE TABLE users (
-    user_name VARCHAR(255) PRIMARY KEY,
+    phone VARCHAR(20) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('customer', 'admin') DEFAULT 'customer',
@@ -38,17 +38,15 @@ CREATE TABLE users (
 -- ==============================================================================
 -- PHẦN 2: KHÁCH HÀNG
 -- ==============================================================================
--- 2. Bảng customers: Hồ sơ thông tin cá nhân khách hàng (1-1 với users)
+-- 2. Bảng customers: Hồ sơ thông tin cá nhân khách hàng (1-1 với users qua số điện thoại)
 CREATE TABLE customers (
     customer_id INT PRIMARY KEY AUTO_INCREMENT,
-    user_name VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) UNIQUE,
-    gender ENUM('Male', 'Female', 'Other') DEFAULT 'Other',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE CASCADE
+    FOREIGN KEY (phone) REFERENCES users(phone) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 -- ==============================================================================
 -- PHẦN 3: SẢN PHẨM & BIẾN THỂ KÍCH CỠ
@@ -289,7 +287,7 @@ CREATE TABLE order_detail (
 -- 16. Bảng notifications: Thông báo đẩy cho Web & Mobile
 CREATE TABLE notifications (
     notification_id INT PRIMARY KEY AUTO_INCREMENT,
-    user_name VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     type ENUM('order', 'system', 'promotion') DEFAULT 'order',
@@ -297,7 +295,7 @@ CREATE TABLE notifications (
     -- order_id nếu type = 'order'
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_name) REFERENCES users(user_name) ON DELETE CASCADE
+    FOREIGN KEY (phone) REFERENCES users(phone) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 -- 17. Bảng order_status_logs: Lịch sử thay đổi trạng thái đơn hàng
 CREATE TABLE order_status_logs (
