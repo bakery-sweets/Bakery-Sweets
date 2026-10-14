@@ -15,5 +15,6 @@
             "password": "123",
             "name": "thesweets_db"
         }
-    ]
+    ],
+    "java.compile.nullAnalysis.mode": "automatic"
 }
