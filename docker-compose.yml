@@ -1,10 +1,10 @@
 # ==============================================================================
 # THE SWEETS â€” Docker Compose
 # Kiáº¿n trÃºc:
-#   Web:    React (FE: port 3000) + C# ASP.NET Core (BE: port 5000)
-#   Mobile: Flutter (FE - cháº¡y trÃªn thiáº¿t bá»‹) + Python FastAPI (BE: port 8000)
+#   Web:    React (FE: port 3000) + Python FastAPI (BE: port 5000)
+#   Mobile: Flutter (FE - chạy trên thiết bị) + Python FastAPI (BE: port 8000)
 #   DB:     MySQL 8.0 (port 3308) + phpMyAdmin (port 8081)
-#   Legacy: PHP Web cÅ© (port 8080)
+#   Legacy: PHP Web cũ (port 8080)
 # ==============================================================================
 
 services:
@@ -34,7 +34,7 @@ services:
       retries: 5
       
   # ============================================================
-  # WEB â€” C# ASP.NET Core Backend (BE: port 5000)
+  # WEB — Python FastAPI Backend (BE: port 5000)
   # ============================================================
   web_backend:
     build:
@@ -45,17 +45,19 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - PYTHONUNBUFFERED=1
       - DB_HOST=db
       - DB_PORT=3306
       - DB_NAME=thesweets_db
       - DB_USER=user
       - DB_PASSWORD=123
+      - SECRET_KEY=thesweets_web_jwt_secret_key_2026_super_secure
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./web/backend:/src
+      - ./web/backend:/app
     networks:
       - thesweets_network
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import useCartStore from '../store/cartStore';
+import useCartStore from '../../store/cartStore';
 import './Pay.css';
 
 export default function Pay() {

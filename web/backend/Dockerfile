@@ -1,21 +1,28 @@
-# Web Backend — C# ASP.NET Core
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+# Web Backend — Python FastAPI (Port 5000)
+FROM python:3.11-slim
 
-# Copy project file và restore dependencies
-COPY *.csproj ./
-RUN dotnet restore
-
-# Copy toàn bộ source và build
-COPY . ./
-RUN dotnet publish -c Release -o /app/publish
-
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/publish .
 
+# Thiết lập biến môi trường Python
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Cài đặt thư viện hệ thống cần thiết
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    default-libmysqlclient-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cài đặt Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY . .
+
+# Port 5000 cho Web Backend
 EXPOSE 5000
-ENV ASPNETCORE_URLS=http://+:5000
-ENTRYPOINT ["dotnet", "WebBackend.dll"]
+
+# Chạy ứng dụng bằng Uvicorn trên port 5000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]

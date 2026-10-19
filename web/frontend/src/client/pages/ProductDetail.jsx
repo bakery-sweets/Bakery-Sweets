@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import useCartStore from '../store/cartStore';
+import useCartStore from '../../store/cartStore';
 import './ProductDetail.css';
 
 const mockProduct = {

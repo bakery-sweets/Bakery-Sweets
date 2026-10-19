@@ -1,25 +1,115 @@
-# 🌐 Web Backend — C# ASP.NET Core
+# 🌐 Web Backend — Python FastAPI
 
-## Công nghệ
-- **Framework:** ASP.NET Core 8.0
-- **ORM:** Entity Framework Core
-- **Database:** MySQL 8.0
-- **Auth:** JWT Bearer Token
+Hệ thống Backend phục vụ ứng dụng **Web (Admin Portal & Client Storefront)** của Tiệm Bánh The Sweets.
 
-## Cổng chạy
-- **Development:** http://localhost:5000
-- **Swagger UI:** http://localhost:5000/swagger
+---
 
-## Khởi tạo project
-```bash
-dotnet new webapi -n WebBackend
-cd WebBackend
-dotnet add package Pomelo.EntityFrameworkCore.MySql
-dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
-dotnet add package AutoMapper.Extensions.Microsoft.DependencyInjection
+## 🛠 Công nghệ sử dụng
+- **Framework:** Python FastAPI (>= 0.115)
+- **ASGI Server:** Uvicorn
+- **ORM:** SQLAlchemy 2.0
+- **Database Driver:** PyMySQL (kết nối MySQL/MariaDB)
+- **Xác thực:** JWT (JSON Web Tokens) qua `python-jose` & `passlib[bcrypt]`
+- **Validation:** Pydantic V2
+
+---
+
+## 📂 Cấu trúc thư mục (Phân tách Admin & Client)
+
+```text
+web/backend/
+├── app/
+│   ├── api/                      # Tầng Router API
+│   │   ├── deps.py               # Dependency Injection (DB session, Auth token, Role check)
+│   │   ├── admin/                # 🛡️ Module API Quản trị (Admin / Staff)
+│   │   │   ├── api.py            # Router tổng hợp Admin (/api/admin)
+│   │   │   ├── auth.py           # Đăng nhập admin, lấy hồ sơ
+│   │   │   ├── dashboard.py      # Thống kê tổng quan thẻ Dashboard
+│   │   │   ├── employees.py      # CRUD Quản lý nhân viên
+│   │   │   ├── orders.py         # Quản lý & duyệt đơn hàng
+│   │   │   ├── products.py       # CRUD Quản lý món bánh, định giá, size
+│   │   │   ├── statistical.py    # Báo cáo doanh thu & mặt hàng bán chạy
+│   │   │   └── users.py          # Quản lý danh sách & trạng thái tài khoản
+│   │   └── client/               # 🛒 Module API Khách hàng (Client / Customer)
+│   │       ├── api.py            # Router tổng hợp Client (/api/client)
+│   │       ├── auth.py           # Đăng ký, đăng nhập tài khoản khách
+│   │       ├── cart.py           # Giỏ hàng (thêm, cập nhật số lượng, xóa)
+│   │       ├── orders.py         # Checkout đặt hàng & lịch sử hóa đơn
+│   │       ├── products.py       # Xem danh mục, danh sách bánh, chi tiết bánh
+│   │       └── profile.py        # Xem & cập nhật thông tin cá nhân
+│   │
+│   ├── core/                     # Cấu hình cốt lõi & Bảo mật
+│   │   ├── config.py             # Settings (biến môi trường .env)
+│   │   └── security.py           # Hashing bcrypt & JWT handler
+│   │
+│   ├── database/                 # Kết nối CSDL
+│   │   └── session.py            # SQLAlchemy Engine, SessionLocal, Base
+│   │
+│   ├── models/                   # SQLAlchemy ORM Models (Khớp DB MySQL)
+│   │   ├── user.py               # User, Customer
+│   │   ├── employee.py           # Department, Employee
+│   │   ├── product.py            # Category, Size, Product, ProductSize
+│   │   └── order.py              # Cart, Order, OrderDetail, OrderStatusLog
+│   │
+│   ├── schemas/                  # Pydantic Schemas (Request / Response DTOs)
+│   │   ├── common.py             # ResponseBase, phân trang
+│   │   ├── admin/                # Schemas cho Admin
+│   │   └── client/               # Schemas cho Client
+│   │
+│   └── services/                 # Business Logic & Truy vấn DB
+│       ├── admin/                # Nghiệp vụ Admin (Product, Order, Employee, Stats)
+│       └── client/               # Nghiệp vụ Client (Product, Cart, Order)
+│
+├── main.py                       # File chạy chính FastAPI (Cổng 5000)
+├── requirements.txt              # Danh sách thư viện Python
+├── Dockerfile                    # Dockerfile build image Python
+├── .dockerignore                 # File bỏ qua khi Docker build
+├── .env.example                  # Mẫu biến môi trường
+└── README.md                     # Tài liệu này
 ```
 
-## Chạy bằng Docker
+---
+
+## 🚀 Hướng dẫn khởi chạy
+
+### Cách 1: Chạy trực tiếp (Local Development)
+1. **Tạo và kích hoạt môi trường ảo (Virtualenv):**
+   ```bash
+   cd web/backend
+   python -m venv venv
+   # Windows PowerShell:
+   .\venv\Scripts\Activate.ps1
+   # Linux/macOS:
+   source venv/bin/activate
+   ```
+
+2. **Cài đặt thư viện:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Cấu hình file `.env`:**
+   ```bash
+   cp .env.example .env
+   # Chỉnh sửa thông số kết nối MySQL nếu cần
+   ```
+
+4. **Khởi chạy Server:**
+   ```bash
+   python main.py
+   # hoặc
+   uvicorn main:app --host 0.0.0.0 --port 5000 --reload
+   ```
+
+5. **Truy cập:**
+   - Cổng chạy: `http://localhost:5000`
+   - Swagger UI tương tác: `http://localhost:5000/docs`
+   - Redoc documentation: `http://localhost:5000/redoc`
+
+---
+
+### Cách 2: Chạy bằng Docker
+Từ thư mục gốc dự án:
 ```bash
-docker-compose up web_backend
+docker-compose up -d web_backend
 ```

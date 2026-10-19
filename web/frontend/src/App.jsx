@@ -1,13 +1,14 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import ClientLayout from "./components/layout/ClientLayout";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ProductDetail from "./pages/ProductDetail";
-import Receipt from "./pages/Receipt";
-import Pay from "./pages/Pay";
-import About from "./pages/About";
-import Search from "./pages/Search";
+// Client Imports
+import ClientLayout from "./client/layouts/ClientLayout";
+import Home from "./client/pages/Home";
+import Login from "./client/pages/Login";
+import Register from "./client/pages/Register";
+import ProductDetail from "./client/pages/ProductDetail";
+import Receipt from "./client/pages/Receipt";
+import Pay from "./client/pages/Pay";
+import About from "./client/pages/About";
+import Search from "./client/pages/Search";
 
 // Admin Imports
 import AdminLogin from "./admin/pages/AdminLogin";
