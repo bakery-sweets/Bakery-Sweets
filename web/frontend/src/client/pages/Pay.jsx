@@ -1,100 +1,433 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
+import useAuthStore from '../../store/authStore';
 import './Pay.css';
 
+// Danh sách các chương trình khuyến mãi & Voucher trong hệ thống (khớp với Database)
+const AVAILABLE_VOUCHERS = [
+  {
+    code: 'SWEET10',
+    name: 'Voucher Chào Bạn Mới',
+    desc: 'Giảm 10% tối đa 20.000₫ cho đơn hàng từ 80.000₫',
+    minOrder: 80000,
+    calculateDiscount: (total) => total >= 80000 ? Math.min(20000, Math.round(total * 0.1)) : 0
+  },
+  {
+    code: 'BANHNGOT',
+    name: 'Tuần Lễ Bánh Ngọt',
+    desc: 'Giảm 15% tối đa 35.000₫ cho đơn hàng từ 150.000₫',
+    minOrder: 150000,
+    calculateDiscount: (total) => total >= 150000 ? Math.min(35000, Math.round(total * 0.15)) : 0
+  },
+  {
+    code: 'CTKM01',
+    name: 'Ưu đãi Khách Hàng Thân Thiết',
+    desc: 'Giảm 10% từ 200.000₫, giảm 15% (tối đa 80.000₫) từ 500.000₫',
+    minOrder: 200000,
+    calculateDiscount: (total) => {
+      if (total >= 500000) return Math.min(80000, Math.round(total * 0.15));
+      if (total >= 200000) return Math.min(30000, Math.round(total * 0.10));
+      return 0;
+    }
+  },
+  {
+    code: 'CTKM02',
+    name: 'Tri ân Mùa Lễ Hội',
+    desc: 'Giảm 12% tối đa 50.000₫ cho đơn hàng từ 300.000₫',
+    minOrder: 300000,
+    calculateDiscount: (total) => total >= 300000 ? Math.min(50000, Math.round(total * 0.12)) : 0
+  }
+];
+
+// Dữ liệu mẫu dùng khi giỏ hàng chưa có sản phẩm để tiện xem & chỉnh sửa giao diện
+const DEMO_ITEMS = [
+  {
+    product_id: 1,
+    product_name: "Tiramisu Mousse",
+    size_name: "Size M (20cm)",
+    price: 190000,
+    quantity: 1,
+    image: "/uploads/Mousse/Tiramisu_Mousse.jpg"
+  },
+  {
+    product_id: 10,
+    product_name: "Plain Butter Croissant",
+    size_name: "Tiêu chuẩn",
+    price: 35000,
+    quantity: 2,
+    image: "/uploads/Croissant/Plain_Croissant.png"
+  }
+];
+
 export default function Pay() {
-  const items = useCartStore(state => state.items);
+  const cartItems = useCartStore(state => state.items);
   const clearCart = useCartStore(state => state.clearCart);
+  const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
 
+  // Nếu giỏ hàng có đồ thì dùng đồ trong giỏ, nếu không thì dùng DEMO_ITEMS để xem UI
+  const isPreview = cartItems.length === 0;
+  const items = isPreview ? DEMO_ITEMS : cartItems;
+
+  // Tính giờ mặc định sau 45 phút giống bên Mobile
+  const getDefaultPickup = () => {
+    const d = new Date(Date.now() + 45 * 60000);
+    const dateStr = d.toISOString().split('T')[0];
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return { dateStr, timeStr };
+  };
+
+  const defaultPickup = getDefaultPickup();
+
+  // Thông tin tài khoản hiện tại của người dùng
+  const myDefaultName = user?.name || (user?.phone ? `Khách hàng ${user.phone}` : 'Nguyễn Văn An');
+  const myDefaultPhone = user?.phone || '0912345678';
+
   const [shippingInfo, setShippingInfo] = useState({
-    name: '',
-    phone: '',
-    address: '',
-    city: 'TP. Hồ Chí Minh',
+    recipientMode: 'self', // 'self' (tôi tự nhận) hoặc 'other' (người khác nhận dùm)
+    selfName: myDefaultName,
+    selfPhone: myDefaultPhone,
+    otherName: '',
+    otherPhone: '',
+    pickupDate: defaultPickup.dateStr,
+    pickupTime: defaultPickup.timeStr,
     note: '',
-    paymentMethod: 'COD'
+    paymentMethod: 'COD' // 'COD' hoặc 'Banking'
   });
 
+  const [isEditingSelfInfo, setIsEditingSelfInfo] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState(AVAILABLE_VOUCHERS[0]); // Mặc định chọn mã chào bạn mới nếu đủ điều kiện
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [customVoucherCode, setCustomVoucherCode] = useState('');
+  const [copiedStk, setCopiedStk] = useState(false);
+
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shippingFee = total > 0 ? 2.50 : 0;
-  const finalTotal = total + shippingFee;
+  
+  // Tính số tiền giảm giá của voucher hiện tại
+  const discountAmount = selectedVoucher ? selectedVoucher.calculateDiscount(total) : 0;
+  const finalTotal = Math.max(0, total - discountAmount);
+
+  // Chọn nhanh mốc giờ lấy bánh (+30p, +1h, +2h)
+  const setQuickPickupTime = (minutes) => {
+    const target = new Date(Date.now() + minutes * 60000);
+    const dateStr = target.toISOString().split('T')[0];
+    const timeStr = `${String(target.getHours()).padStart(2, '0')}:${String(target.getMinutes()).padStart(2, '0')}`;
+    setShippingInfo({
+      ...shippingInfo,
+      pickupDate: dateStr,
+      pickupTime: timeStr
+    });
+  };
+
+  const handleCopyStk = () => {
+    navigator.clipboard.writeText("012345678999");
+    setCopiedStk(true);
+    setTimeout(() => setCopiedStk(false), 2000);
+  };
+
+  const handleSelectVoucher = (voucher) => {
+    if (total < voucher.minOrder) {
+      const needed = voucher.minOrder - total;
+      alert(`Đơn hàng chưa đạt mức tối thiểu ${voucher.minOrder.toLocaleString('vi-VN')}₫.\nBạn cần mua thêm ${needed.toLocaleString('vi-VN')}₫ để áp dụng mã này.`);
+      return;
+    }
+    setSelectedVoucher(voucher);
+    setIsVoucherModalOpen(false);
+  };
+
+  const handleApplyCustomCode = (e) => {
+    e.preventDefault();
+    const code = customVoucherCode.trim().toUpperCase();
+    if (!code) return;
+    const found = AVAILABLE_VOUCHERS.find(v => v.code === code);
+    if (!found) {
+      alert("Mã voucher không tồn tại hoặc đã hết hạn!");
+      return;
+    }
+    handleSelectVoucher(found);
+  };
+
+  // Xác định họ tên & SĐT người nhận bánh cuối cùng
+  const currentRecipientName = shippingInfo.recipientMode === 'self' 
+    ? shippingInfo.selfName 
+    : shippingInfo.otherName;
+  
+  const currentRecipientPhone = shippingInfo.recipientMode === 'self' 
+    ? shippingInfo.selfPhone 
+    : shippingInfo.otherPhone;
 
   const handlePay = (e) => {
     e.preventDefault();
-    if (items.length === 0) {
-      alert("Giỏ hàng của bạn đang trống!");
-      return;
+    if (shippingInfo.recipientMode === 'other') {
+      if (!shippingInfo.otherName.trim() || !shippingInfo.otherPhone.trim()) {
+        alert("Vui lòng điền đầy đủ họ tên và số điện thoại của người nhận dùm!");
+        return;
+      }
+    } else {
+      if (!shippingInfo.selfName.trim() || !shippingInfo.selfPhone.trim()) {
+        alert("Vui lòng kiểm tra lại họ tên và số điện thoại của bạn!");
+        return;
+      }
     }
-    alert("Đặt hàng & thanh toán thành công! Mã đơn: DH" + Math.floor(Math.random() * 9000 + 1000));
-    clearCart();
+
+    const orderCode = "DH" + Math.floor(Math.random() * 900000 + 100000);
+    const recipientDesc = shippingInfo.recipientMode === 'self'
+      ? `${currentRecipientName} (${currentRecipientPhone})`
+      : `${currentRecipientName} [Nhận hộ] (${currentRecipientPhone})`;
+
+    alert(
+      `🎉 ĐẶT BÁNH THÀNH CÔNG!\n\n` +
+      `• Mã đơn hàng: #${orderCode}\n` +
+      `• Người nhận bánh: ${recipientDesc}\n` +
+      `• Nơi nhận: The Sweets Bakery (120 Hai Bà Trưng, Quận 1)\n` +
+      `• Giờ lấy bánh: ${shippingInfo.pickupTime} ngày ${shippingInfo.pickupDate}\n` +
+      `• Hình thức: ${shippingInfo.paymentMethod === 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản Vietcombank'}\n` +
+      (selectedVoucher ? `• Voucher áp dụng: ${selectedVoucher.code} (-${discountAmount.toLocaleString('vi-VN')}₫)\n` : '') +
+      `• Tổng thanh toán: ${finalTotal.toLocaleString('vi-VN')}₫`
+    );
+    if (!isPreview) {
+      clearCart();
+    }
     navigate('/receipt');
   };
+
+  const transferContent = `${currentRecipientPhone ? currentRecipientPhone : 'SDT'} - Dat banh Sweets`;
+  const qrUrl = `https://img.vietqr.io/image/970436-012345678999-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent(transferContent)}&accountName=TIEM%20BANH%20THE%20SWEETS`;
+
+  const eligibleVouchersCount = AVAILABLE_VOUCHERS.filter(v => total >= v.minOrder).length;
 
   return (
     <div className="pay-page-wrapper">
       <div className="pay-container">
-        
-        <h1 className="pay-main-title">Thanh toán & Đặt hàng</h1>
 
-        {items.length === 0 ? (
-          <div className="pay-empty-cart">
-            <p>Giỏ hàng của bạn hiện đang trống.</p>
-            <Link to="/" className="pay-back-shop-btn">Tiếp tục mua bánh ngọt</Link>
+        {/* Banner chế độ xem trước */}
+        {isPreview && (
+          <div className="pay-preview-banner">
+            <span className="pay-preview-badge">Xem trước UI</span>
+            <span>Giỏ hàng thực tế đang trống. Đang hiển thị sản phẩm mẫu để bạn dễ dàng căn chỉnh giao diện.</span>
           </div>
-        ) : (
-          <form onSubmit={handlePay} className="pay-layout-grid">
-            
-            {/* CỘT TRÁI: THÔNG TIN GIAO HÀNG */}
-            <div className="pay-shipping-box">
-              <h2 className="pay-section-title">1. Thông tin người nhận bánh</h2>
-              
-              <div className="pay-form-group">
-                <label>Họ và tên người nhận *</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="VD: Nguyễn Văn A"
-                  value={shippingInfo.name}
-                  onChange={e => setShippingInfo({...shippingInfo, name: e.target.value})}
-                />
+        )}
+
+        {/* Tiêu đề & quay lại */}
+        <div className="pay-header-area">
+          <div>
+            <h1 className="pay-main-title">Xác nhận đơn & Lấy bánh tại tiệm</h1>
+            <p className="pay-subtitle">Mô hình nhận bánh trực tiếp tại quầy The Sweets (Pick-up)</p>
+          </div>
+          <Link to="/" className="pay-continue-shop-link">
+            ← Tiếp tục chọn bánh
+          </Link>
+        </div>
+
+        <form onSubmit={handlePay} className="pay-layout-grid">
+          
+          {/* CỘT TRÁI: FORM ĐẶT BÁNH */}
+          <div className="pay-left-column">
+
+            {/* 1. THỜI GIAN LẤY BÁNH TẠI TIỆM (PICK-UP) */}
+            <div className="pay-card-section">
+              <div className="pay-section-header">
+                <h2 className="pay-section-title">
+                  <span className="step-num">1</span>
+                  Thời gian lấy bánh (Pick-up)
+                </h2>
+                <span className="store-badge">📍 Tại tiệm: The Sweets Bakery</span>
               </div>
 
-              <div className="pay-form-group">
-                <label>Số điện thoại nhận bánh *</label>
-                <input 
-                  type="tel" 
-                  required 
-                  placeholder="VD: 0901234567"
-                  value={shippingInfo.phone}
-                  onChange={e => setShippingInfo({...shippingInfo, phone: e.target.value})}
-                />
+              <div className="store-location-notice">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                <span>Địa chỉ nhận bánh: <strong>120 Hai Bà Trưng, Phường Bến Nghé, Quận 1, TP.HCM</strong></span>
               </div>
 
-              <div className="pay-form-group">
-                <label>Địa chỉ nhận bánh cụ thể *</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
-                  value={shippingInfo.address}
-                  onChange={e => setShippingInfo({...shippingInfo, address: e.target.value})}
-                />
+              {/* Box chọn ngày & giờ */}
+              <div className="pickup-time-box">
+                <div className="pickup-inputs-row">
+                  <div className="pay-form-group">
+                    <label>Ngày lấy bánh *</label>
+                    <input 
+                      type="date" 
+                      required 
+                      value={shippingInfo.pickupDate}
+                      onChange={e => setShippingInfo({...shippingInfo, pickupDate: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="pay-form-group">
+                    <label>Giờ hẹn lấy bánh *</label>
+                    <input 
+                      type="time" 
+                      required 
+                      value={shippingInfo.pickupTime}
+                      onChange={e => setShippingInfo({...shippingInfo, pickupTime: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                {/* Các nút chọn nhanh */}
+                <div className="quick-time-chips">
+                  <span className="chips-label">Chọn nhanh:</span>
+                  <button type="button" onClick={() => setQuickPickupTime(30)} className="time-chip-btn">
+                    + Sau 30 phút
+                  </button>
+                  <button type="button" onClick={() => setQuickPickupTime(60)} className="time-chip-btn">
+                    + Sau 1 tiếng
+                  </button>
+                  <button type="button" onClick={() => setQuickPickupTime(120)} className="time-chip-btn">
+                    + Sau 2 tiếng
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. THÔNG TIN NGƯỜI NHẬN BÁNH (ĐƯỢC ĐỔI LÊN TRƯỚC THANH TOÁN) */}
+            <div className="pay-card-section" style={{ marginTop: '20px' }}>
+              <div className="pay-section-header">
+                <h2 className="pay-section-title">
+                  <span className="step-num">2</span>
+                  Thông tin người nhận bánh
+                </h2>
               </div>
 
-              <div className="pay-form-group">
-                <label>Ghi chú đơn hàng (Thời gian giao, yêu cầu nến/viết chữ...)</label>
+              {/* Nút chọn: Tôi tự nhận (Thông tin hiện tại) HOẶC Đổi người khác nhận dùm */}
+              <div className="recipient-mode-selector">
+                <button
+                  type="button"
+                  className={`recipient-tab-btn ${shippingInfo.recipientMode === 'self' ? 'active' : ''}`}
+                  onClick={() => setShippingInfo({ ...shippingInfo, recipientMode: 'self' })}
+                >
+                  <span className="radio-circle"></span>
+                  <div className="tab-btn-content">
+                    <strong>Tôi tự nhận bánh</strong>
+                    <small>Sử dụng thông tin tài khoản hiện tại</small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className={`recipient-tab-btn ${shippingInfo.recipientMode === 'other' ? 'active' : ''}`}
+                  onClick={() => setShippingInfo({ ...shippingInfo, recipientMode: 'other' })}
+                >
+                  <span className="radio-circle"></span>
+                  <div className="tab-btn-content">
+                    <strong>Người khác nhận dùm</strong>
+                    <small>Nhập thông tin người nhận hộ</small>
+                  </div>
+                </button>
+              </div>
+
+              {/* TRƯỜNG HỢP 1: TÔI TỰ NHẬN (THÔNG TIN HIỆN TẠI) */}
+              {shippingInfo.recipientMode === 'self' && (
+                <div className="self-recipient-container">
+                  {!isEditingSelfInfo ? (
+                    <div className="current-user-card">
+                      <div className="user-icon-bubble">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      </div>
+                      <div className="user-info-text">
+                        <div className="user-title-line">
+                          <strong className="user-name">{shippingInfo.selfName}</strong>
+                          <span className="account-tag">Tài khoản hiện tại</span>
+                        </div>
+                        <span className="user-phone">Số điện thoại: <strong>{shippingInfo.selfPhone}</strong></span>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="btn-edit-self"
+                        onClick={() => setIsEditingSelfInfo(true)}
+                      >
+                        Chỉnh sửa
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="edit-self-form">
+                      <div className="pay-form-row">
+                        <div className="pay-form-group">
+                          <label>Họ tên của bạn *</label>
+                          <input 
+                            type="text" 
+                            required 
+                            value={shippingInfo.selfName}
+                            onChange={e => setShippingInfo({...shippingInfo, selfName: e.target.value})}
+                          />
+                        </div>
+                        <div className="pay-form-group">
+                          <label>Số điện thoại *</label>
+                          <input 
+                            type="tel" 
+                            required 
+                            value={shippingInfo.selfPhone}
+                            onChange={e => setShippingInfo({...shippingInfo, selfPhone: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="btn-save-self"
+                        onClick={() => setIsEditingSelfInfo(false)}
+                      >
+                        Lưu thông tin
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TRƯỜNG HỢP 2: NGƯỜI KHÁC NHẬN DÙM */}
+              {shippingInfo.recipientMode === 'other' && (
+                <div className="other-recipient-container">
+                  <div className="other-notice-banner">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <span>Vui lòng điền đúng thông tin người đến tiệm nhận bánh hộ để nhân viên quầy đối soát chính xác.</span>
+                  </div>
+
+                  <div className="pay-form-row">
+                    <div className="pay-form-group">
+                      <label>Họ tên người nhận dùm *</label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="VD: Trần Thị Mai"
+                        value={shippingInfo.otherName}
+                        onChange={e => setShippingInfo({...shippingInfo, otherName: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="pay-form-group">
+                      <label>Số điện thoại người nhận dùm *</label>
+                      <input 
+                        type="tel" 
+                        required 
+                        placeholder="VD: 0988776655"
+                        value={shippingInfo.otherPhone}
+                        onChange={e => setShippingInfo({...shippingInfo, otherPhone: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ghi chú chung cho đơn hàng */}
+              <div className="pay-form-group" style={{ marginBottom: 0, marginTop: '14px' }}>
+                <label>Ghi chú cho tiệm bánh (tùy chọn)</label>
                 <textarea 
-                  rows="3"
-                  placeholder="VD: Giao vào lúc 15h chiều, tặng kèm nến số 25..."
+                  rows="2"
+                  placeholder="VD: Viết chữ 'Happy Birthday', thêm nến số 25, 1 bộ dao nĩa..."
                   value={shippingInfo.note}
                   onChange={e => setShippingInfo({...shippingInfo, note: e.target.value})}
                 ></textarea>
               </div>
+            </div>
 
-              <h2 className="pay-section-title" style={{ marginTop: '24px' }}>2. Phương thức thanh toán</h2>
+            {/* 3. HÌNH THỨC THANH TOÁN (COD HOẶC CHUYỂN KHOẢN BANKING) */}
+            <div className="pay-card-section" style={{ marginTop: '20px' }}>
+              <h2 className="pay-section-title">
+                <span className="step-num">3</span>
+                Hình thức thanh toán
+              </h2>
+
               <div className="pay-method-options">
+                {/* Lựa chọn 1: Tiền mặt COD */}
                 <label className={`pay-method-card ${shippingInfo.paymentMethod === 'COD' ? 'active' : ''}`}>
                   <input 
                     type="radio" 
@@ -103,74 +436,333 @@ export default function Pay() {
                     checked={shippingInfo.paymentMethod === 'COD'}
                     onChange={e => setShippingInfo({...shippingInfo, paymentMethod: e.target.value})}
                   />
-                  <div>
-                    <strong>Thanh toán tiền mặt khi nhận bánh (COD)</strong>
-                    <span>Nhận bánh và kiểm tra trước khi trả tiền</span>
+                  <div className="method-info">
+                    <strong>Tiền mặt khi nhận bánh (COD)</strong>
+                    <span>Thanh toán trực tiếp bằng tiền mặt khi tới quầy lấy bánh</span>
                   </div>
                 </label>
 
-                <label className={`pay-method-card ${shippingInfo.paymentMethod === 'VNPay' ? 'active' : ''}`}>
+                {/* Lựa chọn 2: Chuyển khoản ngân hàng Banking */}
+                <label className={`pay-method-card ${shippingInfo.paymentMethod === 'Banking' ? 'active' : ''}`}>
                   <input 
                     type="radio" 
                     name="paymentMethod" 
-                    value="VNPay" 
-                    checked={shippingInfo.paymentMethod === 'VNPay'}
+                    value="Banking" 
+                    checked={shippingInfo.paymentMethod === 'Banking'}
                     onChange={e => setShippingInfo({...shippingInfo, paymentMethod: e.target.value})}
                   />
-                  <div>
-                    <strong>Chuyển khoản QR / VNPay / MoMo</strong>
-                    <span>Quét mã QR thanh toán nhanh</span>
+                  <div className="method-info">
+                    <strong>Chuyển khoản ngân hàng (Banking)</strong>
+                    <span>Quét mã QR hoặc chuyển khoản qua STK The Sweets</span>
                   </div>
                 </label>
               </div>
+
+              {/* BOX THÔNG TIN CHUYỂN KHOẢN CỦA CHỦ TIỆM BÊN MOBILE */}
+              {shippingInfo.paymentMethod === 'Banking' && (
+                <div className="shop-bank-card">
+                  <div className="bank-card-header">
+                    <div className="bank-title-area">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                      <strong>THÔNG TIN TÀI KHOẢN TIỆM BÁNH</strong>
+                    </div>
+                    <span className="bank-tag">Vietcombank</span>
+                  </div>
+
+                  <div className="bank-details-grid">
+                    <div className="bank-info-row">
+                      <span className="info-label">Ngân hàng:</span>
+                      <span className="info-val">Vietcombank (CN TP.HCM)</span>
+                    </div>
+
+                    <div className="bank-info-row stk-row">
+                      <span className="info-label">Số tài khoản:</span>
+                      <div className="stk-copy-box">
+                        <span className="stk-number">0123 4567 8999</span>
+                        <button type="button" onClick={handleCopyStk} className="copy-btn">
+                          {copiedStk ? '✓ Đã chép' : 'Sao chép'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bank-info-row">
+                      <span className="info-label">Chủ tài khoản:</span>
+                      <span className="info-val highlight">TIEM BANH THE SWEETS</span>
+                    </div>
+
+                    <div className="bank-info-row">
+                      <span className="info-label">Số tiền:</span>
+                      <span className="info-val amount">{finalTotal.toLocaleString('vi-VN')}₫</span>
+                    </div>
+
+                    <div className="bank-info-row content-row">
+                      <span className="info-label">Nội dung CK:</span>
+                      <span className="info-val transfer-syntax">{transferContent}</span>
+                    </div>
+                  </div>
+
+                  {/* Mã QR quét tự động */}
+                  <div className="bank-qr-box">
+                    <img 
+                      src={qrUrl} 
+                      alt="Mã QR Chuyển khoản The Sweets" 
+                      className="bank-qr-img"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    <div className="qr-hint">
+                      <p>Quét mã QR bằng ứng dụng ngân hàng bất kỳ để thanh toán nhanh chóng và chính xác số tiền.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* CỘT PHẢI: TỔNG KẾT ĐƠN HÀNG */}
-            <div className="pay-summary-box">
-              <h2 className="pay-section-title">Chi tiết giỏ hàng ({items.length} món)</h2>
-              
+          </div>
+
+          {/* CỘT PHẢI: TỔNG KẾT ĐƠN HÀNG */}
+          <div className="pay-right-column">
+            <div className="pay-summary-card">
+              <h2 className="pay-section-title">
+                Tóm tắt đơn hàng ({items.reduce((s, i) => s + i.quantity, 0)} món)
+              </h2>
+
+              {/* Danh sách món */}
               <div className="pay-items-list">
                 {items.map((item, i) => (
                   <div key={i} className="pay-item-row">
                     <img 
-                      src={`/assets/Img/${item.image || 'Mousse1.png'}`} 
-                      alt={item.name} 
+                      src={item.image || '/assets/Img/Mousse1.png'} 
+                      alt={item.product_name || item.name} 
                       className="pay-item-img"
                       onError={e => { e.target.src = '/assets/Img/Sweets1.png'; }}
                     />
                     <div className="pay-item-details">
-                      <h4 className="pay-item-name">{item.name}</h4>
-                      {item.size && <span className="pay-item-size">Size: {item.size}</span>}
-                      <span className="pay-item-qty">SL: {item.quantity} x ${item.price.toFixed(2)}</span>
+                      <h4 className="pay-item-name">{item.product_name || item.name}</h4>
+                      <span className="pay-item-size">Size: {item.size_name || item.size || 'Tiêu chuẩn'}</span>
+                      <span className="pay-item-qty">SL: {item.quantity} x {Number(item.price).toLocaleString('vi-VN')}₫</span>
                     </div>
                     <div className="pay-item-total">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      {(item.price * item.quantity).toLocaleString('vi-VN')}₫
                     </div>
                   </div>
                 ))}
               </div>
 
+              {/* KHU VỰC CHỌN VOUCHER */}
+              <div className="pay-voucher-trigger-box">
+                <div 
+                  className={`voucher-selector-card ${selectedVoucher ? 'has-voucher' : ''}`}
+                  onClick={() => setIsVoucherModalOpen(true)}
+                >
+                  <div className="voucher-card-left">
+                    <span className="voucher-ticket-icon">🎟️</span>
+                    {selectedVoucher ? (
+                      <div className="voucher-selected-info">
+                        <div className="voucher-code-row">
+                          <span className="voucher-pill">{selectedVoucher.code}</span>
+                          <span className="voucher-name-label">{selectedVoucher.name}</span>
+                        </div>
+                        <span className="voucher-amount-highlight">
+                          Đã giảm {discountAmount.toLocaleString('vi-VN')}₫
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="voucher-unselected-info">
+                        <strong>Chọn Voucher ưu đãi</strong>
+                        <span>{eligibleVouchersCount} mã giảm giá khả dụng</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="voucher-card-right">
+                    {selectedVoucher ? (
+                      <button 
+                        type="button" 
+                        className="btn-change-voucher"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsVoucherModalOpen(true);
+                        }}
+                      >
+                        Đổi mã
+                      </button>
+                    ) : (
+                      <span className="btn-open-vouchers">
+                        Chọn mã →
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {selectedVoucher && (
+                  <div className="voucher-active-banner">
+                    <span>✓ Áp dụng mã <strong>{selectedVoucher.code}</strong> (-{discountAmount.toLocaleString('vi-VN')}₫)</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedVoucher(null)} 
+                      className="btn-remove-selected-voucher"
+                      title="Bỏ chọn mã"
+                    >
+                      Bỏ chọn
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Bảng tính tổng tiền */}
               <div className="pay-cost-calc">
                 <div className="cost-line">
-                  <span>Tiền bánh:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>Tạm tính:</span>
+                  <span>{total.toLocaleString('vi-VN')}₫</span>
                 </div>
+                
+                {discountAmount > 0 && (
+                  <div className="cost-line discount-line">
+                    <span>Voucher ({selectedVoucher?.code}):</span>
+                    <span>-{discountAmount.toLocaleString('vi-VN')}₫</span>
+                  </div>
+                )}
+
                 <div className="cost-line">
-                  <span>Phí giao hàng:</span>
-                  <span>${shippingFee.toFixed(2)}</span>
+                  <span>Hình thức:</span>
+                  <span className="pickup-free-tag">Miễn phí (Nhận tại quầy)</span>
                 </div>
+
                 <div className="cost-line grand-total">
                   <span>Tổng thanh toán:</span>
-                  <span className="total-amount">${finalTotal.toFixed(2)}</span>
+                  <span className="total-amount">{finalTotal.toLocaleString('vi-VN')}₫</span>
                 </div>
               </div>
 
               <button type="submit" className="pay-submit-btn">
-                Xác nhận đặt hàng & Thanh toán
+                Xác nhận đặt bánh
               </button>
-            </div>
 
-          </form>
+              <div className="pay-commitment-note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>Bánh được giữ lạnh và chuẩn bị sẵn sàng đúng hẹn khi bạn tới.</span>
+              </div>
+            </div>
+          </div>
+
+        </form>
+
+        {/* MODAL DANH SÁCH VOUCHER */}
+        {isVoucherModalOpen && (
+          <div className="voucher-modal-backdrop" onClick={() => setIsVoucherModalOpen(false)}>
+            <div className="voucher-modal-window" onClick={e => e.stopPropagation()}>
+              
+              <div className="voucher-modal-header">
+                <div>
+                  <h3 className="modal-title">Chọn Voucher Ưu Đãi</h3>
+                  <p className="modal-sub">Chọn 1 mã ưu đãi áp dụng cho đơn bánh của bạn</p>
+                </div>
+                <button 
+                  type="button" 
+                  className="modal-close-btn" 
+                  onClick={() => setIsVoucherModalOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Danh sách các voucher */}
+              <div className="voucher-cards-list">
+                {AVAILABLE_VOUCHERS.map(v => {
+                  const isEligible = total >= v.minOrder;
+                  const isCurrent = selectedVoucher?.code === v.code;
+                  const discount = v.calculateDiscount(total);
+                  const needed = v.minOrder - total;
+
+                  return (
+                    <div 
+                      key={v.code}
+                      className={`voucher-item-card ${isCurrent ? 'active' : ''} ${!isEligible ? 'ineligible' : ''}`}
+                      onClick={() => isEligible && handleSelectVoucher(v)}
+                    >
+                      <div className="voucher-item-left">
+                        <div className="voucher-code-badge">{v.code}</div>
+                        <div className="voucher-item-texts">
+                          <h4 className="voucher-item-name">{v.name}</h4>
+                          <p className="voucher-item-desc">{v.desc}</p>
+                          
+                          {isEligible ? (
+                            <span className="voucher-eligibility eligible">
+                              ✓ Tiết kiệm được: <strong>{discount.toLocaleString('vi-VN')}₫</strong>
+                            </span>
+                          ) : (
+                            <span className="voucher-eligibility not-enough">
+                              Cần mua thêm {needed.toLocaleString('vi-VN')}₫ để áp dụng
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="voucher-item-right">
+                        {isCurrent ? (
+                          <span className="voucher-applied-pill">✓ Đang dùng</span>
+                        ) : isEligible ? (
+                          <button 
+                            type="button" 
+                            className="voucher-select-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectVoucher(v);
+                            }}
+                          >
+                            Áp dụng
+                          </button>
+                        ) : (
+                          <button type="button" disabled className="voucher-disabled-btn">
+                            Chưa đủ ĐK
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Ô nhập mã thủ công */}
+              <div className="modal-manual-code-box">
+                <span className="manual-label">Hoặc nhập mã riêng:</span>
+                <div className="manual-input-row">
+                  <input 
+                    type="text" 
+                    placeholder="Nhập mã voucher khác"
+                    value={customVoucherCode}
+                    onChange={e => setCustomVoucherCode(e.target.value)}
+                  />
+                  <button type="button" onClick={handleApplyCustomCode} className="manual-apply-btn">
+                    Áp dụng
+                  </button>
+                </div>
+              </div>
+
+              <div className="voucher-modal-footer">
+                {selectedVoucher && (
+                  <button 
+                    type="button" 
+                    className="modal-remove-voucher-btn"
+                    onClick={() => {
+                      setSelectedVoucher(null);
+                      setIsVoucherModalOpen(false);
+                    }}
+                  >
+                    Bỏ chọn voucher
+                  </button>
+                )}
+                <button 
+                  type="button" 
+                  className="modal-confirm-btn"
+                  onClick={() => setIsVoucherModalOpen(false)}
+                >
+                  Xong
+                </button>
+              </div>
+
+            </div>
+          </div>
         )}
 
       </div>

@@ -1,14 +1,12 @@
-from .user import User, Customer, Department, Employee
-from .product import Category, Size, Product, ProductSize
-from .order import Cart, Order, OrderDetail, OrderPromotion, OrderStatusLog
-from .promotion import Promotion, InvoicePromotion
 from .notification import Notification
+from .order import Cart, Order, OrderDetail, OrderPromotion, OrderStatusLog
+from .product import Category, Size, Product, ProductSize
+from .promotion import InvoicePromotion, Promotion
+from .user import Customer, User
 
 __all__ = [
     "User",
     "Customer",
-    "Department",
-    "Employee",
     "Category",
     "Size",
     "Product",

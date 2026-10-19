@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 // Client Imports
 import ClientLayout from "./client/layouts/ClientLayout";
 import Home from "./client/pages/Home";
@@ -8,7 +8,6 @@ import ProductDetail from "./client/pages/ProductDetail";
 import Receipt from "./client/pages/Receipt";
 import Pay from "./client/pages/Pay";
 import About from "./client/pages/About";
-import Search from "./client/pages/Search";
 
 // Admin Imports
 import AdminLogin from "./admin/pages/AdminLogin";
@@ -36,7 +35,7 @@ function App() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/receipt" element={<Receipt />} />
           <Route path="/pay" element={<Pay />} />
-          <Route path="/search" element={<Search />} />
+          <Route path="/search" element={<Navigate to="/" replace />} />
         </Route>
 
         {/* Trang Đăng nhập Quản trị */}

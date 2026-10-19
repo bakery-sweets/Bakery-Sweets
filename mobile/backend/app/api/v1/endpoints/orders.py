@@ -9,7 +9,7 @@ from app.config.database import get_db
 from app.models.user import User
 from app.models.order import Order, OrderDetail, OrderStatusLog, Cart
 from app.models.product import ProductSize
-from app.models.promotion import InvoicePromotion
+from app.models.promotion import Promotion, InvoicePromotion
 from app.models.notification import Notification
 from app.schemas.order import OrderCreate, OrderOut, OrderDetailOut, OrderStatusLogOut
 from app.core.security import get_current_user
@@ -34,25 +34,14 @@ def _format_order_out(o: Order) -> OrderOut:
 
     log_list = []
     for log in o.status_logs:
-        emp_name = None
-        if log.employee:
-            emp_name = f"{log.employee.first_name} {log.employee.last_name}"
         log_list.append(OrderStatusLogOut(
             log_id=log.log_id,
             old_status=log.old_status,
             new_status=log.new_status,
             note=log.note,
             changed_at=log.changed_at,
-            employee_name=emp_name,
+            changed_by=log.changed_by,
         ))
-
-    confirmed_by = None
-    if o.employee:
-        confirmed_by = f"{o.employee.first_name} {o.employee.last_name}"
-
-    delivered_by = None
-    if o.shipper:
-        delivered_by = f"{o.shipper.first_name} {o.shipper.last_name}"
 
     return OrderOut(
         order_id=o.order_id,
@@ -60,13 +49,9 @@ def _format_order_out(o: Order) -> OrderOut:
         customer_id=o.customer_id,
         recipient_name=o.recipient_name,
         recipient_phone=o.recipient_phone,
-        shipping_address=o.shipping_address,
-        shipping_city=o.shipping_city,
-        shipping_district=o.shipping_district,
-        shipping_ward=o.shipping_ward,
-        delivery_date=o.delivery_date,
-        delivery_time=o.delivery_time,
-        shipping_fee=o.shipping_fee,
+        pickup_time=o.pickup_time,
+        notes=o.notes,
+        promotion_id=o.promotion_id,
         discount_amount=o.discount_amount,
         total_quantity=o.total_quantity,
         total_cost=o.total_cost,
@@ -75,8 +60,6 @@ def _format_order_out(o: Order) -> OrderOut:
         payment_status=o.payment_status,
         status=o.status,
         order_date=o.order_date,
-        confirmed_by=confirmed_by,
-        delivered_by=delivered_by,
         details=detail_list,
         status_logs=log_list,
     )
@@ -128,20 +111,59 @@ async def create_order(
 
     discount_amount = Decimal("0.0")
     if req.promotion_id:
+        promo = db.query(Promotion).filter(Promotion.promotion_id == req.promotion_id).first()
+        if not promo or promo.status != "Active":
+            raise HTTPException(status_code=400, detail="Mã ưu đãi không hợp lệ hoặc đã hết hạn")
+
+        now = datetime.now()
+        if promo.start_date and promo.start_date > now:
+            raise HTTPException(status_code=400, detail="Chương trình ưu đãi chưa bắt đầu")
+        if promo.end_date and promo.end_date < now:
+            raise HTTPException(status_code=400, detail="Chương trình ưu đãi đã kết thúc")
+
+        # Kiểm tra giới hạn số lần sử dụng cho mỗi tài khoản
+        limit_per_user = promo.usage_limit_per_user if promo.usage_limit_per_user is not None else 1
+        user_used_count = db.query(Order).filter(
+            Order.customer_id == customer_id,
+            Order.promotion_id == req.promotion_id,
+            Order.status != "Cancelled"
+        ).count()
+        if user_used_count >= limit_per_user:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bạn đã sử dụng mã ưu đãi này rồi. Mỗi tài khoản chỉ được áp dụng tối đa {limit_per_user} lần!"
+            )
+
+        # Kiểm tra tổng số lượt sử dụng toàn hệ thống (nếu có giới hạn)
+        if promo.total_usage_limit is not None and promo.total_usage_limit > 0:
+            total_used_count = db.query(Order).filter(
+                Order.promotion_id == req.promotion_id,
+                Order.status != "Cancelled"
+            ).count()
+            if total_used_count >= promo.total_usage_limit:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Mã ưu đãi này đã hết lượt sử dụng trên hệ thống!"
+                )
+
         inv_promo = db.query(InvoicePromotion).filter(
             InvoicePromotion.promotion_id == req.promotion_id,
             InvoicePromotion.min_order_value <= total_cost
         ).order_by(InvoicePromotion.min_order_value.desc()).first()
 
-        if inv_promo:
-            calculated_discount = total_cost * (inv_promo.discount_percentage / Decimal("100.0"))
-            if inv_promo.max_discount_value and calculated_discount > inv_promo.max_discount_value:
-                discount_amount = inv_promo.max_discount_value
-            else:
-                discount_amount = calculated_discount
+        if not inv_promo:
+            raise HTTPException(
+                status_code=400,
+                detail="Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã ưu đãi này"
+            )
 
-    shipping_fee = Decimal("25000.00") if total_cost < 300000 else Decimal("0.0")
-    final_cost = total_cost + shipping_fee - discount_amount
+        calculated_discount = total_cost * (inv_promo.discount_percentage / Decimal("100.0"))
+        if inv_promo.max_discount_value and calculated_discount > inv_promo.max_discount_value:
+            discount_amount = inv_promo.max_discount_value
+        else:
+            discount_amount = calculated_discount
+
+    final_cost = total_cost - discount_amount
     if final_cost < 0:
         final_cost = Decimal("0.0")
 
@@ -152,13 +174,7 @@ async def create_order(
         customer_id=customer_id,
         recipient_name=req.recipient_name,
         recipient_phone=req.recipient_phone,
-        shipping_address=req.shipping_address,
-        shipping_city=req.shipping_city,
-        shipping_district=req.shipping_district,
-        shipping_ward=req.shipping_ward,
-        delivery_date=req.delivery_date,
-        delivery_time=req.delivery_time,
-        shipping_fee=shipping_fee,
+        pickup_time=req.pickup_time,
         notes=req.notes,
         promotion_id=req.promotion_id,
         discount_amount=discount_amount,
@@ -185,9 +201,10 @@ async def create_order(
 
     initial_log = OrderStatusLog(
         order_id=new_order.order_id,
+        changed_by=current_user.user_name,
         old_status=None,
         new_status="Pending",
-        note="Đơn hàng được tạo mới bởi khách hàng",
+        note="Đơn hàng được đặt thành công, chờ xác nhận",
     )
     db.add(initial_log)
 
@@ -228,9 +245,7 @@ def get_my_orders(
     query = db.query(Order).options(
         joinedload(Order.details).joinedload(OrderDetail.product),
         joinedload(Order.details).joinedload(OrderDetail.size),
-        joinedload(Order.status_logs).joinedload(OrderStatusLog.employee),
-        joinedload(Order.employee),
-        joinedload(Order.shipper),
+        joinedload(Order.status_logs),
     )
 
     if current_user.role == "customer":
@@ -252,9 +267,7 @@ def get_order_detail(
     o = db.query(Order).options(
         joinedload(Order.details).joinedload(OrderDetail.product),
         joinedload(Order.details).joinedload(OrderDetail.size),
-        joinedload(Order.status_logs).joinedload(OrderStatusLog.employee),
-        joinedload(Order.employee),
-        joinedload(Order.shipper),
+        joinedload(Order.status_logs),
     ).filter(Order.order_id == order_id).first()
 
     if not o:
@@ -271,13 +284,15 @@ async def update_order_status(
     order_id: int,
     new_status: str,
     note: str = "",
-    shipper_id: int = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    valid_statuses = ["Pending", "Processing", "Shipping", "Completed", "Cancelled"]
+    valid_statuses = ["Pending", "Processing", "Ready", "Completed", "Cancelled"]
     if new_status not in valid_statuses:
-        raise HTTPException(status_code=400, detail="Trạng thái không hợp lệ")
+        raise HTTPException(
+            status_code=400,
+            detail="Trạng thái không hợp lệ. Các trạng thái hợp lệ: Pending, Processing, Ready, Completed, Cancelled"
+        )
 
     o = db.query(Order).filter(Order.order_id == order_id).first()
     if not o:
@@ -286,21 +301,12 @@ async def update_order_status(
     old_status = o.status
     o.status = new_status
 
-    emp_id = None
-    if current_user.employee:
-        emp_id = current_user.employee.employee_id
-        if not o.employee_id and new_status == "Processing":
-            o.employee_id = emp_id
-
-    if shipper_id:
-        o.shipper_id = shipper_id
-
     if new_status == "Completed":
         o.payment_status = "Paid"
 
     log = OrderStatusLog(
         order_id=o.order_id,
-        employee_id=emp_id,
+        changed_by=current_user.user_name,
         old_status=old_status,
         new_status=new_status,
         note=note or f"Chuyển trạng thái sang {new_status}",

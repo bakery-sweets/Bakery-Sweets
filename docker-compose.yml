@@ -3,7 +3,7 @@
 # Kiáº¿n trÃºc:
 #   Web:    React (FE: port 3000) + Python FastAPI (BE: port 5000)
 #   Mobile: Flutter (FE - chạy trên thiết bị) + Python FastAPI (BE: port 8000)
-#   DB:     MySQL 8.0 (port 3308) + phpMyAdmin (port 8081)
+#   DB:     MariaDB 10.11 (port 3308)
 #   Legacy: PHP Web cũ (port 8080)
 # ==============================================================================
 
@@ -21,10 +21,13 @@ services:
       MYSQL_DATABASE: thesweets_db
       MYSQL_USER: user
       MYSQL_PASSWORD: 123
+      TZ: Asia/Ho_Chi_Minh
     ports:
       - "3308:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./database/createTable.sql:/docker-entrypoint-initdb.d/01_createTable.sql:ro
+      - ./database/data.sql:/docker-entrypoint-initdb.d/02_data.sql:ro
     networks:
       - thesweets_network
     healthcheck:
@@ -101,6 +104,7 @@ services:
       - DB_PASSWORD=123
       - SECRET_KEY=your_jwt_secret_key_here
       - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - TZ=Asia/Ho_Chi_Minh
     depends_on:
       db:
         condition: service_healthy

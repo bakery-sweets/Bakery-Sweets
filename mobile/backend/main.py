@@ -1,6 +1,8 @@
 import uvicorn
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from app.config.database import engine, Base
@@ -33,6 +35,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Phục vụ toàn bộ media / hình ảnh sản phẩm & banner qua static files
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Đăng ký tập hợp router chính từ folder api/v1
 app.include_router(api_router, prefix="/api/v1")

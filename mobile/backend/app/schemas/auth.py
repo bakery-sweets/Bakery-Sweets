@@ -15,6 +15,13 @@ class RegisterRequest(BaseModel):
     phone: Optional[str] = None
     gender: Optional[str] = "Other"
 
+class UpdateProfileRequest(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    gender: Optional[str] = "Other"
+    email: Optional[EmailStr] = None
+
 class UserProfileOut(BaseModel):
     user_name: str
     email: str
@@ -25,7 +32,6 @@ class UserProfileOut(BaseModel):
     last_name: Optional[str] = None
     phone: Optional[str] = None
     gender: Optional[str] = None
-    loyalty_points: Optional[int] = 0
 
     class Config:
         from_attributes = True

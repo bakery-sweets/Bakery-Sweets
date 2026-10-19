@@ -15,7 +15,11 @@ export default function Header() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (search.trim()) navigate(`/search?term=${encodeURIComponent(search.trim())}`);
+    if (search.trim()) {
+      navigate(`/?search=${encodeURIComponent(search.trim())}`);
+    } else {
+      navigate("/");
+    }
   };
 
   const handleLogout = () => {
@@ -64,7 +68,6 @@ export default function Header() {
           </div>
 
           <div className="nav-right">
-            <Link to="/search" className="searchAdvance">ADVANCED SEARCH</Link>
             <div className="auth-container">
               {user ? (
                 <>
