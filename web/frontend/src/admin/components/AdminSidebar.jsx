@@ -1,4 +1,4 @@
-import { NavLink, Link, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
 import useAdminUIStore from "../../store/adminUIStore";
 import "./AdminSidebar.css";
@@ -15,12 +15,12 @@ export default function AdminSidebar() {
   };
 
   const navItems = [
-    { to: "/admin", label: "Tổng quan", icon: "grid-outline", end: true },
-    { to: "/admin/products", label: "Quản lý sản phẩm", icon: "fast-food-outline" },
-    { to: "/admin/orders", label: "Quản lý đơn hàng", icon: "receipt-outline" },
-    { to: "/admin/employees", label: "Quản lý nhân sự", icon: "id-card-outline" },
-    { to: "/admin/users", label: "Tài khoản & Phân quyền", icon: "people-outline" },
-    { to: "/admin/statistical", label: "Báo cáo thống kê", icon: "bar-chart-outline" },
+    { to: "/admin", label: "Tổng Quan", icon: "grid-outline", end: true },
+    { to: "/admin/products", label: "Thực Đơn", icon: "book-outline", badge: "48+" },
+    { to: "/admin/orders", label: "Lịch Đặt Bánh", icon: "calendar-outline" },
+    { to: "/admin/statistical", label: "Báo Cáo Doanh Thu", icon: "bar-chart-outline" },
+    { to: "/admin/employees", label: "Nhân Sự & Ca Kíp", icon: "people-outline" },
+    { to: "/admin/users", label: "Tài Khoản & Quyền", icon: "shield-checkmark-outline" },
   ];
 
   return (
@@ -30,14 +30,17 @@ export default function AdminSidebar() {
         <ion-icon name="close-outline"></ion-icon>
       </button>
 
+      {/* Brand Header with Original Web Logo */}
       <div className="admin-sidebar-brand">
-        <div className="brand-logo-wrap">
-          <img src="/assets/Img/Sweets1.png" alt="The Sweets" className="admin-brand-img" />
-        </div>
-        <span className="admin-badge">Admin Panel</span>
+        <NavLink to="/admin" className="brand-logo-wrap" title="The Sweets Admin">
+          <img src="/assets/Img/Sweets1.png" alt="The Sweets" className="admin-brand-logo-img" />
+        </NavLink>
+        <span className="brand-subtitle">HAUTE PÂTISSERIE</span>
       </div>
 
+      {/* Navigation */}
       <nav className="admin-nav-menu">
+        <div className="sidebar-section-title">MENU CHÍNH</div>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -50,18 +53,17 @@ export default function AdminSidebar() {
           >
             <ion-icon name={item.icon}></ion-icon>
             <span>{item.label}</span>
+            {item.badge && <span className="nav-badge-pill">{item.badge}</span>}
           </NavLink>
         ))}
       </nav>
 
+      {/* Footer System Section */}
       <div className="admin-sidebar-footer">
-        <Link to="/" className="admin-footer-link" target="_blank" title="Xem cửa hàng khách hàng" onClick={closeSidebar}>
-          <ion-icon name="storefront-outline"></ion-icon>
-          <span>Xem Website</span>
-        </Link>
+        <div className="sidebar-section-title" style={{ padding: "8px 12px 4px" }}>HỆ THỐNG</div>
         <button onClick={handleLogout} className="admin-logout-btn">
           <ion-icon name="log-out-outline"></ion-icon>
-          <span>Đăng xuất</span>
+          <span>Đăng Xuất</span>
         </button>
       </div>
     </aside>

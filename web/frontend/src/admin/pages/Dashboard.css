@@ -1,0 +1,337 @@
+/* Dashboard Dedicated Styles matching exact Haute Patisserie Mockup */
+
+.dashboard-hero-card {
+  background: linear-gradient(135deg, #de5d7c 0%, #c74767 100%);
+  color: #ffffff;
+  border-radius: var(--admin-radius);
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 8px 24px rgba(222, 93, 124, 0.28);
+  position: relative;
+  min-height: 180px;
+}
+
+.kpi-card-white {
+  background: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.02);
+  min-height: 180px;
+}
+
+.kpi-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kpi-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8c9ba5;
+}
+
+.dashboard-hero-card .kpi-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.kpi-circle-arrow {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid #f0f1f4;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #ffffff;
+}
+
+.dashboard-hero-card .kpi-circle-arrow {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.kpi-circle-arrow:hover {
+  transform: scale(1.06);
+}
+
+.kpi-big-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 12px 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.dashboard-hero-card .kpi-big-value {
+  color: #ffffff;
+}
+
+.kpi-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hero-pill-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Hourly Revenue Bar Chart */
+.hourly-chart-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 160px;
+  padding: 20px 10px 10px;
+  position: relative;
+}
+
+.hourly-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.hourly-bar-pillar {
+  width: 28px;
+  border-radius: 9999px;
+  transition: all 0.3s ease;
+}
+
+.hourly-bar-pillar.striped {
+  background: repeating-linear-gradient(
+    45deg,
+    #fce4ec,
+    #fce4ec 4px,
+    #fff0f4 4px,
+    #fff0f4 8px
+  );
+  border: 1px dashed #f8bbd0;
+}
+
+.hourly-bar-pillar.solid-soft {
+  background: #f8bbd0;
+}
+
+.hourly-bar-pillar.peak {
+  background: linear-gradient(180deg, #de5d7c 0%, #c74767 100%);
+  box-shadow: 0 4px 12px rgba(222, 93, 124, 0.35);
+}
+
+.peak-tooltip {
+  position: absolute;
+  top: -26px;
+  background: #de5d7c;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(222, 93, 124, 0.3);
+}
+
+.hourly-hour-label {
+  font-size: 11px;
+  color: #8c9ba5;
+  font-weight: 600;
+}
+
+.chart-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f8f9fa;
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Event List Card */
+.event-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #fbfbfc;
+  border: 1px solid #f3f4f6;
+  gap: 10px;
+}
+
+.event-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.event-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.event-icon-box.peach { background: #fff4eb; color: #f97316; }
+.event-icon-box.mint { background: #eefcf5; color: #10b981; }
+.event-icon-box.purple { background: #f3f0ff; color: #8b5cf6; }
+
+.event-item-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-item-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.event-item-desc {
+  font-size: 11px;
+  color: #8c9ba5;
+  margin-top: 2px;
+}
+
+/* Kitchen Capacity Radial Arc */
+.kitchen-capacity-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.capacity-arc-box {
+  position: relative;
+  width: 170px;
+  height: 95px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.capacity-center-text {
+  position: absolute;
+  bottom: 0;
+  text-align: center;
+}
+
+.capacity-percent {
+  font-size: 26px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.capacity-desc {
+  font-size: 11px;
+  color: #8c9ba5;
+  font-weight: 600;
+}
+
+.kitchen-stats-trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.kitchen-stat-mini {
+  background: #fbfbfc;
+  border: 1px solid #f3f4f6;
+  border-radius: 14px;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.stat-mini-num {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat-mini-label {
+  font-size: 10.5px;
+  color: #8c9ba5;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Inventory Progress */
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.inventory-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.inventory-bar-track {
+  width: 100%;
+  height: 7px;
+  background: #f1f2f4;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.inventory-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+}

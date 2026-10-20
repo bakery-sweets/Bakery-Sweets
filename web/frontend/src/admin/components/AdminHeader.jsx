@@ -2,9 +2,17 @@ import useAuthStore from "../../store/authStore";
 import useAdminUIStore from "../../store/adminUIStore";
 import "./AdminHeader.css";
 
-export default function AdminHeader({ title = "Quản trị hệ thống" }) {
+export default function AdminHeader() {
   const { user } = useAuthStore();
   const { toggleSidebar } = useAdminUIStore();
+
+  const displayName = user?.user_name || "Lê Thu Thảo";
+  const initials = displayName
+    .split(" ")
+    .map((w) => w[0])
+    .slice(-2)
+    .join("")
+    .toUpperCase() || "LT";
 
   return (
     <header className="admin-header">
@@ -18,26 +26,16 @@ export default function AdminHeader({ title = "Quản trị hệ thống" }) {
         >
           <ion-icon name="menu-outline"></ion-icon>
         </button>
-
-        <div className="admin-header-title">
-          <h2>{title}</h2>
-          <span className="admin-header-breadcrumb">Trang quản trị &gt; {title}</span>
-        </div>
       </div>
 
-      <div className="admin-header-actions">
-        <div className="admin-status-badge">
-          <span className="pulse-dot"></span>
-          <span className="status-text">Hệ thống hoạt động</span>
-        </div>
-
-        <div className="admin-user-info">
-          <div className="admin-avatar">
-            <ion-icon name="person-circle-outline"></ion-icon>
+      <div className="admin-header-right">
+        <div className="admin-profile-pill">
+          <div className="admin-profile-meta">
+            <span className="admin-profile-name">{displayName}</span>
+            <span className="admin-profile-role">Quản lý vận hành</span>
           </div>
-          <div className="admin-user-details">
-            <span className="admin-username">{user?.username || "Admin"}</span>
-            <span className="admin-role-tag">Super Admin</span>
+          <div className="admin-avatar-initials">
+            {initials}
           </div>
         </div>
       </div>

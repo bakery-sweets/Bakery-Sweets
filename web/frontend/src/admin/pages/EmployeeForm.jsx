@@ -46,24 +46,25 @@ export default function EmployeeForm() {
 
   return (
     <>
-      <AdminHeader title={isEdit ? "Chỉnh sửa hồ sơ nhân viên" : "Tạo hồ sơ nhân sự mới"} />
+      <AdminHeader />
       <div className="admin-page-container">
         
-        <div className="admin-card" style={{ maxWidth: "960px", margin: "0 auto" }}>
-          
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px" }}>
-            <div>
-              <h3 style={{ margin: "0 0 4px", fontSize: "18px", fontWeight: "700", color: "#1e293b" }}>
-                {isEdit ? `Hồ sơ nhân viên #${formData.employee_code}` : "Thêm mới nhân viên"}
-              </h3>
-              <span style={{ fontSize: "13px", color: "#64748b" }}>
-                Điền đầy đủ thông tin cá nhân, phòng ban và tài khoản đăng nhập
-              </span>
-            </div>
-            <Link to="/admin/employees" style={{ color: "#64748b", textDecoration: "none", fontSize: "13px" }}>
-              &larr; Quay lại danh sách
+        {/* Header Row */}
+        <div className="admin-page-header-row" style={{ maxWidth: "960px", margin: "0 auto 24px" }}>
+          <div className="admin-page-title-group">
+            <h1>{isEdit ? `Hồ Sơ Nhân Sự #${formData.employee_code}` : "Thêm Nhân Sự Mới"}</h1>
+            <p>Quản lý thông tin hợp đồng, phòng ban công tác &amp; phân quyền truy cập</p>
+          </div>
+
+          <div className="admin-page-actions">
+            <Link to="/admin/employees" className="btn-pill-outline">
+              <ion-icon name="arrow-back-outline"></ion-icon>
+              <span>Quay Lại Danh Sách</span>
             </Link>
           </div>
+        </div>
+
+        <div className="admin-card-box" style={{ maxWidth: "960px", margin: "0 auto" }}>
 
           {/* Navigation Tabs */}
           <div style={{ display: "flex", gap: "10px", marginBottom: "25px", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px", flexWrap: "wrap" }}>
@@ -354,15 +355,15 @@ export default function EmployeeForm() {
                   </>
                 )}
 
-                <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
-                  <button type="submit" className="admin-btn-primary">
+                <div style={{ display: "flex", gap: "12px", marginTop: "16px", flexWrap: "wrap" }}>
+                  <button type="submit" className="btn-pill-primary">
                     <ion-icon name="save-outline"></ion-icon>
                     <span>{isEdit ? "Cập nhật hồ sơ nhân sự" : "Lưu hồ sơ nhân viên"}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab("profile")}
-                    style={{ padding: "10px 20px", borderRadius: "8px", background: "#f1f5f9", color: "#475569", border: "none", fontSize: "14px", fontWeight: "600", cursor: "pointer" }}
+                    className="btn-pill-outline"
                   >
                     &larr; Quay lại thông tin cá nhân
                   </button>

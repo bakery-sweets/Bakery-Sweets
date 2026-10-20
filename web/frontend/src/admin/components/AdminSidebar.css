@@ -1,7 +1,7 @@
 .admin-sidebar {
-  width: 260px;
-  background-color: #1a1a2e;
-  color: #fff;
+  width: 250px;
+  background-color: #ffffff;
+  color: #1e293b;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -9,181 +9,186 @@
   left: 0;
   bottom: 0;
   z-index: 1000;
-  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+  border-right: 1px solid #f0f1f4;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
 .admin-sidebar-brand {
-  padding: 25px 20px 20px;
+  padding: 20px 20px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  justify-content: center;
+  border-bottom: 1px solid #f1f2f4;
   position: relative;
 }
 
-.admin-brand-img {
-  height: 55px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+.brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
-.admin-badge {
-  font-size: 11px;
+.admin-brand-logo-img {
+  height: 54px;
+  max-width: 180px;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.06));
+}
+
+.admin-brand-logo-img:hover {
+  transform: scale(1.04);
+}
+
+.brand-subtitle {
+  font-size: 9.5px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  background: #ffffff;
-  color: #1a1a2e;
-  padding: 3px 12px;
-  border-radius: 12px;
-  margin-top: 8px;
-  font-weight: 700;
+  color: #de5d7c;
+  margin-top: 6px;
 }
 
 /* Nút đóng Sidebar trên Mobile/Tablet */
 .admin-sidebar-close {
   display: none;
   position: absolute;
-  top: 16px;
+  top: 20px;
   right: 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #f1f5f9;
   border: none;
-  color: #fff;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   transition: all 0.2s ease;
   z-index: 10;
 }
 
 .admin-sidebar-close:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
+  background: #fee2e2;
+  color: #ef4444;
 }
 
 .admin-nav-menu {
   flex: 1;
-  padding: 20px 14px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   overflow-y: auto;
+}
+
+.sidebar-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  padding: 16px 12px 8px;
 }
 
 .admin-nav-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 16px;
-  color: #a0aec0;
+  gap: 12px;
+  padding: 10px 14px;
+  color: #64748b;
   text-decoration: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .admin-nav-item ion-icon {
-  font-size: 20px;
+  font-size: 19px;
   flex-shrink: 0;
+  color: #8c9ba5;
+  transition: color 0.2s ease;
 }
 
 .admin-nav-item:hover {
-  background: rgba(202, 219, 251, 0.15);
-  color: #cadbfb;
+  background: #f8fafc;
+  color: #de5d7c;
+}
+
+.admin-nav-item:hover ion-icon {
+  color: #de5d7c;
 }
 
 .admin-nav-item.active {
-  background: #ffffff;
-  color: #1a1a2e;
+  background: #fff0f4;
+  color: #de5d7c;
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.2);
 }
 
 .admin-nav-item.active ion-icon {
-  color: #1a1a2e;
+  color: #de5d7c;
+}
+
+.nav-badge-pill {
+  margin-left: auto;
+  background: #e6f8f0;
+  color: #0e9f6e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
 }
 
 .admin-sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px;
+  border-top: 1px solid #f1f2f4;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-.admin-footer-link, .admin-logout-btn {
+.admin-logout-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 10px 14px;
-  border-radius: 8px;
-  color: #cbd5e1;
-  font-size: 13px;
-  text-decoration: none;
-  background: none;
+  background: transparent;
   border: none;
+  border-radius: 12px;
+  color: #de5d7c;
+  font-size: 13.5px;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s ease;
   width: 100%;
   text-align: left;
-  transition: all 0.2s;
-}
-
-.admin-footer-link ion-icon, .admin-logout-btn ion-icon {
-  font-size: 18px;
-}
-
-.admin-footer-link:hover {
-  background: rgba(202, 219, 251, 0.15);
-  color: #cadbfb;
 }
 
 .admin-logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  background: #fff0f4;
 }
 
-/* ==========================================================================
-   RESPONSIVE: IPAD & ĐIỆN THOẠI (ƯU TIÊN MOBILE)
-   ========================================================================== */
+.admin-logout-btn ion-icon {
+  font-size: 19px;
+  color: #de5d7c;
+}
 
-/* Tablet (iPad) & Mobile: Màn hình <= 1024px */
 @media (max-width: 1024px) {
   .admin-sidebar {
-    width: 280px;
-    max-width: 85vw;
     transform: translateX(-100%);
-    box-shadow: none;
-    z-index: 1001;
   }
 
   .admin-sidebar.open {
     transform: translateX(0);
-    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.45);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
   }
 
   .admin-sidebar-close {
     display: flex;
-  }
-}
-
-/* Desktop: Màn hình > 1024px (Tự động kéo ra & cố định sidebar chuẩn desktop) */
-@media (min-width: 1025px) {
-  .admin-sidebar {
-    transform: none !important;
-    width: 260px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-  }
-
-  .admin-sidebar-close {
-    display: none !important;
   }
 }

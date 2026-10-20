@@ -5,265 +5,232 @@ import { Link } from "react-router-dom";
 export default function EmployeeList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const [employees] = useState([
+  const depts = [
+    { key: "all", label: "Tất Cả", count: 18 },
+    { key: "Kitchen", label: "Bếp Bánh (Kitchen)", count: 8 },
+    { key: "Decor", label: "Trang Trí & Decor", count: 4 },
+    { key: "Counter", label: "Thu Ngân & Quầy", count: 6 },
+  ];
+
+  const employees = [
     {
       id: 1,
       code: "NV001",
       name: "Nguyễn Minh Tuấn",
       phone: "0912345671",
-      citizen_id: "079201001234",
       department: "Bếp Bánh (Kitchen)",
-      position: "Bếp Trưởng",
+      position: "Bếp Trưởng Bánh Mousse",
       contract: "Full-time",
-      hire_date: "10/01/2024",
-      user_name: "tuan_chef",
-      role: "staff",
+      shift: "Ca Sáng (06:00 - 14:00)",
       status: "Active",
+      avatarColor: "#de5d7c",
     },
     {
       id: 2,
       code: "NV002",
       name: "Trần Thị Mai",
       phone: "0912345672",
-      citizen_id: "079202005678",
-      department: "Thu Ngân & Bán Hàng",
+      department: "Thu Ngân & Quầy",
       position: "Trưởng Ca Thu Ngân",
       contract: "Full-time",
-      hire_date: "15/03/2024",
-      user_name: "mai_cashier",
-      role: "staff",
+      shift: "Ca Chiều (13:30 - 21:30)",
       status: "Active",
+      avatarColor: "#0ea5e9",
     },
     {
       id: 3,
       code: "NV003",
       name: "Lê Hoàng Phúc",
       phone: "0912345673",
-      citizen_id: "079203009999",
-      department: "Bếp Bánh (Kitchen)",
-      position: "Phụ Bếp Bánh",
-      contract: "Probation",
-      hire_date: "01/09/2026",
-      user_name: "phuc_bakery",
-      role: "staff",
+      department: "Trang Trí & Decor",
+      position: "Nghệ Nhân Vẽ Bánh Sinh Nhật",
+      contract: "Full-time",
+      shift: "Ca Sáng (07:00 - 15:00)",
       status: "Active",
+      avatarColor: "#10b981",
     },
     {
       id: 4,
       code: "NV004",
       name: "Phạm Hồng Ánh",
       phone: "0912345674",
-      citizen_id: "079204008888",
-      department: "Thu Ngân & Bán Hàng",
-      position: "Nhân Viên Bán Hàng",
+      department: "Thu Ngân & Quầy",
+      position: "Nhân Viên Pha Chế Trà",
       contract: "Part-time",
-      hire_date: "20/05/2025",
-      user_name: null,
-      role: null,
-      status: "On Leave",
+      shift: "Ca Tối (17:00 - 22:00)",
+      status: "Active",
+      avatarColor: "#8b5cf6",
     },
-  ]);
+    {
+      id: 5,
+      code: "NV005",
+      name: "Đặng Gia Huy",
+      phone: "0912345675",
+      department: "Bếp Bánh (Kitchen)",
+      position: "Thợ Nướng Bánh Croissant",
+      contract: "Probation",
+      shift: "Ca Đêm/Sáng (04:00 - 12:00)",
+      status: "On Leave",
+      avatarColor: "#f59e0b",
+    },
+  ];
 
-  const filteredEmployees = employees.filter((e) => {
-    const matchesSearch =
-      e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.phone.includes(searchTerm);
-    const matchesDept = deptFilter === "all" || e.department.includes(deptFilter);
-    const matchesStatus = statusFilter === "all" || e.status === statusFilter;
-    return matchesSearch && matchesDept && matchesStatus;
+  const filtered = employees.filter((e) => {
+    const matchSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchDept = deptFilter === "all" || e.department.includes(deptFilter);
+    return matchSearch && matchDept;
   });
 
   return (
     <>
-      <AdminHeader title="Quản lý nhân sự & Hồ sơ nhân viên" />
+      <AdminHeader />
+
       <div className="admin-page-container">
-        
-        {/* Quick Stats Banner */}
-        <div className="admin-grid-3" style={{ marginBottom: "20px" }}>
-          <div className="admin-card" style={{ padding: "16px 20px", margin: 0, display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#e0f2fe", color: "#0284c7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>
-              <ion-icon name="people-outline"></ion-icon>
-            </div>
-            <div>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>Tổng nhân sự</span>
-              <h4 style={{ margin: "2px 0 0", fontSize: "18px", color: "#1e293b" }}>{employees.length} nhân viên</h4>
-            </div>
+        {/* Header Row */}
+        <div className="admin-page-header-row">
+          <div className="admin-page-title-group">
+            <h1>Nhân Sự &amp; Ca Kíp</h1>
+            <p>Quản lý đội ngũ nghệ nhân làm bánh, thợ trang trí &amp; nhân viên quầy</p>
           </div>
 
-          <div className="admin-card" style={{ padding: "16px 20px", margin: 0, display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#ecfdf5", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>
-              <ion-icon name="checkmark-done-circle-outline"></ion-icon>
-            </div>
-            <div>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>Đang làm việc</span>
-              <h4 style={{ margin: "2px 0 0", fontSize: "18px", color: "#10b981" }}>
-                {employees.filter(e => e.status === "Active").length} nhân viên
-              </h4>
-            </div>
-          </div>
-
-          <div className="admin-card" style={{ padding: "16px 20px", margin: 0, display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#fef3c7", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>
-              <ion-icon name="time-outline"></ion-icon>
-            </div>
-            <div>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>Thử việc / Nghỉ phép</span>
-              <h4 style={{ margin: "2px 0 0", fontSize: "18px", color: "#d97706" }}>
-                {employees.filter(e => e.status !== "Active" || e.contract === "Probation").length} nhân viên
-              </h4>
-            </div>
+          <div className="admin-page-actions">
+            <button className="btn-pill-outline" type="button">
+              <ion-icon name="download-outline"></ion-icon>
+              <span>Xuất Bảng Ca</span>
+            </button>
+            <Link to="/admin/employees/add" className="btn-pill-primary">
+              <ion-icon name="person-add-outline"></ion-icon>
+              <span>Thêm Nhân Viên</span>
+            </Link>
           </div>
         </div>
 
-        {/* Action & Filter Bar */}
-        <div className="admin-card" style={{ marginBottom: "20px", padding: "16px 20px" }}>
-          <div className="admin-toolbar" style={{ margin: 0 }}>
-            
-            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+        {/* Filter Department Pills */}
+        <div className="admin-filter-tabs">
+          {depts.map((d) => (
+            <button
+              key={d.key}
+              onClick={() => setDeptFilter(d.key)}
+              className={`tab-pill-btn ${deptFilter === d.key ? "active" : ""}`}
+            >
+              {d.label} ({d.count})
+            </button>
+          ))}
+        </div>
+
+        {/* Table Box */}
+        <div className="admin-card-box">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f8fafc", padding: "8px 16px", borderRadius: "9999px", border: "1px solid #f1f2f4", width: "300px" }}>
+              <ion-icon name="search-outline" style={{ color: "#94a3b8", fontSize: "17px" }}></ion-icon>
               <input
                 type="text"
-                placeholder="Tìm tên, mã NV, SĐT..."
+                placeholder="Tìm mã NV, tên, chức vụ..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ padding: "8px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px", minWidth: "220px" }}
+                style={{ border: "none", background: "transparent", outline: "none", fontSize: "13px", width: "100%", color: "#1e293b", fontFamily: "inherit" }}
               />
-              <select
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(e.target.value)}
-                style={{ padding: "8px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px" }}
-              >
-                <option value="all">Tất cả phòng ban</option>
-                <option value="Bếp Bánh">Bếp Bánh</option>
-                <option value="Thu Ngân">Thu Ngân & Bán Hàng</option>
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ padding: "8px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px" }}
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="Active">Đang làm việc</option>
-                <option value="On Leave">Nghỉ phép</option>
-                <option value="Resigned">Đã thôi việc</option>
-              </select>
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
-              <Link to="/admin/employees/add" className="admin-btn-primary">
-                <ion-icon name="person-add-outline"></ion-icon>
-                <span>Tạo hồ sơ nhân viên</span>
-              </Link>
+            <div style={{ fontSize: "13px", color: "#8c9ba5", fontWeight: "600" }}>
+              Tổng số <span style={{ color: "#1e293b", fontWeight: "800" }}>{filtered.length}</span> nhân sự
             </div>
-
           </div>
-        </div>
 
-        {/* Employee Table */}
-        <div className="admin-card">
-          <div className="admin-table-responsive">
-            <table className="admin-table">
+          <div className="admin-table-clean-wrapper">
+            <table className="admin-table-clean">
               <thead>
                 <tr>
-                  <th>Mã NV</th>
-                  <th>Họ và Tên</th>
-                  <th>Phòng ban & Chức vụ</th>
-                  <th>Số điện thoại</th>
-                  <th>CCCD / CMND</th>
-                  <th>Hợp đồng</th>
-                  <th>Tài khoản đăng nhập</th>
-                  <th>Trạng thái</th>
-                  <th style={{ textAlign: "right" }}>Thao tác</th>
+                  <th>MÃ NV</th>
+                  <th>HỌ VÀ TÊN</th>
+                  <th>SỐ ĐIỆN THOẠI</th>
+                  <th>PHÒNG BAN &amp; VỊ TRÍ</th>
+                  <th>HỢP ĐỒNG</th>
+                  <th>CA KÍP LÀM VIỆC</th>
+                  <th>TÌNH TRẠNG</th>
+                  <th style={{ textAlign: "right" }}>THAO TÁC</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredEmployees.map((e) => (
-                  <tr key={e.id}>
-                    <td style={{ fontWeight: "700", color: "#1e293b" }}>{e.code}</td>
-                    <td>
-                      <div style={{ fontWeight: "600", color: "#1e293b" }}>{e.name}</div>
-                      <span style={{ fontSize: "12px", color: "#64748b" }}>Vào làm: {e.hire_date}</span>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: "500" }}>{e.position}</div>
-                      <span style={{ fontSize: "12px", color: "#64748b" }}>{e.department}</span>
-                    </td>
-                    <td>{e.phone}</td>
-                    <td>{e.citizen_id}</td>
-                    <td><span className="admin-status-pill warning" style={{ fontSize: "11px" }}>{e.contract}</span></td>
-                    <td>
-                      {e.user_name ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "#f1f5f9", padding: "3px 8px", borderRadius: "6px", fontSize: "12px", fontWeight: "600", color: "#1e293b" }}>
-                          <ion-icon name="shield-checkmark-outline" style={{ color: "#10b981" }}></ion-icon>
-                          {e.user_name}
+                {filtered.map((emp) => {
+                  const initials = emp.name.split(" ").slice(-2).map(w => w[0]).join("");
+                  return (
+                    <tr key={emp.id}>
+                      <td>
+                        <span style={{ fontWeight: "800", color: "#de5d7c", fontSize: "13px" }}>
+                          {emp.code}
                         </span>
-                      ) : (
-                        <Link
-                          to={`/admin/employees/edit/${e.id}?tab=account`}
-                          style={{ fontSize: "12px", color: "#1e293b", textDecoration: "none", fontWeight: "600", borderBottom: "1px dashed #1e293b" }}
-                        >
-                          + Cấp tài khoản
-                        </Link>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`admin-status-pill ${e.status === "Active" ? "success" : "warning"}`}>
-                        {e.status === "Active" ? "Đang làm" : e.status === "On Leave" ? "Nghỉ phép" : "Nghỉ việc"}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <Link
-                        to={`/admin/employees/edit/${e.id}`}
-                        className="admin-btn-default"
-                        style={{ padding: "5px 10px", fontSize: "12px", marginRight: "6px" }}
-                      >
-                        <ion-icon name="create-outline"></ion-icon> Sửa
-                      </Link>
-                      <button
-                        onClick={() => alert(`Khóa hồ sơ nhân viên ${e.code}`)}
-                        className="admin-btn-cancel"
-                        style={{ padding: "5px 10px", fontSize: "12px" }}
-                        title="Khóa hồ sơ"
-                      >
-                        <ion-icon name="lock-closed-outline"></ion-icon> Khóa
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div
+                            style={{
+                              width: "34px",
+                              height: "34px",
+                              borderRadius: "50%",
+                              background: emp.avatarColor,
+                              color: "#ffffff",
+                              fontSize: "12px",
+                              fontWeight: "800",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {initials}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: "700", color: "#1e293b" }}>{emp.name}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ color: "#475569", fontSize: "13px" }}>{emp.phone}</span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: "600", color: "#1e293b", fontSize: "13px" }}>{emp.position}</div>
+                        <div style={{ fontSize: "11.5px", color: "#8c9ba5" }}>{emp.department}</div>
+                      </td>
+                      <td>
+                        <span className="badge-pill gray" style={{ fontSize: "11px" }}>
+                          {emp.contract}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: "12px", color: "#475569", fontWeight: "500" }}>
+                          {emp.shift}
+                        </span>
+                      </td>
+                      <td>
+                        {emp.status === "Active" ? (
+                          <span className="badge-pill mint" style={{ fontSize: "11.5px" }}>
+                            <span className="dot-status green"></span> Đang làm
+                          </span>
+                        ) : (
+                          <span className="badge-pill amber" style={{ fontSize: "11.5px" }}>
+                            <span className="dot-status orange"></span> Nghỉ phép
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: "6px" }}>
+                          <Link
+                            to={`/admin/employees/edit/${emp.id}`}
+                            className="btn-pill-outline"
+                            style={{ padding: "5px 12px", fontSize: "12px" }}
+                          >
+                            Hồ sơ
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-
-          {/* Phân trang chuẩn màu như hình */}
-          <div className="admin-pagination">
-            <button
-              className="admin-page-arrow"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            >
-              &larr; Trước
-            </button>
-            {[1, 2, 3].map((num) => (
-              <button
-                key={num}
-                className={`admin-page-btn ${currentPage === num ? "active" : ""}`}
-                onClick={() => setCurrentPage(num)}
-              >
-                {num}
-              </button>
-            ))}
-            <button
-              className="admin-page-arrow"
-              disabled={currentPage === 3}
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, 3))}
-            >
-              Sau &rarr;
-            </button>
-          </div>
-
         </div>
 
       </div>

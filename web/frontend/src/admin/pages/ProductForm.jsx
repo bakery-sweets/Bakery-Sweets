@@ -78,24 +78,25 @@ export default function ProductForm() {
 
   return (
     <>
-      <AdminHeader title={isEdit ? "Chỉnh sửa sản phẩm bánh" : "Thêm sản phẩm bánh mới"} />
+      <AdminHeader />
       <div className="admin-page-container">
         
-        <div className="admin-card" style={{ maxWidth: "960px", margin: "0 auto" }}>
-          
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
-            <div>
-              <h3 style={{ margin: "0 0 4px", fontSize: "18px", fontWeight: "700", color: "#1e293b" }}>
-                {isEdit ? `Chỉnh sửa bánh #${id}` : "Nhập thông tin bánh & kích thước"}
-              </h3>
-              <span style={{ fontSize: "13px", color: "#64748b" }}>
-                Điền đầy đủ thông tin sản phẩm, phân loại, kích thước (Size) và giá bán
-              </span>
-            </div>
-            <Link to="/admin/products" style={{ color: "#64748b", textDecoration: "none", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-              &larr; Quay lại danh sách
+        {/* Header Row */}
+        <div className="admin-page-header-row" style={{ maxWidth: "960px", margin: "0 auto 24px" }}>
+          <div className="admin-page-title-group">
+            <h1>{isEdit ? "Chỉnh Sửa Món Bánh" : "Thêm Món Bánh Mới"}</h1>
+            <p>Cấu hình thông số kỹ thuật, công thức nguyên liệu &amp; bảng giá kích cỡ</p>
+          </div>
+
+          <div className="admin-page-actions">
+            <Link to="/admin/products" className="btn-pill-outline">
+              <ion-icon name="arrow-back-outline"></ion-icon>
+              <span>Quay Lại Thực Đơn</span>
             </Link>
           </div>
+        </div>
+
+        <div className="admin-card-box" style={{ maxWidth: "960px", margin: "0 auto" }}>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             
@@ -349,14 +350,14 @@ export default function ProductForm() {
               ></textarea>
             </div>
 
-            {/* NÚT BẤM: Accept màu xanh lá, Cancel màu đỏ (tự co giãn hoặc stack trên điện thoại) */}
-            <div className="admin-btn-stack-mobile" style={{ display: "flex", gap: "12px", marginTop: "10px", flexWrap: "wrap" }}>
-              <button type="submit" className="admin-btn-accept">
+            {/* Action Buttons */}
+            <div style={{ display: "flex", gap: "12px", marginTop: "12px", flexWrap: "wrap" }}>
+              <button type="submit" className="btn-pill-primary">
                 <ion-icon name="checkmark-circle-outline"></ion-icon>
                 <span>{isEdit ? "Cập nhật sản phẩm & kích thước" : "Lưu bánh mới"}</span>
               </button>
 
-              <Link to="/admin/products" className="admin-btn-cancel">
+              <Link to="/admin/products" className="btn-pill-outline">
                 <ion-icon name="close-circle-outline"></ion-icon>
                 <span>Hủy bỏ</span>
               </Link>
