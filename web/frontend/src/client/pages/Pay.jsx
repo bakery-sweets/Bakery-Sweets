@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import useAuthStore from '../../store/authStore';
+import { clientOrdersApi } from '../../api/client';
+import { formatVND, apiErrorMessage, toLocalDateInput } from '../../utils/format';
 import './Pay.css';
 
 // Danh sách các chương trình khuyến mãi & Voucher trong hệ thống (khớp với Database)
@@ -40,40 +42,16 @@ const AVAILABLE_VOUCHERS = [
   }
 ];
 
-// Dữ liệu mẫu dùng khi giỏ hàng chưa có sản phẩm để tiện xem & chỉnh sửa giao diện
-const DEMO_ITEMS = [
-  {
-    product_id: 1,
-    product_name: "Tiramisu Mousse",
-    size_name: "Size M (20cm)",
-    price: 190000,
-    quantity: 1,
-    image: "/uploads/Mousse/Tiramisu_Mousse.jpg"
-  },
-  {
-    product_id: 10,
-    product_name: "Plain Butter Croissant",
-    size_name: "Tiêu chuẩn",
-    price: 35000,
-    quantity: 2,
-    image: "/uploads/Croissant/Plain_Croissant.png"
-  }
-];
-
 export default function Pay() {
-  const cartItems = useCartStore(state => state.items);
-  const clearCart = useCartStore(state => state.clearCart);
+  const items = useCartStore(state => state.items);
+  const fetchCart = useCartStore(state => state.fetchCart);
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
-
-  // Nếu giỏ hàng có đồ thì dùng đồ trong giỏ, nếu không thì dùng DEMO_ITEMS để xem UI
-  const isPreview = cartItems.length === 0;
-  const items = isPreview ? DEMO_ITEMS : cartItems;
 
   // Tính giờ mặc định sau 45 phút giống bên Mobile
   const getDefaultPickup = () => {
     const d = new Date(Date.now() + 45 * 60000);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = toLocalDateInput(d);
     const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     return { dateStr, timeStr };
   };
@@ -81,8 +59,8 @@ export default function Pay() {
   const defaultPickup = getDefaultPickup();
 
   // Thông tin tài khoản hiện tại của người dùng
-  const myDefaultName = user?.name || (user?.phone ? `Khách hàng ${user.phone}` : 'Nguyễn Văn An');
-  const myDefaultPhone = user?.phone || '0912345678';
+  const myDefaultName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
+  const myDefaultPhone = user?.phone || '';
 
   const [shippingInfo, setShippingInfo] = useState({
     recipientMode: 'self', // 'self' (tôi tự nhận) hoặc 'other' (người khác nhận dùm)
@@ -97,10 +75,11 @@ export default function Pay() {
   });
 
   const [isEditingSelfInfo, setIsEditingSelfInfo] = useState(false);
-  const [selectedVoucher, setSelectedVoucher] = useState(AVAILABLE_VOUCHERS[0]); // Mặc định chọn mã chào bạn mới nếu đủ điều kiện
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [customVoucherCode, setCustomVoucherCode] = useState('');
   const [copiedStk, setCopiedStk] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
@@ -111,7 +90,7 @@ export default function Pay() {
   // Chọn nhanh mốc giờ lấy bánh (+30p, +1h, +2h)
   const setQuickPickupTime = (minutes) => {
     const target = new Date(Date.now() + minutes * 60000);
-    const dateStr = target.toISOString().split('T')[0];
+    const dateStr = toLocalDateInput(target);
     const timeStr = `${String(target.getHours()).padStart(2, '0')}:${String(target.getMinutes()).padStart(2, '0')}`;
     setShippingInfo({
       ...shippingInfo,
@@ -157,7 +136,7 @@ export default function Pay() {
     ? shippingInfo.selfPhone 
     : shippingInfo.otherPhone;
 
-  const handlePay = (e) => {
+  const handlePay = async (e) => {
     e.preventDefault();
     if (shippingInfo.recipientMode === 'other') {
       if (!shippingInfo.otherName.trim() || !shippingInfo.otherPhone.trim()) {
@@ -171,25 +150,43 @@ export default function Pay() {
       }
     }
 
-    const orderCode = "DH" + Math.floor(Math.random() * 900000 + 100000);
+    const pickupAt = new Date(`${shippingInfo.pickupDate}T${shippingInfo.pickupTime}`);
+    if (Number.isNaN(pickupAt.getTime()) || pickupAt < new Date()) {
+      alert("Giờ lấy bánh phải ở thời điểm sau hiện tại!");
+      return;
+    }
+
     const recipientDesc = shippingInfo.recipientMode === 'self'
       ? `${currentRecipientName} (${currentRecipientPhone})`
       : `${currentRecipientName} [Nhận hộ] (${currentRecipientPhone})`;
 
-    alert(
-      `🎉 ĐẶT BÁNH THÀNH CÔNG!\n\n` +
-      `• Mã đơn hàng: #${orderCode}\n` +
-      `• Người nhận bánh: ${recipientDesc}\n` +
-      `• Nơi nhận: The Sweets Bakery (120 Hai Bà Trưng, Quận 1)\n` +
-      `• Giờ lấy bánh: ${shippingInfo.pickupTime} ngày ${shippingInfo.pickupDate}\n` +
-      `• Hình thức: ${shippingInfo.paymentMethod === 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản Vietcombank'}\n` +
-      (selectedVoucher ? `• Voucher áp dụng: ${selectedVoucher.code} (-${discountAmount.toLocaleString('vi-VN')}₫)\n` : '') +
-      `• Tổng thanh toán: ${finalTotal.toLocaleString('vi-VN')}₫`
-    );
-    if (!isPreview) {
-      clearCart();
+    setSubmitting(true);
+    try {
+      // Đơn được tạo từ giỏ hàng trên server (bảng cart), server tự xóa giỏ sau khi đặt
+      const res = await clientOrdersApi.createOrder({
+        recipient_name: currentRecipientName.trim(),
+        recipient_phone: currentRecipientPhone.trim(),
+        pickup_time: `${shippingInfo.pickupDate}T${shippingInfo.pickupTime}:00`,
+        notes: shippingInfo.note.trim() || null,
+        payment_method: shippingInfo.paymentMethod,
+      });
+      const order = res.data;
+      alert(
+        `🎉 ĐẶT BÁNH THÀNH CÔNG!\n\n` +
+        `• Mã đơn hàng: #${order.order_code}\n` +
+        `• Người nhận bánh: ${recipientDesc}\n` +
+        `• Nơi nhận: The Sweets Bakery (120 Hai Bà Trưng, Quận 1)\n` +
+        `• Giờ lấy bánh: ${shippingInfo.pickupTime} ngày ${shippingInfo.pickupDate}\n` +
+        `• Hình thức: ${shippingInfo.paymentMethod === 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản Vietcombank'}\n` +
+        `• Tổng thanh toán: ${formatVND(order.final_cost)}`
+      );
+      await fetchCart();
+      navigate('/receipt');
+    } catch (err) {
+      alert(apiErrorMessage(err, "Đặt bánh thất bại, vui lòng thử lại."));
+    } finally {
+      setSubmitting(false);
     }
-    navigate('/receipt');
   };
 
   const transferContent = `${currentRecipientPhone ? currentRecipientPhone : 'SDT'} - Dat banh Sweets`;
@@ -197,17 +194,23 @@ export default function Pay() {
 
   const eligibleVouchersCount = AVAILABLE_VOUCHERS.filter(v => total >= v.minOrder).length;
 
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (items.length === 0) {
+    return (
+      <div className="pay-page-wrapper">
+        <div className="pay-container" style={{ textAlign: 'center', padding: '60px 16px' }}>
+          <h1 className="pay-main-title">Giỏ hàng đang trống</h1>
+          <p className="pay-subtitle">Hãy chọn vài món bánh trước khi đặt hàng nhé.</p>
+          <Link to="/" className="pay-continue-shop-link">← Tiếp tục chọn bánh</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pay-page-wrapper">
       <div className="pay-container">
-
-        {/* Banner chế độ xem trước */}
-        {isPreview && (
-          <div className="pay-preview-banner">
-            <span className="pay-preview-badge">Xem trước UI</span>
-            <span>Giỏ hàng thực tế đang trống. Đang hiển thị sản phẩm mẫu để bạn dễ dàng căn chỉnh giao diện.</span>
-          </div>
-        )}
 
         {/* Tiêu đề & quay lại */}
         <div className="pay-header-area">
@@ -531,14 +534,14 @@ export default function Pay() {
                 {items.map((item, i) => (
                   <div key={i} className="pay-item-row">
                     <img 
-                      src={item.image || '/assets/Img/Mousse1.png'} 
-                      alt={item.product_name || item.name} 
+                      src={item.image} 
+                      alt={item.product_name} 
                       className="pay-item-img"
                       onError={e => { e.target.src = '/assets/Img/Sweets1.png'; }}
                     />
                     <div className="pay-item-details">
-                      <h4 className="pay-item-name">{item.product_name || item.name}</h4>
-                      <span className="pay-item-size">Size: {item.size_name || item.size || 'Tiêu chuẩn'}</span>
+                      <h4 className="pay-item-name">{item.product_name}</h4>
+                      <span className="pay-item-size">Size: {item.size_name}</span>
                       <span className="pay-item-qty">SL: {item.quantity} x {Number(item.price).toLocaleString('vi-VN')}₫</span>
                     </div>
                     <div className="pay-item-total">
@@ -634,8 +637,8 @@ export default function Pay() {
                 </div>
               </div>
 
-              <button type="submit" className="pay-submit-btn">
-                Xác nhận đặt bánh
+              <button type="submit" className="pay-submit-btn" disabled={submitting}>
+                {submitting ? 'Đang đặt bánh...' : 'Xác nhận đặt bánh'}
               </button>
 
               <div className="pay-commitment-note">

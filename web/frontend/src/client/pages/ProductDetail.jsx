@@ -1,64 +1,60 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
+import { clientProductsApi } from '../../api/client';
+import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
 import './ProductDetail.css';
-
-const mockProduct = {
-  id: 1,
-  name: 'Chocolate Mousse',
-  price: 12.99,
-  image: 'Mousse1.png',
-  category: 'Bánh Mousse',
-  description: 'Bánh mousse sô-cô-la ngọt ngào đậm vị, kết cấu mịn màng tan ngay trong miệng. Được làm từ socola đen 70% và kem whipping tươi cao cấp từ Pháp.',
-  ingredients: 'Socola đen nguyên chất, kem whipping, đường cát, trứng gà sạch, gelatin thực vật.',
-  storage: 'Bảo quản ngăn mát tủ lạnh từ 2°C - 5°C. Dùng ngon nhất trong vòng 3 ngày.'
-};
-
-const mockSizes = [
-  { id: 1, size_name: 'Size S (12cm)', extra_price: 0 },
-  { id: 2, size_name: 'Size M (16cm)', extra_price: 3.50 },
-  { id: 3, size_name: 'Size L (20cm)', extra_price: 7.00 },
-];
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const addToCart = useCartStore(state => state.addItem);
-  
-  const [product] = useState(mockProduct);
-  const [sizes] = useState(mockSizes);
-  const [selectedSize, setSelectedSize] = useState('1');
+
+  const [product, setProduct] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
 
-  const handleAddToCart = () => {
-    const sizeObj = sizes.find(s => s.id === parseInt(selectedSize));
-    const extra = sizeObj ? sizeObj.extra_price : 0;
-    
-    addToCart({
-      id: product.id,
-      name: product.name,
-      image: product.image,
-      price: product.price + extra,
-      size: sizeObj ? sizeObj.size_name : '',
-      quantity
-    });
-    alert('Đã thêm sản phẩm vào giỏ hàng thành công!');
+  useEffect(() => {
+    setProduct(null);
+    setLoadError('');
+    clientProductsApi.getById(id)
+      .then((res) => {
+        setProduct(res.data);
+        setSelectedSize(res.data.sizes[0] ? String(res.data.sizes[0].size_id) : '');
+        setQuantity(1);
+      })
+      .catch((err) => setLoadError(apiErrorMessage(err, 'Không tải được thông tin bánh.')));
+  }, [id]);
+
+  const sizes = product?.sizes || [];
+  const currentSizeObj = sizes.find(s => String(s.size_id) === selectedSize);
+
+  const handleAddToCart = async () => {
+    if (!currentSizeObj) return;
+    try {
+      await addToCart(
+        { product_id: product.product_id, product_name: product.product_name, image: imageUrl(product.image) },
+        currentSizeObj,
+        quantity
+      );
+      alert('Đã thêm sản phẩm vào giỏ hàng thành công!');
+    } catch (err) {
+      alert(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
+    }
   };
 
+  if (loadError) return <div style={{ padding: '60px', textAlign: 'center' }}>{loadError}</div>;
   if (!product) return <div style={{ padding: '60px', textAlign: 'center' }}>Đang tải...</div>;
-
-  const currentSizeObj = sizes.find(s => s.id === parseInt(selectedSize));
-  const currentPrice = product.price + (currentSizeObj ? currentSizeObj.extra_price : 0);
 
   return (
     <div className="product-detail-page">
       <div className="product-detail-container">
-        
+
         {/* HÌNH ẢNH SẢN PHẨM */}
         <div className="product-detail-img-box">
-          <img 
-            src={`/assets/Img/${product.image || 'Mousse1.png'}`} 
-            alt={product.name} 
+          <img
+            src={imageUrl(product.image)}
+            alt={product.product_name}
             className="product-detail-img"
             onError={(e) => { e.target.src = '/assets/Img/Sweets1.png'; }}
           />
@@ -67,12 +63,11 @@ export default function ProductDetail() {
         {/* THÔNG TIN CHI TIẾT */}
         <div className="product-detail-info-box">
           <div className="product-detail-breadcrumbs">
-            <Link to="/">Trang chủ</Link> &gt; <span>{product.category}</span>
+            <Link to="/">Trang chủ</Link> &gt; <span>{product.category_name}</span>
           </div>
 
-          <h1 className="product-detail-title">{product.name}</h1>
-          <p className="product-detail-price">${currentPrice.toFixed(2)}</p>
-          <p className="product-detail-desc">{product.description}</p>
+          <h1 className="product-detail-title">{product.product_name}</h1>
+          <p className="product-detail-price">{formatVND(currentSizeObj?.price ?? product.min_price)}</p>
 
           {/* CHỌN KÍCH CỠ */}
           {sizes.length > 0 && (
@@ -81,15 +76,13 @@ export default function ProductDetail() {
               <div className="product-detail-size-options">
                 {sizes.map(s => (
                   <button
-                    key={s.id}
+                    key={s.size_id}
                     type="button"
-                    className={`product-size-btn ${selectedSize === String(s.id) ? "active" : ""}`}
-                    onClick={() => setSelectedSize(String(s.id))}
+                    className={`product-size-btn ${selectedSize === String(s.size_id) ? "active" : ""}`}
+                    onClick={() => setSelectedSize(String(s.size_id))}
                   >
                     <span className="size-name">{s.size_name}</span>
-                    {s.extra_price > 0 && (
-                      <span className="size-extra">+${s.extra_price.toFixed(2)}</span>
-                    )}
+                    <span className="size-extra">{formatVND(s.price)}</span>
                   </button>
                 ))}
               </div>
@@ -100,15 +93,15 @@ export default function ProductDetail() {
           <div className="product-detail-qty-section">
             <label className="product-detail-label">Số lượng:</label>
             <div className="product-detail-qty-control">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
               >
                 -
               </button>
               <span>{quantity}</span>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setQuantity(prev => prev + 1)}
               >
                 +
@@ -117,10 +110,11 @@ export default function ProductDetail() {
           </div>
 
           {/* NÚT THÊM GIỎ HÀNG */}
-          <button 
-            type="button" 
-            onClick={handleAddToCart} 
+          <button
+            type="button"
+            onClick={handleAddToCart}
             className="product-detail-add-btn"
+            disabled={!currentSizeObj}
           >
             <ion-icon name="cart-outline" style={{ fontSize: '20px' }}></ion-icon>
             <span>Thêm vào giỏ hàng</span>
@@ -129,10 +123,13 @@ export default function ProductDetail() {
           {/* THÔNG TIN NGUYÊN LIỆU & BẢO QUẢN */}
           <div className="product-detail-extra-info">
             <div className="extra-info-item">
-              <strong>Thành phần:</strong> {product.ingredients}
+              <strong>Thành phần:</strong> {product.ingredients || '—'}
             </div>
             <div className="extra-info-item">
-              <strong>Bảo quản:</strong> {product.storage}
+              <strong>Bảo quản:</strong> {product.storage_instructions || '—'}
+            </div>
+            <div className="extra-info-item">
+              <strong>Hạn sử dụng:</strong> {product.expiration_date || '—'}
             </div>
           </div>
 

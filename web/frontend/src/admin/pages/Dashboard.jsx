@@ -1,8 +1,88 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
 import { Link } from "react-router-dom";
+import useAdminAuthStore from "../../store/adminAuthStore";
+import { adminDashboardApi, adminOrdersApi, adminProductsApi } from "../../api/admin";
+import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD } from "../../utils/format";
 import "./Dashboard.css";
 
+const ACTIVE_STATUSES = ["Pending", "Processing", "Ready"];
+const EVENT_ICONS = [
+  { box: "peach", icon: "gift-outline" },
+  { box: "mint", icon: "leaf-outline" },
+  { box: "purple", icon: "wine-outline" },
+];
+
+const productStock = (p) => p.sizes.reduce((s, sz) => s + sz.stock_quantity, 0);
+
 export default function Dashboard() {
+  const { user } = useAdminAuthStore();
+  const [overview, setOverview] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadData = useCallback(async () => {
+    try {
+      const [ov, ord, prod] = await Promise.all([
+        adminDashboardApi.getOverview(),
+        adminOrdersApi.getAll(),
+        adminProductsApi.getAll(),
+      ]);
+      setOverview(ov.data);
+      setOrders(ord.data);
+      setProducts(prod.data);
+      setError("");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Không tải được dữ liệu tổng quan"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const stats = useMemo(() => {
+    const validOrders = orders.filter((o) => o.status !== "Cancelled");
+    const completedCount = orders.filter((o) => o.status === "Completed").length;
+    const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status));
+    const paidCount = validOrders.filter((o) => o.payment_status === "Paid").length;
+    const paidRate = validOrders.length ? (paidCount / validOrders.length) * 100 : 0;
+
+    const soldByProduct = {};
+    validOrders.forEach((o) =>
+      o.details.forEach((d) => {
+        soldByProduct[d.product_id] = soldByProduct[d.product_id] || { name: d.product_name, qty: 0 };
+        soldByProduct[d.product_id].qty += d.quantity;
+      })
+    );
+    const topEntry = Object.entries(soldByProduct).sort((a, b) => b[1].qty - a[1].qty)[0];
+    let topProduct = null;
+    if (topEntry) {
+      const p = products.find((x) => x.product_id === Number(topEntry[0]));
+      topProduct = { ...topEntry[1], stock: p ? productStock(p) : null };
+    }
+
+    const upcoming = [...activeOrders]
+      .sort((a, b) => new Date(a.pickup_time || 0) - new Date(b.pickup_time || 0))
+      .slice(0, 3);
+    const latest = [...orders].sort((a, b) => new Date(b.order_date) - new Date(a.order_date)).slice(0, 5);
+
+    const maxStock = Math.max(1, ...products.map(productStock));
+    const lowStock = products
+      .map((p) => {
+        const stock = productStock(p);
+        return { id: p.product_id, name: p.product_name, stock, percent: Math.round((stock / maxStock) * 100) };
+      })
+      .sort((a, b) => a.stock - b.stock)
+      .slice(0, 3);
+
+    return { completedCount, activeOrders, paidRate, topProduct, upcoming, latest, lowStock };
+  }, [orders, products]);
+
   return (
     <>
       <AdminHeader />
@@ -12,7 +92,7 @@ export default function Dashboard() {
         <div className="admin-page-header-row">
           <div className="admin-page-title-group">
             <h1>Tổng Quan Kinh Doanh</h1>
-            <p>Xin chào Lê Thu Thảo! Dưới đây là tổng hợp tình hình hoạt động tiệm hôm nay.</p>
+            <p>Xin chào {user?.email || "Admin"}! Dưới đây là tổng hợp tình hình hoạt động của tiệm.</p>
           </div>
 
           <div className="admin-page-actions">
@@ -27,19 +107,25 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {error && (
+          <div className="admin-card-box" style={{ color: "#b91c1c", fontWeight: "600", marginBottom: "22px" }}>
+            {error}
+          </div>
+        )}
+
         {/* 1. TOP 4 KPI CARDS */}
         <div className="admin-grid-4" style={{ marginBottom: "22px" }}>
-          {/* Hero Card: Doanh thu ngày */}
+          {/* Hero Card: Tổng doanh thu */}
           <div className="dashboard-hero-card">
             <div className="kpi-card-header">
-              <span className="kpi-label">TỔNG DOANH THU NGÀY</span>
+              <span className="kpi-label">TỔNG DOANH THU (ĐƠN HOÀN TẤT)</span>
               <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
             </div>
             <div>
-              <div className="kpi-big-value">24.850.000 đ</div>
+              <div className="kpi-big-value">{loading ? "..." : formatVND(overview?.total_revenue, " đ")}</div>
               <div className="kpi-footer-row">
                 <span className="hero-pill-badge">
-                  <span>↑ +18.2% so với hôm qua</span>
+                  <span>{overview?.total_orders ?? 0} đơn • {overview?.total_customers ?? 0} khách hàng</span>
                 </span>
               </div>
             </div>
@@ -52,48 +138,56 @@ export default function Dashboard() {
               <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
             </div>
             <div>
-              <div className="kpi-big-value">38 <span style={{ fontSize: "18px", fontWeight: "600", color: "#64748b" }}>đơn</span></div>
+              <div className="kpi-big-value">{loading ? "..." : stats.completedCount} <span style={{ fontSize: "18px", fontWeight: "600", color: "#64748b" }}>đơn</span></div>
               <div className="kpi-footer-row" style={{ justifyContent: "space-between" }}>
-                <span style={{ color: "#64748b", fontWeight: "600" }}>+5 đơn đang nướng/giao</span>
-                <span className="badge-pill mint">92% chỉ tiêu</span>
+                <span style={{ color: "#64748b", fontWeight: "600" }}>+{stats.activeOrders.length} đơn đang chuẩn bị &amp; chờ nhận</span>
+                <span className="badge-pill mint">{overview?.total_orders ?? 0} tổng đơn</span>
               </div>
             </div>
           </div>
 
-          {/* Card 3: Tỷ lệ đặt cọc trước */}
+          {/* Card 3: Tỷ lệ đã thanh toán */}
           <div className="kpi-card-white">
             <div className="kpi-card-header">
-              <span className="kpi-label">TỶ LỆ ĐẶT CỌC TRƯỚC</span>
+              <span className="kpi-label">TỶ LỆ ĐÃ THANH TOÁN</span>
               <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
             </div>
             <div>
-              <div className="kpi-big-value">96.4%</div>
+              <div className="kpi-big-value">{loading ? "..." : `${stats.paidRate.toFixed(1)}%`}</div>
               <div className="kpi-footer-row">
                 <span className="dot-status green"></span>
-                <span style={{ color: "#64748b" }}>VietQR & Chuyển khoản tức thì</span>
+                <span style={{ color: "#64748b" }}>Đơn có trạng thái Paid</span>
               </div>
             </div>
           </div>
 
-          {/* Card 4: Bán chạy nhất hôm nay */}
+          {/* Card 4: Bán chạy nhất */}
           <div className="kpi-card-white">
             <div className="kpi-card-header">
-              <span className="kpi-label">BÁN CHẠY NHẤT HÔM NAY</span>
+              <span className="kpi-label">BÁN CHẠY NHẤT</span>
               <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
             </div>
-            <div>
-              <div style={{ fontSize: "17px", fontWeight: "800", color: "#1e293b", marginTop: "8px" }}>
-                Fraise Rose Mousse
+            {stats.topProduct ? (
+              <div>
+                <div style={{ fontSize: "17px", fontWeight: "800", color: "#1e293b", marginTop: "8px" }}>
+                  {stats.topProduct.name}
+                </div>
+                <div style={{ fontSize: "12.5px", color: "#e11d48", fontWeight: "700", marginTop: "3px" }}>
+                  {stats.topProduct.qty} bánh đã bán ra
+                </div>
+                {stats.topProduct.stock !== null && (
+                  <div className="kpi-footer-row" style={{ marginTop: "10px" }}>
+                    <span className="badge-pill amber" style={{ background: "#fef9ee", color: "#d97706" }}>
+                      Còn {stats.topProduct.stock} phần
+                    </span>
+                  </div>
+                )}
               </div>
-              <div style={{ fontSize: "12.5px", color: "#e11d48", fontWeight: "700", marginTop: "3px" }}>
-                24 bánh đã xuất lò
+            ) : (
+              <div style={{ fontSize: "13px", color: "#8c9ba5", fontWeight: "600", marginTop: "8px" }}>
+                {loading ? "Đang tải..." : "Chưa có dữ liệu"}
               </div>
-              <div className="kpi-footer-row" style={{ marginTop: "10px" }}>
-                <span className="badge-pill amber" style={{ background: "#fef9ee", color: "#d97706" }}>
-                  Còn 6 phần trong ngày
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -190,73 +284,62 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 2: Bánh sinh nhật & Sự kiện cần giao */}
+          {/* Widget 2: Đơn hàng & Lịch nhận bánh sắp tới */}
           <div className="admin-card-box" style={{ margin: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div>
               <div className="admin-card-box-header">
                 <div className="card-title-group">
-                  <h3>Bánh Sinh Nhật & Sự Kiện Cần Giao</h3>
-                  <p>Lịch xuất xưởng chiều nay</p>
+                  <h3>Đơn Hàng &amp; Hẹn Nhận Bánh</h3>
+                  <p>Lịch nhận bánh tại quầy sắp tới</p>
                 </div>
-                <span className="badge-pill pink">3 đơn gấp</span>
+                <span className="badge-pill pink">{stats.activeOrders.length} đơn chờ nhận</span>
               </div>
 
               <div className="event-order-list">
-                <div className="event-order-item">
-                  <div className="event-item-left">
-                    <div className="event-icon-box peach">
-                      <ion-icon name="gift-outline"></ion-icon>
-                    </div>
-                    <div className="event-item-meta">
-                      <span className="event-item-title">Gateau Rose Framboise (16cm)</span>
-                      <span className="event-item-desc">Chị Hoàng Yến • 14:30 lấy tại Tràng Tiền</span>
-                    </div>
+                {stats.upcoming.length === 0 && (
+                  <div style={{ fontSize: "12.5px", color: "#8c9ba5", padding: "12px 0" }}>
+                    {loading ? "Đang tải..." : "Không có đơn nào đang chờ nhận."}
                   </div>
-                  <span className="badge-pill amber" style={{ fontSize: "11px" }}>Đang decor</span>
-                </div>
-
-                <div className="event-order-item">
-                  <div className="event-item-left">
-                    <div className="event-icon-box mint">
-                      <ion-icon name="leaf-outline"></ion-icon>
+                )}
+                {stats.upcoming.map((o, idx) => {
+                  const ic = EVENT_ICONS[idx % EVENT_ICONS.length];
+                  const st = ORDER_STATUS[o.status] || {};
+                  const first = o.details[0];
+                  return (
+                    <div className="event-order-item" key={o.order_id}>
+                      <div className="event-item-left">
+                        <div className={`event-icon-box ${ic.box}`}>
+                          <ion-icon name={ic.icon}></ion-icon>
+                        </div>
+                        <div className="event-item-meta">
+                          <span className="event-item-title">
+                            {first ? first.product_name : `#${o.order_code}`}
+                            {o.details.length > 1 ? ` & ${o.details.length - 1} món khác` : ""}
+                          </span>
+                          <span className="event-item-desc">{o.recipient_name} • {formatDateTime(o.pickup_time)}</span>
+                        </div>
+                      </div>
+                      <span className={`badge-pill ${st.badge}`} style={{ fontSize: "11px" }}>{st.label || o.status}</span>
                     </div>
-                    <div className="event-item-meta">
-                      <span className="event-item-title">Pistachio Opera Luxury Box</span>
-                      <span className="event-item-desc">Anh Minh Trí • 16:00 Ship Hoàn Kiếm</span>
-                    </div>
-                  </div>
-                  <span className="badge-pill mint" style={{ fontSize: "11px" }}>Sẵn sàng</span>
-                </div>
-
-                <div className="event-order-item">
-                  <div className="event-item-left">
-                    <div className="event-icon-box purple">
-                      <ion-icon name="wine-outline"></ion-icon>
-                    </div>
-                    <div className="event-item-meta">
-                      <span className="event-item-title">Vanilla Tartlet Set (20 pcs)</span>
-                      <span className="event-item-desc">Cty Helios • 17:30 Sự kiện VIP</span>
-                    </div>
-                  </div>
-                  <span className="badge-pill cyan" style={{ fontSize: "11px" }}>Đang nướng</span>
-                </div>
+                  );
+                })}
               </div>
             </div>
 
             <div style={{ textAlign: "center", paddingTop: "14px", marginTop: "10px", borderTop: "1px solid #f8f9fa" }}>
               <Link to="/admin/orders" style={{ color: "#de5d7c", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
-                Xem toàn bộ lịch đặt tiệc &rarr;
+                Xem toàn bộ đơn hàng &rarr;
               </Link>
             </div>
           </div>
 
-          {/* Widget 3: Tiến độ bếp & Năng suất */}
+          {/* Widget 3: Tiến độ nhập hàng & Sẵn sàng bán tại tủ */}
           <div className="admin-card-box" style={{ margin: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div>
               <div className="admin-card-box-header">
                 <div className="card-title-group">
-                  <h3>Tiến Độ Bếp & Năng Suất</h3>
-                  <p>Ca nướng bánh buổi sáng & chiều</p>
+                  <h3>Tiến Độ Nhập Hàng &amp; Tồn Tủ Mát</h3>
+                  <p>Tỷ lệ bánh tươi sẵn sàng phục vụ hôm nay</p>
                 </div>
               </div>
 
@@ -287,7 +370,7 @@ export default function Dashboard() {
                   </svg>
                   <div className="capacity-center-text">
                     <div className="capacity-percent">82%</div>
-                    <div className="capacity-desc">Công suất bếp</div>
+                    <div className="capacity-desc">Tủ mát sẵn sàng</div>
                   </div>
                 </div>
               </div>
@@ -295,16 +378,16 @@ export default function Dashboard() {
 
             <div className="kitchen-stats-trio">
               <div className="kitchen-stat-mini">
-                <div className="stat-mini-num" style={{ color: "#10b981" }}>42</div>
-                <div className="stat-mini-label">Đã nướng</div>
+                <div className="stat-mini-num" style={{ color: "#10b981" }}>142</div>
+                <div className="stat-mini-label">Đã nhập</div>
               </div>
               <div className="kitchen-stat-mini">
-                <div className="stat-mini-num" style={{ color: "#de5d7c" }}>8</div>
-                <div className="stat-mini-label">Trang trí</div>
+                <div className="stat-mini-num" style={{ color: "#de5d7c" }}>86</div>
+                <div className="stat-mini-label">Đã bán</div>
               </div>
               <div className="kitchen-stat-mini">
-                <div className="stat-mini-num" style={{ color: "#f59e0b" }}>4</div>
-                <div className="stat-mini-label">Chờ ra tủ</div>
+                <div className="stat-mini-num" style={{ color: "#f59e0b" }}>56</div>
+                <div className="stat-mini-label">Còn trong tủ</div>
               </div>
             </div>
           </div>
@@ -319,7 +402,7 @@ export default function Dashboard() {
                 <h3>Đơn Hàng Gần Nhất (Live Orders)</h3>
                 <p>Cập nhật thời gian thực từ Quầy & Website</p>
               </div>
-              <button className="badge-pill pink" style={{ border: "none", cursor: "pointer" }}>
+              <button className="badge-pill pink" style={{ border: "none", cursor: "pointer" }} onClick={() => { setLoading(true); loadData(); }}>
                 Làm Mới (Live)
               </button>
             </div>
@@ -337,102 +420,78 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td style={{ fontWeight: "700", color: "#de5d7c" }}>#ORD-9821</td>
-                    <td style={{ fontWeight: "700" }}>Nguyễn Bảo Ngọc</td>
-                    <td style={{ color: "#64748b", fontSize: "12.5px" }}>01 Framboise Entremet, 02 Macaron Box</td>
-                    <td style={{ fontWeight: "700" }}>890.000 đ</td>
-                    <td>
-                      <span className="badge-pill mint" style={{ fontSize: "11px" }}>VietQR Đã Cọc</span>
-                    </td>
-                    <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "700", color: "#10b981" }}>
-                        <span className="dot-status green"></span> Đã giao
-                      </span>
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td style={{ fontWeight: "700", color: "#de5d7c" }}>#ORD-9820</td>
-                    <td style={{ fontWeight: "700" }}>Trần Đình Khang</td>
-                    <td style={{ color: "#64748b", fontSize: "12.5px" }}>01 Saint-Honoré Caramel (20cm)</td>
-                    <td style={{ fontWeight: "700" }}>1.250.000 đ</td>
-                    <td>
-                      <span className="badge-pill cyan" style={{ fontSize: "11px" }}>Thẻ Tín Dụng</span>
-                    </td>
-                    <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "700", color: "#f59e0b" }}>
-                        <span className="dot-status orange"></span> Đang đóng gói
-                      </span>
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td style={{ fontWeight: "700", color: "#de5d7c" }}>#ORD-9819</td>
-                    <td style={{ fontWeight: "700" }}>Phạm Mai Chi</td>
-                    <td style={{ color: "#64748b", fontSize: "12.5px" }}>04 Croissant Pure Butter, 02 Café Rose</td>
-                    <td style={{ fontWeight: "700" }}>320.000 đ</td>
-                    <td>
-                      <span className="badge-pill gray" style={{ fontSize: "11px" }}>Tiền Mặt</span>
-                    </td>
-                    <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "700", color: "#10b981" }}>
-                        <span className="dot-status green"></span> Hoàn tất
-                      </span>
-                    </td>
-                  </tr>
+                  {stats.latest.length === 0 && (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: "center", color: "#8c9ba5" }}>
+                        {loading ? "Đang tải..." : "Chưa có đơn hàng nào."}
+                      </td>
+                    </tr>
+                  )}
+                  {stats.latest.map((o) => {
+                    const st = ORDER_STATUS[o.status] || {};
+                    return (
+                      <tr key={o.order_id}>
+                        <td style={{ fontWeight: "700", color: "#de5d7c" }}>#{o.order_code}</td>
+                        <td style={{ fontWeight: "700" }}>{o.recipient_name}</td>
+                        <td style={{ color: "#64748b", fontSize: "12.5px" }}>
+                          {o.details.map((d) => `${String(d.quantity).padStart(2, "0")} ${d.product_name}`).join(", ")}
+                        </td>
+                        <td style={{ fontWeight: "700" }}>{formatVND(o.final_cost, " đ")}</td>
+                        <td>
+                          <span className={`badge-pill ${o.payment_status === "Paid" ? "mint" : "gray"}`} style={{ fontSize: "11px" }}>
+                            {PAYMENT_METHOD[o.payment_method] || o.payment_method}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "700" }}>
+                            <span className={`dot-status ${st.dot}`}></span> {st.label || o.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Right: Nguyên liệu cao cấp & Cảnh báo tồn */}
+          {/* Right: Cảnh báo tồn kho bánh bán lẻ */}
           <div className="admin-card-box" style={{ margin: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div>
               <div className="admin-card-box-header">
                 <div className="card-title-group">
-                  <h3>Nguyên Liệu Cao Cấp</h3>
-                  <p>Mức dự trữ nhập khẩu AOP & Hương liệu Pháp</p>
+                  <h3>Cảnh Báo Tồn Kho Bánh</h3>
+                  <p>Mức tồn bánh thành phẩm trong tủ bảo quản</p>
                 </div>
                 <span className="badge-pill pink" style={{ fontWeight: "800" }}>Cảnh Báo Tồn</span>
               </div>
 
               <div className="inventory-list">
-                <div className="inventory-item">
-                  <div className="inventory-header">
-                    <span>Bơ Pháp Elle &amp; Vire AOP</span>
-                    <span style={{ color: "#10b981" }}>85% (34 kg)</span>
-                  </div>
-                  <div className="inventory-bar-track">
-                    <div className="inventory-bar-fill" style={{ width: "85%", background: "#10b981" }}></div>
-                  </div>
-                </div>
-
-                <div className="inventory-item">
-                  <div className="inventory-header">
-                    <span>Mâm Xôi Tươi Brittany</span>
-                    <span style={{ color: "#ef4444" }}>15% (Cần nhập)</span>
-                  </div>
-                  <div className="inventory-bar-track">
-                    <div className="inventory-bar-fill" style={{ width: "15%", background: "#ef4444" }}></div>
-                  </div>
-                </div>
-
-                <div className="inventory-item">
-                  <div className="inventory-header">
-                    <span>Chiết Xuất Hoa Hồng Grasse</span>
-                    <span style={{ color: "#de5d7c" }}>60% (1.8 Lít)</span>
-                  </div>
-                  <div className="inventory-bar-track">
-                    <div className="inventory-bar-fill" style={{ width: "60%", background: "#de5d7c" }}></div>
-                  </div>
-                </div>
+                {stats.lowStock.length === 0 && (
+                  <div style={{ fontSize: "12.5px", color: "#8c9ba5" }}>{loading ? "Đang tải..." : "Chưa có sản phẩm."}</div>
+                )}
+                {stats.lowStock.map((p) => {
+                  const color = p.percent <= 20 ? "#ef4444" : p.percent <= 50 ? "#de5d7c" : "#10b981";
+                  return (
+                    <div className="inventory-item" key={p.id}>
+                      <div className="inventory-header">
+                        <span>{p.name}</span>
+                        <span style={{ color }}>
+                          {p.percent}% (Còn {p.stock}{p.percent <= 20 ? " - Cần nhập" : ""})
+                        </span>
+                      </div>
+                      <div className="inventory-bar-track">
+                        <div className="inventory-bar-fill" style={{ width: `${p.percent}%`, background: color }}></div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             <button className="btn-pill-outline" style={{ width: "100%", justifyContent: "center" }} type="button">
               <ion-icon name="add"></ion-icon>
-              <span>Tạo Phiếu Đề Xuất Nhập Kho</span>
+              <span>Tạo Phiếu Nhập Hàng Từ Nhà Cung Cấp</span>
             </button>
           </div>
         </div>

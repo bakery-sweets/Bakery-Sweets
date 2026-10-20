@@ -1,19 +1,17 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
+import { adminUsersApi } from "../../api/admin";
+import { formatDate, apiErrorMessage } from "../../utils/format";
+
+const fullName = (u) => [u.first_name, u.last_name].filter(Boolean).join(" ");
 
 export default function UserList() {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-
-  const [users, setUsers] = useState([
-    { id: 1, username: "admin_sweets", email: "thuthao.admin@thesweets.com", role: "admin", status: "active", createdAt: "01/01/2024" },
-    { id: 2, username: "tuan_chef", email: "tuan.pastry@thesweets.com", role: "staff", status: "active", createdAt: "10/01/2024" },
-    { id: 3, username: "mai_cashier", email: "mai.counter@thesweets.com", role: "staff", status: "active", createdAt: "15/03/2024" },
-    { id: 4, username: "baongoc_vip", email: "baongoc99@gmail.com", role: "customer", status: "active", createdAt: "18/09/2026" },
-    { id: 5, username: "dinhkhang_vip", email: "dinhkhang@corporation.com", role: "customer", status: "active", createdAt: "19/09/2026" },
-    { id: 6, username: "spammer_bot", email: "auto_spam@tempmail.com", role: "customer", status: "locked", createdAt: "10/08/2026" },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [newUser, setNewUser] = useState({
     username: "",
@@ -22,32 +20,44 @@ export default function UserList() {
     role: "staff",
   });
 
-  const handleToggleLock = (id) => {
-    setUsers(users.map(u => {
-      if (u.id === id) {
-        return { ...u, status: u.status === "active" ? "locked" : "active" };
-      }
-      return u;
-    }));
+  const loadUsers = useCallback(async () => {
+    try {
+      const res = await adminUsersApi.getAll();
+      setUsers(res.data);
+      setError("");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Không tải được danh sách tài khoản"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  const handleToggleLock = async (phone) => {
+    try {
+      await adminUsersApi.toggleStatus(phone);
+      await loadUsers();
+    } catch (err) {
+      alert(apiErrorMessage(err, "Không đổi được trạng thái tài khoản"));
+    }
   };
 
   const handleCreate = (e) => {
     e.preventDefault();
-    const created = {
-      id: users.length + 1,
-      username: newUser.username,
-      email: newUser.email,
-      role: newUser.role,
-      status: "active",
-      createdAt: new Date().toLocaleDateString("vi-VN"),
-    };
-    setUsers([created, ...users]);
+    alert("Backend chưa hỗ trợ cấp tài khoản mới.");
     setShowModal(false);
     setNewUser({ username: "", email: "", password: "", role: "staff" });
   };
 
   const filtered = users.filter((u) => {
-    const matchSearch = u.username.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const keyword = searchTerm.toLowerCase();
+    const matchSearch =
+      u.phone.includes(keyword) ||
+      u.email.toLowerCase().includes(keyword) ||
+      fullName(u).toLowerCase().includes(keyword);
     const matchRole = roleFilter === "all" || u.role === roleFilter;
     return matchSearch && matchRole;
   });
@@ -77,7 +87,6 @@ export default function UserList() {
           {[
             { key: "all", label: "Tất Cả", count: users.length },
             { key: "admin", label: "Quản Trị (Admin)", count: users.filter(u => u.role === "admin").length },
-            { key: "staff", label: "Nhân Viên (Staff)", count: users.filter(u => u.role === "staff").length },
             { key: "customer", label: "Khách Hàng (Customer)", count: users.filter(u => u.role === "customer").length },
           ].map((r) => (
             <button
@@ -97,7 +106,7 @@ export default function UserList() {
               <ion-icon name="search-outline" style={{ color: "#94a3b8", fontSize: "17px" }}></ion-icon>
               <input
                 type="text"
-                placeholder="Tìm username, email tài khoản..."
+                placeholder="Tìm số điện thoại, email, họ tên..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{ border: "none", background: "transparent", outline: "none", fontSize: "13px", width: "100%", color: "#1e293b", fontFamily: "inherit" }}
@@ -121,21 +130,23 @@ export default function UserList() {
                 </tr>
               </thead>
               <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: "center", color: "#8c9ba5" }}>
+                      {loading ? "Đang tải..." : error || "Không có tài khoản nào."}
+                    </td>
+                  </tr>
+                )}
                 {filtered.map((u) => (
-                  <tr key={u.id}>
+                  <tr key={u.phone}>
                     <td>
-                      <div style={{ fontWeight: "700", color: "#1e293b" }}>{u.username}</div>
-                      <div style={{ fontSize: "12px", color: "#8c9ba5" }}>{u.email}</div>
+                      <div style={{ fontWeight: "700", color: "#1e293b" }}>{fullName(u) || u.phone}</div>
+                      <div style={{ fontSize: "12px", color: "#8c9ba5" }}>{u.phone} • {u.email}</div>
                     </td>
                     <td>
                       {u.role === "admin" && (
                         <span className="badge-pill pink" style={{ fontWeight: "800" }}>
                           <ion-icon name="shield-checkmark"></ion-icon> Quản Trị Viên
-                        </span>
-                      )}
-                      {u.role === "staff" && (
-                        <span className="badge-pill cyan" style={{ fontWeight: "700" }}>
-                          <ion-icon name="id-card-outline"></ion-icon> Nhân Viên
                         </span>
                       )}
                       {u.role === "customer" && (
@@ -145,7 +156,7 @@ export default function UserList() {
                       )}
                     </td>
                     <td>
-                      <span style={{ fontSize: "12.5px", color: "#64748b" }}>{u.createdAt}</span>
+                      <span style={{ fontSize: "12.5px", color: "#64748b" }}>{formatDate(u.created_at)}</span>
                     </td>
                     <td>
                       {u.status === "active" ? (
@@ -162,7 +173,7 @@ export default function UserList() {
                       {u.role !== "admin" ? (
                         <button
                           type="button"
-                          onClick={() => handleToggleLock(u.id)}
+                          onClick={() => handleToggleLock(u.phone)}
                           className="btn-pill-outline"
                           style={{
                             padding: "5px 12px",
@@ -270,7 +281,7 @@ export default function UserList() {
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                     style={{ width: "100%", padding: "10px 14px", borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "13.5px", outline: "none", boxSizing: "border-box" }}
                   >
-                    <option value="staff">Nhân Viên (Staff - Bếp/Quầy)</option>
+                    <option value="staff">Nhân Viên (Staff - Kho/Quầy bán hàng)</option>
                     <option value="admin">Quản Trị Viên (Admin)</option>
                   </select>
                 </div>

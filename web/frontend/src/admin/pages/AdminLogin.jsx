@@ -1,33 +1,36 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import useAuthStore from "../../store/authStore";
+import useAdminAuthStore from "../../store/adminAuthStore";
+import { adminAuthApi } from "../../api/admin";
+import { apiErrorMessage } from "../../utils/format";
 import "./AdminLogin.css";
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("123456");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const { setUser } = useAuthStore();
+  const [submitting, setSubmitting] = useState(false);
+  const { setUser } = useAdminAuthStore();
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setError("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!");
+      setError("Vui lòng nhập đầy đủ số điện thoại/email và mật khẩu!");
       return;
     }
 
-    // TODO: Nối API đăng nhập thực tế tại đây sau này:
-    // try {
-    //   const res = await api.post('/api/admin/login', { username, password });
-    //   setUser(res.data.user, res.data.token);
-    //   navigate('/admin');
-    // } catch (err) { setError(err.response?.data?.message || 'Đăng nhập thất bại'); }
-
-    // Mock Login (Tạm thời để thử nghiệm khi chưa có API)
-    setUser({ username: username.trim(), role: "admin" }, "mock-admin-token-12345");
-    navigate("/admin");
+    setSubmitting(true);
+    try {
+      const res = await adminAuthApi.login({ username: username.trim(), password });
+      setUser({ phone: res.phone, email: res.email, role: res.role }, res.access_token);
+      navigate("/admin");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Đăng nhập thất bại"));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -49,12 +52,12 @@ export default function AdminLogin() {
 
         <form onSubmit={handleLogin} className="admin-login-form">
           <div className="admin-form-group">
-            <label>Tên đăng nhập / Email</label>
+            <label>Số điện thoại / Email</label>
             <div className="admin-input-group">
               <ion-icon name="person-outline"></ion-icon>
               <input
                 type="text"
-                placeholder="Nhập tài khoản admin..."
+                placeholder="Nhập số điện thoại hoặc email..."
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setError(""); }}
                 required
@@ -90,16 +93,11 @@ export default function AdminLogin() {
             </label>
           </div>
 
-          <button type="submit" className="admin-login-submit">
-            <span>Đăng Nhập Quản Trị</span>
+          <button type="submit" className="admin-login-submit" disabled={submitting}>
+            <span>{submitting ? "Đang đăng nhập..." : "Đăng Nhập Quản Trị"}</span>
             <ion-icon name="arrow-forward-outline"></ion-icon>
           </button>
         </form>
-
-        <div className="admin-demo-hint">
-          <ion-icon name="information-circle-outline"></ion-icon>
-          <span>Tài khoản demo sẵn: <b>admin</b> / <b>123456</b> (Bấm đăng nhập để vào)</span>
-        </div>
 
         <div className="admin-login-footer">
           <Link to="/" className="back-to-store">

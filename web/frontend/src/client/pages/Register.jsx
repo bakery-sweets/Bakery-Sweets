@@ -1,6 +1,8 @@
 import './Auth.css';
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { clientAuthApi } from '../../api/client';
+import { apiErrorMessage } from '../../utils/format';
 
 export default function Register() {
   const [phone, setPhone] = useState('');
@@ -10,6 +12,7 @@ export default function Register() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [agree, setAgree] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   const navigate = useNavigate();
 
@@ -23,10 +26,22 @@ export default function Register() {
       alert("Vui lòng đồng ý với các điều khoản và điều kiện.");
       return;
     }
-    // Mock register
-    console.log("Registering:", { phone, email, password, firstName, lastName });
-    alert("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
-    navigate('/login');
+    setSubmitting(true);
+    try {
+      await clientAuthApi.register({
+        phone: phone.trim(),
+        email: email.trim(),
+        password,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+      });
+      alert("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
+      navigate('/login');
+    } catch (err) {
+      alert(apiErrorMessage(err, "Đăng ký thất bại, vui lòng thử lại."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputStyle = {
@@ -147,7 +162,7 @@ export default function Register() {
             <label htmlFor="agree" style={{ color: '#333', cursor: 'pointer', fontSize: '15px' }}>I agree to the terms & conditions</label>
           </div>
 
-          <button type="submit" style={{ 
+          <button type="submit" disabled={submitting} style={{ 
             width: '100%', 
             padding: '15px', 
             backgroundColor: '#1a2639', 

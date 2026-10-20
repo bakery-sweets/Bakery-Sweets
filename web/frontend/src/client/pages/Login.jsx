@@ -1,20 +1,35 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
+import useCartStore from '../../store/cartStore';
+import { clientAuthApi } from '../../api/client';
+import { apiErrorMessage } from '../../utils/format';
 
 export default function Login() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { setUser } = useAuthStore();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // Mock login
-    console.log("Logging in:", { phone, password });
-    setUser({ phone, name: phone, username: phone }, 'mock_token_123');
-    navigate('/');
+    setError('');
+    setSubmitting(true);
+    try {
+      const res = await clientAuthApi.login({ phone: phone.trim(), password });
+      setUser({ phone: res.phone, email: res.email, role: res.role }, res.access_token);
+      const me = await clientAuthApi.getProfile();
+      setUser(me.data, res.access_token);
+      await useCartStore.getState().syncAfterLogin();
+      navigate('/');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Đăng nhập thất bại, vui lòng thử lại.'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputStyle = {
@@ -49,7 +64,10 @@ export default function Login() {
         <h1 style={{ textAlign: 'center', color: '#1a2639', marginBottom: '35px', fontSize: '36px', fontWeight: 'bold' }}>Login</h1>
         
         <form onSubmit={handleLogin}>
-          
+          {error && (
+            <p style={{ color: '#b91c1c', background: '#fee2e2', padding: '10px 14px', borderRadius: '6px', marginBottom: '24px', fontSize: '14px' }}>{error}</p>
+          )}
+
           <div style={inputContainerStyle}>
             <input type="tel" placeholder="Phone number" value={phone} onChange={e => setPhone(e.target.value)} required style={inputStyle} />
             <svg style={iconStyle} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -68,7 +86,7 @@ export default function Login() {
             <Link to="#" style={{ color: '#333', textDecoration: 'none', fontSize: '15px' }}>Forgot Password</Link>
           </div>
 
-          <button type="submit" style={{ 
+          <button type="submit" disabled={submitting} style={{ 
             width: '100%', 
             padding: '15px', 
             backgroundColor: '#1a2639', 
@@ -77,10 +95,10 @@ export default function Login() {
             borderRadius: '6px', 
             fontSize: '18px', 
             fontWeight: '600', 
-            cursor: 'pointer',
+            cursor: submitting ? 'wait' : 'pointer',
             marginBottom: '20px'
           }}>
-            Login
+            {submitting ? 'Logging in...' : 'Login'}
           </button>
 
           <div style={{ textAlign: 'center', fontSize: '15px', color: '#333' }}>

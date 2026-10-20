@@ -1,32 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
+import { clientProductsApi } from '../../api/client';
+import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
 import './Home.css';
 
-const CATEGORIES = [
-  { id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' },
-  { id: 'MOUSSE', name: 'Mousse', icon: 'ice-cream-outline' },
-  { id: 'CROISSANT', name: 'Croissant', icon: 'restaurant-outline' },
-  { id: 'DRINK', name: 'Đồ uống', icon: 'cafe-outline' },
-];
+const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
 
 const BANNERS = ['/assets/Img/banner1.jpg', '/assets/Img/banner2.jpg'];
 
-// Mock data
-const mockProducts = [
-  { id: 1, name: 'Chocolate Mousse', price: 12.99, image: 'Mousse1.png', category: 'MOUSSE' },
-  { id: 2, name: 'Butter Croissant', price: 4.50, image: 'croissant1.png', category: 'CROISSANT' },
-  { id: 3, name: 'Strawberry Drink', price: 5.99, image: 'drink1.png', category: 'DRINK' },
-  { id: 4, name: 'Matcha Cake', price: 15.00, image: 'Mousse2.png', category: 'MOUSSE' },
-  { id: 5, name: 'Almond Croissant', price: 5.20, image: 'croissant2.png', category: 'CROISSANT' },
-  { id: 6, name: 'Peach Tea Drink', price: 4.80, image: 'drink2.png', category: 'DRINK' },
-  { id: 7, name: 'Mango Mousse', price: 13.50, image: 'Mousse3.png', category: 'MOUSSE' },
-  { id: 8, name: 'Chocolate Croissant', price: 5.50, image: 'croissant3.png', category: 'CROISSANT' },
-  { id: 9, name: 'Berry Mousse', price: 11.50, image: 'Mousse1.png', category: 'MOUSSE' },
-  { id: 10, name: 'Cheese Croissant', price: 4.90, image: 'croissant1.png', category: 'CROISSANT' },
-  { id: 11, name: 'Matcha Latte Drink', price: 5.20, image: 'drink1.png', category: 'DRINK' },
-  { id: 12, name: 'Tiramisu Mousse', price: 14.00, image: 'Mousse2.png', category: 'MOUSSE' },
-];
+// Size rẻ nhất của món, dùng cho nút "Thêm vào giỏ" nhanh ở trang chủ
+const cheapestSize = (product) =>
+  product.sizes.reduce((min, s) => (!min || Number(s.price) < Number(min.price) ? s : min), null);
 
 export default function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,24 +21,52 @@ export default function Home() {
   const { addItem } = useCartStore();
   const [addedId, setAddedId] = useState(null);
 
-  const handleAddToCart = (e, product) => {
+  // Dữ liệu sản phẩm & danh mục từ API
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([{ id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' }]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    Promise.all([clientProductsApi.getAll(), clientProductsApi.getCategories()])
+      .then(([productRes, categoryRes]) => {
+        setProducts(
+          productRes.data
+            .filter((p) => p.sizes.length > 0)
+            .map((p) => ({ ...p, price: Number(p.min_price) }))
+        );
+        setCategories([
+          { id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' },
+          ...categoryRes.data.map((c, idx) => ({
+            id: c.category_id,
+            name: c.category_name,
+            icon: CATEGORY_ICONS[idx % CATEGORY_ICONS.length],
+          })),
+        ]);
+      })
+      .catch((err) => setLoadError(apiErrorMessage(err, 'Không tải được danh sách bánh.')))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleAddToCart = async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(
-      {
-        product_id: product.id,
-        product_name: product.name,
-        image: `/assets/Img/${product.image || 'Mousse1.png'}`,
-      },
-      {
-        size_id: 1,
-        size_name: 'Tiêu chuẩn',
-        price: product.price,
-      },
-      1
-    );
-    setAddedId(product.id);
-    setTimeout(() => setAddedId(null), 1200);
+    const size = cheapestSize(product);
+    try {
+      await addItem(
+        {
+          product_id: product.product_id,
+          product_name: product.product_name,
+          image: imageUrl(product.image),
+        },
+        size,
+        1
+      );
+      setAddedId(product.product_id);
+      setTimeout(() => setAddedId(null), 1200);
+    } catch (err) {
+      alert(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
+    }
   };
 
   // Filter states
@@ -85,10 +98,10 @@ export default function Home() {
 
   // Filter & Sort Products
   const filteredProducts = useMemo(() => {
-    return mockProducts
+    return products
       .filter((p) => {
-        const matchesName = p.name.toLowerCase().includes(searchTerm.toLowerCase().trim());
-        const matchesCat = category === 'ALL' || p.category === category;
+        const matchesName = p.product_name.toLowerCase().includes(searchTerm.toLowerCase().trim());
+        const matchesCat = category === 'ALL' || p.category_id === category;
         const matchesMinPrice = minPrice === '' || p.price >= parseFloat(minPrice);
         const matchesMaxPrice = maxPrice === '' || p.price <= parseFloat(maxPrice);
         return matchesName && matchesCat && matchesMinPrice && matchesMaxPrice;
@@ -96,10 +109,12 @@ export default function Home() {
       .sort((a, b) => {
         if (sortBy === 'price-asc') return a.price - b.price;
         if (sortBy === 'price-desc') return b.price - a.price;
-        if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+        if (sortBy === 'name-asc') return a.product_name.localeCompare(b.product_name);
         return 0;
       });
-  }, [searchTerm, category, minPrice, maxPrice, sortBy]);
+  }, [products, searchTerm, category, minPrice, maxPrice, sortBy]);
+
+  const categoryName = (id) => categories.find((c) => c.id === id)?.name || id;
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -205,11 +220,11 @@ export default function Home() {
                   Danh mục sản phẩm
                 </label>
                 <div className="filter-category-list">
-                  {CATEGORIES.map((cat) => {
+                  {categories.map((cat) => {
                     const count =
                       cat.id === 'ALL'
-                        ? mockProducts.length
-                        : mockProducts.filter((p) => p.category === cat.id).length;
+                        ? products.length
+                        : products.filter((p) => p.category_id === cat.id).length;
                     const isActive = category === cat.id;
                     return (
                       <button
@@ -236,7 +251,7 @@ export default function Home() {
               <div className="filter-group">
                 <label className="filter-label">
                   <ion-icon name="pricetag-outline"></ion-icon>
-                  Khoảng giá ($)
+                  Khoảng giá (₫)
                 </label>
                 <div className="price-inputs-row">
                   <input
@@ -268,24 +283,24 @@ export default function Home() {
                 <div className="price-preset-chips">
                   <button
                     type="button"
-                    className={`price-chip ${minPrice === '' && maxPrice === '5' ? 'active' : ''}`}
-                    onClick={() => handlePricePreset('', '5')}
+                    className={`price-chip ${minPrice === '' && maxPrice === '50000' ? 'active' : ''}`}
+                    onClick={() => handlePricePreset('', '50000')}
                   >
-                    Dưới $5
+                    Dưới 50k
                   </button>
                   <button
                     type="button"
-                    className={`price-chip ${minPrice === '5' && maxPrice === '10' ? 'active' : ''}`}
-                    onClick={() => handlePricePreset('5', '10')}
+                    className={`price-chip ${minPrice === '50000' && maxPrice === '150000' ? 'active' : ''}`}
+                    onClick={() => handlePricePreset('50000', '150000')}
                   >
-                    $5 - $10
+                    50k - 150k
                   </button>
                   <button
                     type="button"
-                    className={`price-chip ${minPrice === '10' && maxPrice === '' ? 'active' : ''}`}
-                    onClick={() => handlePricePreset('10', '')}
+                    className={`price-chip ${minPrice === '150000' && maxPrice === '' ? 'active' : ''}`}
+                    onClick={() => handlePricePreset('150000', '')}
                   >
-                    Trên $10
+                    Trên 150k
                   </button>
                 </div>
               </div>
@@ -318,7 +333,7 @@ export default function Home() {
                 <h2 className="products-header-title">
                   {category === 'ALL'
                     ? 'Tất cả bánh tươi hôm nay'
-                    : `Bánh ${CATEGORIES.find((c) => c.id === category)?.name || category}`}
+                    : categoryName(category)}
                 </h2>
                 <span className="products-count-badge">
                   {filteredProducts.length} món
@@ -336,13 +351,13 @@ export default function Home() {
                   )}
                   {category !== 'ALL' && (
                     <span className="active-filter-tag">
-                      {category}
+                      {categoryName(category)}
                       <button onClick={() => setCategory('ALL')}>×</button>
                     </span>
                   )}
                   {(minPrice || maxPrice) && (
                     <span className="active-filter-tag">
-                      Giá: ${minPrice || '0'} - ${maxPrice || '∞'}
+                      Giá: {minPrice ? formatVND(minPrice) : '0₫'} - {maxPrice ? formatVND(maxPrice) : '∞'}
                       <button onClick={() => { setMinPrice(''); setMaxPrice(''); }}>×</button>
                     </span>
                   )}
@@ -354,7 +369,15 @@ export default function Home() {
             </div>
 
             {/* LƯỚI SẢN PHẨM */}
-            {filteredProducts.length === 0 ? (
+            {loading ? (
+              <div className="home-no-products">
+                <h3>Đang tải danh sách bánh...</h3>
+              </div>
+            ) : loadError ? (
+              <div className="home-no-products">
+                <h3>{loadError}</h3>
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="home-no-products">
                 <ion-icon name="search-outline" className="no-result-icon"></ion-icon>
                 <h3>Không tìm thấy món bánh nào!</h3>
@@ -370,32 +393,32 @@ export default function Home() {
             ) : (
               <div className="home-product-grid">
                 {filteredProducts.map((product) => (
-                  <div key={product.id} className="home-product-card">
-                    <Link to={`/product/${product.id}`} className="home-product-link">
+                  <div key={product.product_id} className="home-product-card">
+                    <Link to={`/product/${product.product_id}`} className="home-product-link">
                       <div className="home-product-img-wrap">
                         <img
-                          src={`/assets/Img/${product.image || 'Mousse1.png'}`}
-                          alt={product.name}
+                          src={imageUrl(product.image)}
+                          alt={product.product_name}
                           className="home-product-img"
                           onError={(e) => {
                             e.target.src = '/assets/Img/Sweets1.png';
                           }}
                         />
-                        <span className="product-category-tag">{product.category}</span>
+                        <span className="product-category-tag">{product.category_name}</span>
                       </div>
                       <div className="home-product-info">
-                        <h3 className="home-product-title">{product.name}</h3>
+                        <h3 className="home-product-title">{product.product_name}</h3>
                         <div className="product-card-bottom">
-                          <p className="home-product-price">${product.price.toFixed(2)}</p>
+                          <p className="home-product-price">{formatVND(product.price)}</p>
                           <button
                             type="button"
-                            className={`product-expand-cart-btn ${addedId === product.id ? 'added' : ''}`}
+                            className={`product-expand-cart-btn ${addedId === product.product_id ? 'added' : ''}`}
                             onClick={(e) => handleAddToCart(e, product)}
                             title="Thêm vào giỏ hàng"
                           >
-                            <ion-icon name={addedId === product.id ? "checkmark-circle" : "bag-add-outline"}></ion-icon>
+                            <ion-icon name={addedId === product.product_id ? "checkmark-circle" : "bag-add-outline"}></ion-icon>
                             <span className="cart-btn-text">
-                              {addedId === product.id ? "Đã thêm!" : "Thêm vào giỏ"}
+                              {addedId === product.product_id ? "Đã thêm!" : "Thêm vào giỏ"}
                             </span>
                           </button>
                         </div>

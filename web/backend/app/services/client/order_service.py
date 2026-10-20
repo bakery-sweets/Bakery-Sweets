@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional
 from decimal import Decimal
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.order import Order, OrderDetail, Cart, OrderStatusLog
 from app.models.product import ProductSize
@@ -10,76 +11,75 @@ class ClientOrderService:
     @staticmethod
     def create_order(db: Session, customer_id: int, data: CheckoutRequest) -> Order:
         order_code = f"DH{uuid.uuid4().hex[:6].upper()}"
-        total_quantity = 0
-        total_cost = Decimal("0.00")
-        details_to_create = []
 
         if data.items:
             items_source = data.items
         else:
-            cart_items = db.query(Cart).filter(Cart.customer_id == customer_id).all()
-            items_source = cart_items
+            items_source = db.query(Cart).filter(Cart.customer_id == customer_id).all()
 
+        # order_detail có khóa chính (order_id, product_id, size_id) nên gộp các dòng trùng
+        merged: dict[tuple[int, int], int] = {}
         for item in items_source:
+            key = (item.product_id, item.size_id)
+            merged[key] = merged.get(key, 0) + item.quantity
+
+        if not merged:
+            raise HTTPException(status_code=400, detail="Giỏ hàng đang trống")
+
+        total_quantity = 0
+        total_cost = Decimal("0.00")
+        details_to_create = []
+
+        for (product_id, size_id), quantity in merged.items():
             ps = db.query(ProductSize).filter(
-                ProductSize.product_id == item.product_id,
-                ProductSize.size_id == item.size_id
+                ProductSize.product_id == product_id,
+                ProductSize.size_id == size_id
             ).first()
+            if not ps:
+                raise HTTPException(status_code=400, detail=f"Sản phẩm #{product_id} không có kích cỡ #{size_id}")
 
-            price = ps.price if ps else Decimal("0.00")
-            item_total = price * item.quantity
-            total_quantity += item.quantity
-            total_cost += item_total
-
+            total_quantity += quantity
+            total_cost += ps.price * quantity
             details_to_create.append({
-                "product_id": item.product_id,
-                "size_id": item.size_id,
-                "quantity": item.quantity,
-                "unit_price": price,
-                "total_price": item_total,
+                "product_id": product_id,
+                "size_id": size_id,
+                "quantity": quantity,
+                "price": ps.price,
             })
 
-        shipping_fee = Decimal("2.50") if total_cost > 0 else Decimal("0.00")
-        final_cost = total_cost + shipping_fee
+        discount_amount = Decimal("0.00")
+        final_cost = total_cost - discount_amount
 
         order = Order(
             order_code=order_code,
             customer_id=customer_id,
             recipient_name=data.recipient_name,
             recipient_phone=data.recipient_phone,
-            shipping_address=data.shipping_address,
-            shipping_city=data.shipping_city,
-            shipping_fee=shipping_fee,
+            pickup_time=data.pickup_time,
             notes=data.notes,
+            discount_amount=discount_amount,
             total_quantity=total_quantity,
             total_cost=total_cost,
             final_cost=final_cost,
             payment_method=data.payment_method,
-            payment_status="Unpaid" if data.payment_method == "COD" else "Paid",
+            # Chưa có cổng xác nhận thanh toán nên mọi đơn mới đều là Unpaid
+            payment_status="Unpaid",
             status="Pending",
         )
         db.add(order)
         db.flush()
 
         for d in details_to_create:
-            detail = OrderDetail(
-                order_id=order.order_id,
-                product_id=d["product_id"],
-                size_id=d["size_id"],
-                quantity=d["quantity"],
-                unit_price=d["unit_price"],
-                total_price=d["total_price"],
-            )
-            db.add(detail)
+            db.add(OrderDetail(order_id=order.order_id, **d))
 
         # Log trạng thái khởi tạo
-        log = OrderStatusLog(
+        db.add(OrderStatusLog(
             order_id=order.order_id,
+            changed_by="Hệ thống",
             old_status=None,
             new_status="Pending",
             note="Khách hàng tạo đơn hàng mới",
-        )
-        db.add(log)
+        ))
 
         # Xóa giỏ hàng sau khi đặt thành công
         db.query(Cart).filter(Cart.customer_id == customer_id).delete()

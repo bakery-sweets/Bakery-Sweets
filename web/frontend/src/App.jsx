@@ -18,8 +18,6 @@ import ProductList from "./admin/pages/ProductList";
 import ProductForm from "./admin/pages/ProductForm";
 import OrderList from "./admin/pages/OrderList";
 import UserList from "./admin/pages/UserList";
-import EmployeeList from "./admin/pages/EmployeeList";
-import EmployeeForm from "./admin/pages/EmployeeForm";
 import Statistical from "./admin/pages/Statistical";
 
 function App() {
@@ -49,9 +47,6 @@ function App() {
             <Route path="products/add" element={<ProductForm />} />
             <Route path="products/edit/:id" element={<ProductForm />} />
             <Route path="orders" element={<OrderList />} />
-            <Route path="employees" element={<EmployeeList />} />
-            <Route path="employees/add" element={<EmployeeForm />} />
-            <Route path="employees/edit/:id" element={<EmployeeForm />} />
             <Route path="users" element={<UserList />} />
             <Route path="statistical" element={<Statistical />} />
           </Route>

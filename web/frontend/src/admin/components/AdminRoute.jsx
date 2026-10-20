@@ -1,11 +1,11 @@
 import { Navigate, Outlet } from "react-router-dom";
-import useAuthStore from "../../store/authStore";
+import useAdminAuthStore from "../../store/adminAuthStore";
 
 export default function AdminRoute() {
-  const { user } = useAuthStore();
+  const { user, token } = useAdminAuthStore();
 
   // Kiểm tra nếu chưa đăng nhập hoặc không phải admin -> Đẩy sang trang /admin/login
-  if (!user || user.role !== "admin") {
+  if (!token || user?.role !== "admin") {
     return <Navigate to="/admin/login" replace />;
   }
 

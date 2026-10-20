@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
+from app.api.client.auth import to_profile_out
 from app.core.security import verify_password, get_password_hash
 from app.models.user import User
 from app.schemas.client.auth import ClientProfileOut
@@ -13,8 +14,6 @@ router = APIRouter()
 class ProfileUpdateRequest(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    phone: Optional[str] = None
-    gender: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
@@ -34,24 +33,10 @@ def update_profile(
         cust.first_name = data.first_name
     if data.last_name is not None:
         cust.last_name = data.last_name
-    if data.phone is not None:
-        cust.phone = data.phone
-    if data.gender is not None:
-        cust.gender = data.gender
 
     db.commit()
-    db.refresh(cust)
-
-    profile = ClientProfileOut(
-        user_name=user.user_name,
-        email=user.email,
-        first_name=cust.first_name,
-        last_name=cust.last_name,
-        phone=cust.phone,
-        gender=cust.gender,
-        loyalty_points=cust.loyalty_points,
-    )
-    return ResponseBase(message="Cập nhật thông tin thành công", data=profile)
+    db.refresh(user)
+    return ResponseBase(message="Cập nhật thông tin thành công", data=to_profile_out(user))
 
 @router.post("/change-password", response_model=ResponseBase, summary="Đổi mật khẩu")
 def change_password(

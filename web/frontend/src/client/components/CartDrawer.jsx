@@ -1,6 +1,7 @@
 ﻿import useCartStore from "../../store/cartStore";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
+import { formatVND, apiErrorMessage } from "../../utils/format";
 import "./CartDrawer.css";
 
 export default function CartDrawer() {
@@ -13,6 +14,8 @@ export default function CartDrawer() {
     if (!user) { navigate("/login"); return; }
     navigate("/pay");
   };
+
+  const run = (action) => action().catch((err) => alert(apiErrorMessage(err, "Không cập nhật được giỏ hàng.")));
 
   if (!isOpen) return null;
 
@@ -33,13 +36,13 @@ export default function CartDrawer() {
               <div className="cart-item-details">
                 <p>{item.product_name} - {item.size_name}</p>
                 <div className="qty-controls">
-                  <button onClick={() => updateQty(item.product_id, item.size_id, item.quantity - 1)}>-</button>
+                  <button onClick={() => run(() => updateQty(item.product_id, item.size_id, item.quantity - 1))}>-</button>
                   <span>{item.quantity}</span>
-                  <button onClick={() => updateQty(item.product_id, item.size_id, item.quantity + 1)}>+</button>
+                  <button onClick={() => run(() => updateQty(item.product_id, item.size_id, item.quantity + 1))}>+</button>
                 </div>
-                <p>{(item.price * item.quantity).toLocaleString("vi-VN")} VND</p>
+                <p>{formatVND(item.price * item.quantity)}</p>
               </div>
-              <button className="remove-btn" onClick={() => removeItem(item.product_id, item.size_id)}>
+              <button className="remove-btn" onClick={() => run(() => removeItem(item.product_id, item.size_id))}>
                 <ion-icon name="trash-outline"></ion-icon>
               </button>
             </div>
@@ -49,7 +52,7 @@ export default function CartDrawer() {
           <div className="cart-footer">
             <div className="cart-total">
               <span>Total:</span>
-              <strong>{totalCost().toLocaleString("vi-VN")} VND</strong>
+              <strong>{formatVND(totalCost())}</strong>
             </div>
             <button className="checkout-btn" onClick={handleCheckout}>Checkout</button>
           </div>

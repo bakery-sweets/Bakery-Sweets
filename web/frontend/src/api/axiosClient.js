@@ -1,5 +1,7 @@
 import axios from "axios";
 import BASE_URL from "./config";
+import useAuthStore from "../store/authStore";
+import useAdminAuthStore from "../store/adminAuthStore";
 
 const axiosClient = axios.create({
   baseURL: BASE_URL,
@@ -9,33 +11,31 @@ const axiosClient = axios.create({
   timeout: 10000,
 });
 
+// API /admin/* dùng token quản trị, còn lại dùng token khách hàng
+const authStoreFor = (url = "") => (url.startsWith("/admin") ? useAdminAuthStore : useAuthStore);
+
 // Request Interceptor: Tự động đính kèm Bearer JWT Token vào header
 axiosClient.interceptors.request.use(
   (config) => {
-    try {
-      const authData = localStorage.getItem("auth-storage");
-      if (authData) {
-        const parsed = JSON.parse(authData);
-        const token = parsed?.state?.token;
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      }
-    } catch {
-      // Bỏ qua lỗi đọc localStorage nếu có
+    const token = authStoreFor(config.url).getState().token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Trả về data trực tiếp hoặc xử lý lỗi tập trung
+// Response Interceptor: Trả về data trực tiếp, token hết hạn thì đăng xuất phiên tương ứng
 axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      // Có thể kích hoạt logout hoặc redirect nếu token hết hạn
-      console.warn("Phiên đăng nhập đã hết hạn hoặc không có quyền truy cập.");
+      const store = authStoreFor(error.config?.url);
+      if (store.getState().token) {
+        console.warn("Phiên đăng nhập đã hết hạn hoặc không có quyền truy cập.");
+        store.getState().logout();
+      }
     }
     return Promise.reject(error);
   }

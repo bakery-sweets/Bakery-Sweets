@@ -33,6 +33,7 @@ def _to_client_product_out(p) -> ClientProductOut:
         category_name=p.category.category_name if p.category else None,
         status=p.status,
         ingredients=p.ingredients,
+        expiration_date=p.expiration_date,
         storage_instructions=p.storage_instructions,
         image=p.image,
         min_price=min_price,

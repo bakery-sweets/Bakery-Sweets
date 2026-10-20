@@ -26,6 +26,9 @@ def _to_product_out(p) -> AdminProductOut:
         category_id=p.category_id,
         category_name=p.category.category_name if p.category else None,
         status=p.status,
+        ingredients=p.ingredients,
+        expiration_date=p.expiration_date,
+        storage_instructions=p.storage_instructions,
         image=p.image,
         sizes=sizes_out,
     )

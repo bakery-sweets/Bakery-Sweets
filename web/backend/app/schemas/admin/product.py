@@ -40,5 +40,8 @@ class AdminProductOut(BaseModel):
     category_id: Optional[int] = None
     category_name: Optional[str] = None
     status: str
+    ingredients: Optional[str] = None
+    expiration_date: Optional[str] = None
+    storage_instructions: Optional[str] = None
     image: Optional[str] = None
     sizes: List[ProductSizeOut] = []

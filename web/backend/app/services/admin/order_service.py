@@ -15,7 +15,7 @@ class AdminOrderService:
         return db.query(Order).filter(Order.order_id == order_id).first()
 
     @staticmethod
-    def update_status(db: Session, order_id: int, new_status: str, admin_username: str, note: Optional[str] = None) -> Optional[Order]:
+    def update_status(db: Session, order_id: int, new_status: str, changed_by: str, note: Optional[str] = None) -> Optional[Order]:
         order = db.query(Order).filter(Order.order_id == order_id).first()
         if not order:
             return None
@@ -25,7 +25,7 @@ class AdminOrderService:
 
         log = OrderStatusLog(
             order_id=order.order_id,
-            changed_by=admin_username,
+            changed_by=changed_by,
             old_status=old_status,
             new_status=new_status,
             note=note,

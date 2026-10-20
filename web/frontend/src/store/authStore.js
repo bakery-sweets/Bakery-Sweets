@@ -1,6 +1,7 @@
 ﻿import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+// Phiên đăng nhập của khách hàng (trang bán hàng). Admin dùng adminAuthStore riêng.
 const useAuthStore = create(
   persist(
     (set) => ({
@@ -8,10 +9,6 @@ const useAuthStore = create(
       token: null,
       setUser: (user, token) => set({ user, token }),
       logout: () => set({ user: null, token: null }),
-      isLoggedIn: () => {
-        const state = useAuthStore.getState();
-        return !!state.token;
-      },
     }),
     { name: "auth-storage" }
   )

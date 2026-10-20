@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -9,13 +10,13 @@ from app.schemas.common import ResponseBase
 router = APIRouter()
 
 class AdminUserItemOut(BaseModel):
-    user_name: str
+    phone: str
     email: str
     role: str
     status: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    phone: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 @router.get("", response_model=ResponseBase[List[AdminUserItemOut]], summary="Danh sách tài khoản")
 def list_users(
@@ -26,34 +27,28 @@ def list_users(
     query = db.query(User)
     if role and role != "all":
         query = query.filter(User.role == role)
-    users = query.all()
+    users = query.order_by(User.created_at.desc()).all()
 
     data = []
     for u in users:
-        fn, ln, ph = None, None, None
-        if u.customer:
-            fn, ln, ph = u.customer.first_name, u.customer.last_name, u.customer.phone
-        elif u.employee:
-            fn, ln, ph = u.employee.first_name, u.employee.last_name, u.employee.phone
-
         data.append(AdminUserItemOut(
-            user_name=u.user_name,
+            phone=u.phone,
             email=u.email,
             role=u.role,
             status=u.status,
-            first_name=fn,
-            last_name=ln,
-            phone=ph,
+            first_name=u.customer.first_name if u.customer else None,
+            last_name=u.customer.last_name if u.customer else None,
+            created_at=u.created_at,
         ))
     return ResponseBase(data=data)
 
-@router.patch("/{user_name}/status", response_model=ResponseBase, summary="Khóa / Mở khóa tài khoản người dùng")
+@router.patch("/{phone}/status", response_model=ResponseBase, summary="Khóa / Mở khóa tài khoản người dùng")
 def toggle_user_status(
-    user_name: str,
+    phone: str,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ):
-    user = db.query(User).filter(User.user_name == user_name).first()
+    user = db.query(User).filter(User.phone == phone).first()
     if not user:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
 

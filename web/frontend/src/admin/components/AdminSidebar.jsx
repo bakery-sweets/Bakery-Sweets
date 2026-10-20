@@ -1,10 +1,10 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import useAuthStore from "../../store/authStore";
+import useAdminAuthStore from "../../store/adminAuthStore";
 import useAdminUIStore from "../../store/adminUIStore";
 import "./AdminSidebar.css";
 
 export default function AdminSidebar() {
-  const { logout } = useAuthStore();
+  const { logout } = useAdminAuthStore();
   const { sidebarOpen, closeSidebar } = useAdminUIStore();
   const navigate = useNavigate();
 
@@ -16,10 +16,9 @@ export default function AdminSidebar() {
 
   const navItems = [
     { to: "/admin", label: "Tổng Quan", icon: "grid-outline", end: true },
-    { to: "/admin/products", label: "Thực Đơn", icon: "book-outline", badge: "48+" },
-    { to: "/admin/orders", label: "Lịch Đặt Bánh", icon: "calendar-outline" },
+    { to: "/admin/products", label: "Danh Mục Bánh", icon: "book-outline", badge: "48+" },
+    { to: "/admin/orders", label: "Quản Lý Đơn Hàng", icon: "receipt-outline" },
     { to: "/admin/statistical", label: "Báo Cáo Doanh Thu", icon: "bar-chart-outline" },
-    { to: "/admin/employees", label: "Nhân Sự & Ca Kíp", icon: "people-outline" },
     { to: "/admin/users", label: "Tài Khoản & Quyền", icon: "shield-checkmark-outline" },
   ];
 

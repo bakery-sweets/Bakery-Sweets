@@ -1,18 +1,13 @@
-import useAuthStore from "../../store/authStore";
+import useAdminAuthStore from "../../store/adminAuthStore";
 import useAdminUIStore from "../../store/adminUIStore";
 import "./AdminHeader.css";
 
 export default function AdminHeader() {
-  const { user } = useAuthStore();
+  const { user } = useAdminAuthStore();
   const { toggleSidebar } = useAdminUIStore();
 
-  const displayName = user?.user_name || "Lê Thu Thảo";
-  const initials = displayName
-    .split(" ")
-    .map((w) => w[0])
-    .slice(-2)
-    .join("")
-    .toUpperCase() || "LT";
+  const displayName = user?.email || user?.phone || "Admin";
+  const initials = (user?.email ? user.email.split("@")[0] : displayName).slice(0, 2).toUpperCase();
 
   return (
     <header className="admin-header">

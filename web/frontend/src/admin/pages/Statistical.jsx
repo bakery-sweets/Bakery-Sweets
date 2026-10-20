@@ -1,24 +1,115 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
+import { adminOrdersApi, adminProductsApi } from "../../api/admin";
+import { formatVND, formatDate, apiErrorMessage } from "../../utils/format";
+
+const DAY_LABELS = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+const CATEGORY_COLORS = ["#de5d7c", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"];
+
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+const startOfPeriod = (key, now) => {
+  const d = startOfDay(now);
+  if (key === "week") d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  if (key === "month") d.setDate(1);
+  if (key === "quarter") d.setMonth(Math.floor(d.getMonth() / 3) * 3, 1);
+  if (key === "year") d.setMonth(0, 1);
+  return d;
+};
+
+const shortMoney = (v) => {
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${Math.round(v / 1e3)}K`;
+  return String(v);
+};
 
 export default function Statistical() {
   const [activePeriod, setActivePeriod] = useState("week");
+  const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const now = useMemo(() => new Date(), []);
 
   const periods = [
     { key: "today", label: "Hôm Nay" },
     { key: "week", label: "Tuần Này" },
     { key: "month", label: "Tháng Này" },
     { key: "quarter", label: "Quý Này" },
-    { key: "year", label: "Năm 2026" },
+    { key: "year", label: `Năm ${now.getFullYear()}` },
   ];
+  const periodLabel = periods.find((p) => p.key === activePeriod)?.label || "";
 
-  const topCakes = [
-    { rank: 1, name: "Fraise Rose Mousse", category: "Mousse", sales: 248, revenue: "33.480.000 đ", percent: 92, trend: "+18%" },
-    { rank: 2, name: "Tiramisu Mousse", category: "Mousse", sales: 195, revenue: "27.300.000 đ", percent: 78, trend: "+12%" },
-    { rank: 3, name: "Plain Butter Croissant", category: "Croissant", sales: 340, revenue: "11.900.000 đ", percent: 65, trend: "+8%" },
-    { rank: 4, name: "Dinosaur Almond Croissant", category: "Croissant", sales: 165, revenue: "9.075.000 đ", percent: 52, trend: "+15%" },
-    { rank: 5, name: "Matcha Latte Cake", category: "Mousse", sales: 98, revenue: "13.720.000 đ", percent: 40, trend: "-4%" },
-  ];
+  useEffect(() => {
+    Promise.all([adminOrdersApi.getAll(), adminProductsApi.getAll()])
+      .then(([ord, prod]) => {
+        setOrders(ord.data);
+        setProducts(prod.data);
+      })
+      .catch((err) => setError(apiErrorMessage(err, "Không tải được dữ liệu báo cáo")))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Doanh thu chỉ tính đơn Completed (giống định nghĩa của /admin/dashboard/overview)
+  const completedOrders = useMemo(() => orders.filter((o) => o.status === "Completed"), [orders]);
+
+  const report = useMemo(() => {
+    const periodStart = startOfPeriod(activePeriod, now);
+    const inPeriod = completedOrders.filter((o) => new Date(o.order_date) >= periodStart);
+    const revenue = inPeriod.reduce((s, o) => s + Number(o.final_cost), 0);
+    const itemsSold = inPeriod.reduce((s, o) => s + o.total_quantity, 0);
+
+    const categoryOf = {};
+    products.forEach((p) => { categoryOf[p.product_id] = p.category_name || "Khác"; });
+
+    const byCategory = {};
+    const byProduct = {};
+    inPeriod.forEach((o) =>
+      o.details.forEach((d) => {
+        const lineTotal = Number(d.total_price);
+        const cat = categoryOf[d.product_id] || "Khác";
+        byCategory[cat] = (byCategory[cat] || 0) + lineTotal;
+        byProduct[d.product_id] = byProduct[d.product_id] || { name: d.product_name, category: cat, sales: 0, revenue: 0 };
+        byProduct[d.product_id].sales += d.quantity;
+        byProduct[d.product_id].revenue += lineTotal;
+      })
+    );
+    const categoryTotal = Object.values(byCategory).reduce((s, v) => s + v, 0);
+    const categoryShare = Object.entries(byCategory)
+      .map(([name, value]) => ({ name, value, percent: categoryTotal ? Math.round((value / categoryTotal) * 100) : 0 }))
+      .sort((a, b) => b.value - a.value);
+
+    const topProducts = Object.values(byProduct)
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 5)
+      .map((p, idx) => ({ ...p, rank: idx + 1 }));
+
+    return { periodStart, count: inPeriod.length, revenue, itemsSold, categoryShare, topProducts };
+  }, [activePeriod, completedOrders, products, now]);
+
+  // Biểu đồ 7 ngày gần nhất (tính đến hôm nay), không phụ thuộc bộ lọc kỳ
+  const last7Days = useMemo(() => {
+    const today = startOfDay(now);
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (6 - i));
+      return { date: d, rev: 0 };
+    });
+    completedOrders.forEach((o) => {
+      const od = startOfDay(new Date(o.order_date)).getTime();
+      const slot = days.find((d) => d.date.getTime() === od);
+      if (slot) slot.rev += Number(o.final_cost);
+    });
+    const max = Math.max(...days.map((d) => d.rev));
+    return days.map((d) => ({
+      day: DAY_LABELS[d.date.getDay()],
+      rev: d.rev,
+      h: max ? Math.max(4, Math.round((d.rev / max) * 100)) : 4,
+      isPeak: max > 0 && d.rev === max,
+    }));
+  }, [completedOrders, now]);
+  const peakDay = last7Days.find((d) => d.isPeak);
 
   return (
     <>
@@ -35,7 +126,7 @@ export default function Statistical() {
           <div className="admin-page-actions">
             <button className="btn-pill-outline" type="button">
               <ion-icon name="calendar-outline"></ion-icon>
-              <span>13/10/2026 - 20/10/2026</span>
+              <span>{formatDate(report.periodStart)} - {formatDate(now)}</span>
             </button>
             <button className="btn-pill-primary" type="button">
               <ion-icon name="document-text-outline"></ion-icon>
@@ -57,30 +148,36 @@ export default function Statistical() {
           ))}
         </div>
 
+        {error && (
+          <div className="admin-card-box" style={{ color: "#b91c1c", fontWeight: "600" }}>
+            {error}
+          </div>
+        )}
+
         {/* 3 Metric Cards */}
         <div className="admin-grid-3" style={{ marginBottom: "22px" }}>
           <div className="dashboard-hero-card" style={{ minHeight: "160px" }}>
             <div className="kpi-card-header">
-              <span className="kpi-label">DOANH THU TUẦN NÀY</span>
+              <span className="kpi-label">DOANH THU {periodLabel.toUpperCase()}</span>
               <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
             </div>
             <div>
-              <div className="kpi-big-value">114.850.000 đ</div>
+              <div className="kpi-big-value">{loading ? "..." : formatVND(report.revenue, " đ")}</div>
               <div className="kpi-footer-row">
-                <span className="hero-pill-badge">↑ +14.2% so với tuần trước</span>
+                <span className="hero-pill-badge">{report.count} đơn hoàn tất</span>
               </div>
             </div>
           </div>
 
           <div className="kpi-card-white" style={{ minHeight: "160px" }}>
             <div className="kpi-card-header">
-              <span className="kpi-label">TỔNG BÁNH XUẤT LÒ</span>
+              <span className="kpi-label">TỔNG BÁNH BÁN RA</span>
               <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
             </div>
             <div>
-              <div className="kpi-big-value">1.046 <span style={{ fontSize: "18px", color: "#64748b" }}>bánh</span></div>
+              <div className="kpi-big-value">{loading ? "..." : report.itemsSold.toLocaleString("vi-VN")} <span style={{ fontSize: "18px", color: "#64748b" }}>bánh</span></div>
               <div className="kpi-footer-row">
-                <span className="badge-pill mint">Bếp đạt 104% công suất</span>
+                <span className="badge-pill mint">{report.count} đơn</span>
               </div>
             </div>
           </div>
@@ -91,9 +188,9 @@ export default function Statistical() {
               <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
             </div>
             <div>
-              <div className="kpi-big-value" style={{ color: "#10b981" }}>75.800.000 đ</div>
+              <div className="kpi-big-value" style={{ color: "#10b981" }}>—</div>
               <div className="kpi-footer-row">
-                <span style={{ color: "#64748b" }}>Biên lợi nhuận gộp: <strong>66%</strong></span>
+                <span style={{ color: "#64748b" }}>Backend chưa cung cấp giá nhập</span>
               </div>
             </div>
           </div>
@@ -108,22 +205,14 @@ export default function Statistical() {
                 <h3>Biểu Đồ Doanh Thu 7 Ngày Gần Nhất</h3>
                 <p>Số liệu đối soát dòng tiền từ VietQR, Thẻ &amp; Tiền mặt</p>
               </div>
-              <span className="badge-pill pink">Cao nhất: Thứ 7 (24.8M)</span>
+              <span className="badge-pill pink">{peakDay ? `Cao nhất: ${peakDay.day} (${shortMoney(peakDay.rev)})` : "Chưa có doanh thu"}</span>
             </div>
 
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", height: "180px", padding: "20px 10px 0" }}>
-              {[
-                { day: "Thứ 2", h: 45, rev: "11.2M", isPeak: false },
-                { day: "Thứ 3", h: 55, rev: "14.5M", isPeak: false },
-                { day: "Thứ 4", h: 50, rev: "13.1M", isPeak: false },
-                { day: "Thứ 5", h: 68, rev: "18.2M", isPeak: false },
-                { day: "Thứ 6", h: 80, rev: "20.4M", isPeak: false },
-                { day: "Thứ 7", h: 100, rev: "24.8M", isPeak: true },
-                { day: "CN", h: 92, rev: "22.6M", isPeak: false },
-              ].map((b, idx) => (
+              {last7Days.map((b, idx) => (
                 <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: "6px" }}>
                   <span style={{ fontSize: "10.5px", fontWeight: "700", color: b.isPeak ? "#de5d7c" : "#8c9ba5" }}>
-                    {b.rev}
+                    {shortMoney(b.rev)}
                   </span>
                   <div
                     style={{
@@ -155,40 +244,30 @@ export default function Statistical() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "10px" }}>
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", marginBottom: "6px" }}>
-                    <span>Mousse Cake</span>
-                    <span style={{ color: "#de5d7c" }}>56% (64.3M đ)</span>
-                  </div>
-                  <div style={{ width: "100%", height: "8px", background: "#f1f2f4", borderRadius: "9999px", overflow: "hidden" }}>
-                    <div style={{ width: "56%", height: "100%", background: "#de5d7c", borderRadius: "9999px" }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", marginBottom: "6px" }}>
-                    <span>Croissant &amp; Pastry</span>
-                    <span style={{ color: "#f59e0b" }}>28% (32.1M đ)</span>
-                  </div>
-                  <div style={{ width: "100%", height: "8px", background: "#f1f2f4", borderRadius: "9999px", overflow: "hidden" }}>
-                    <div style={{ width: "28%", height: "100%", background: "#f59e0b", borderRadius: "9999px" }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", marginBottom: "6px" }}>
-                    <span>Trà &amp; Thức Uống</span>
-                    <span style={{ color: "#10b981" }}>16% (18.4M đ)</span>
-                  </div>
-                  <div style={{ width: "100%", height: "8px", background: "#f1f2f4", borderRadius: "9999px", overflow: "hidden" }}>
-                    <div style={{ width: "16%", height: "100%", background: "#10b981", borderRadius: "9999px" }}></div>
-                  </div>
-                </div>
+                {report.categoryShare.length === 0 && (
+                  <div style={{ fontSize: "12.5px", color: "#8c9ba5" }}>{loading ? "Đang tải..." : "Chưa có doanh thu trong kỳ này."}</div>
+                )}
+                {report.categoryShare.map((c, idx) => {
+                  const color = CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+                  return (
+                    <div key={c.name}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", marginBottom: "6px" }}>
+                        <span>{c.name}</span>
+                        <span style={{ color }}>{c.percent}% ({shortMoney(c.value)} đ)</span>
+                      </div>
+                      <div style={{ width: "100%", height: "8px", background: "#f1f2f4", borderRadius: "9999px", overflow: "hidden" }}>
+                        <div style={{ width: `${c.percent}%`, height: "100%", background: color, borderRadius: "9999px" }}></div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             <div style={{ background: "#fff0f4", borderRadius: "14px", padding: "12px", marginTop: "16px", fontSize: "12px", color: "#de5d7c", fontWeight: "600" }}>
-              💡 Mousse Cake dâu và socola tiếp tục là trụ cột đóng góp doanh thu lớn nhất.
+              💡 {report.categoryShare.length
+                ? `${report.categoryShare[0].name} đang đóng góp doanh thu lớn nhất trong kỳ này.`
+                : "Chưa có đơn hoàn tất nào trong kỳ này."}
             </div>
           </div>
         </div>
@@ -215,7 +294,14 @@ export default function Statistical() {
                 </tr>
               </thead>
               <tbody>
-                {topCakes.map((c) => (
+                {report.topProducts.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: "center", color: "#8c9ba5" }}>
+                      {loading ? "Đang tải..." : "Chưa có món bánh nào được bán trong kỳ này."}
+                    </td>
+                  </tr>
+                )}
+                {report.topProducts.map((c) => (
                   <tr key={c.rank}>
                     <td>
                       <span
@@ -245,12 +331,10 @@ export default function Statistical() {
                       <span style={{ fontWeight: "700" }}>{c.sales} bánh</span>
                     </td>
                     <td>
-                      <span style={{ fontWeight: "800", color: "#de5d7c" }}>{c.revenue}</span>
+                      <span style={{ fontWeight: "800", color: "#de5d7c" }}>{formatVND(c.revenue, " đ")}</span>
                     </td>
                     <td>
-                      <span style={{ color: c.trend.startsWith("+") ? "#10b981" : "#ef4444", fontWeight: "700" }}>
-                        {c.trend}
-                      </span>
+                      <span style={{ color: "#8c9ba5", fontWeight: "700" }}>—</span>
                     </td>
                   </tr>
                 ))}

@@ -4,13 +4,13 @@ export const clientAuthApi = {
   login: (credentials) => axiosClient.post("/client/auth/login", credentials),
   register: (userData) => axiosClient.post("/client/auth/register", userData),
   getProfile: () => axiosClient.get("/client/auth/me"),
-  updateProfile: (data) => axiosClient.put("/client/auth/profile", data),
+  updateProfile: (data) => axiosClient.put("/client/profile", data),
 };
 
 export const clientProductsApi = {
+  // params: { category, search }
   getAll: (params) => axiosClient.get("/client/products", { params }),
   getById: (id) => axiosClient.get(`/client/products/${id}`),
-  search: (keyword) => axiosClient.get("/client/products/search", { params: { q: keyword } }),
   getCategories: () => axiosClient.get("/client/products/categories"),
 };
 

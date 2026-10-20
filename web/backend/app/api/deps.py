@@ -36,17 +36,17 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_name: Optional[str] = payload.get("sub")
-    if not user_name:
+    phone: Optional[str] = payload.get("sub")
+    if not phone:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token không chứa thông tin định danh",
         )
 
-    user = db.query(User).filter(User.user_name == user_name).first()
+    user = db.query(User).filter(User.phone == phone).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Không tìm thấy người dùng",
         )
 
@@ -61,8 +61,8 @@ def get_current_user(
 def get_current_admin(
     current_user: User = Depends(get_current_user)
 ) -> User:
-    """Chỉ cho phép tài khoản có role là 'admin' hoặc 'staff'."""
-    if current_user.role not in ["admin", "staff"]:
+    """Chỉ cho phép tài khoản có role là 'admin'."""
+    if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bạn không có quyền quản trị để truy cập chức năng này",

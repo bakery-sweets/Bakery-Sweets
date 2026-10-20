@@ -1,102 +1,66 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
 import { Link } from "react-router-dom";
+import { adminProductsApi } from "../../api/admin";
+import { clientProductsApi } from "../../api/client";
+import { formatVND, imageUrl, apiErrorMessage, PRODUCT_STATUS } from "../../utils/format";
+
+const PAGE_SIZE = 10;
 
 export default function ProductList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [products, setProducts] = useState([]);
+  const [apiCategories, setApiCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadData = useCallback(async () => {
+    try {
+      const [prod, cats] = await Promise.all([adminProductsApi.getAll(), clientProductsApi.getCategories()]);
+      setProducts(prod.data);
+      setApiCategories(cats.data);
+      setError("");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Không tải được danh sách sản phẩm"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const categories = [
-    { key: "all", label: "Tất Cả", count: 48 },
-    { key: "Mousse", label: "Mousse Cake", count: 18 },
-    { key: "Croissant", label: "Croissant & Pastry", count: 12 },
-    { key: "Drink", label: "Trà & Thức Uống", count: 18 },
-  ];
-
-  const products = [
-    {
-      id: 1,
-      name: "Tiramisu Mousse",
-      frenchName: "Mascarpone & Espresso Italiano",
-      category: "Mousse",
-      sizes: [
-        { name: "S (16cm)", price: "130.000 đ", stock: 15 },
-        { name: "M (20cm)", price: "190.000 đ", stock: 10 },
-      ],
-      totalStock: 25,
-      status: "Available",
-      img: "/assets/Img/Mousse1.png",
-    },
-    {
-      id: 2,
-      name: "Fraise Rose Mousse",
-      frenchName: "Dâu tây Đà Lạt & Hoa hồng Grasse",
-      category: "Mousse",
-      sizes: [
-        { name: "S (16cm)", price: "135.000 đ", stock: 12 },
-        { name: "M (20cm)", price: "195.000 đ", stock: 8 },
-      ],
-      totalStock: 20,
-      status: "Available",
-      img: "/assets/Img/Mousse2.png",
-    },
-    {
-      id: 3,
-      name: "Plain Butter Croissant",
-      frenchName: "Bơ lạt Elle & Vire AOP 27 lớp",
-      category: "Croissant",
-      sizes: [
-        { name: "Tiêu chuẩn", price: "35.000 đ", stock: 40 },
-      ],
-      totalStock: 40,
-      status: "Available",
-      img: "/assets/Img/croissant1.png",
-    },
-    {
-      id: 4,
-      name: "Dinosaur Almond Croissant",
-      frenchName: "Hạnh nhân nướng giòn & kem Frangipane",
-      category: "Croissant",
-      sizes: [
-        { name: "Tiêu chuẩn", price: "55.000 đ", stock: 25 },
-      ],
-      totalStock: 25,
-      status: "Available",
-      img: "/assets/Img/croissant2.png",
-    },
-    {
-      id: 5,
-      name: "Matcha Latte Cake",
-      frenchName: "Matcha Uji Kyoto & Sữa tươi Pháp",
-      category: "Mousse",
-      sizes: [
-        { name: "S (16cm)", price: "140.000 đ", stock: 0 },
-        { name: "M (20cm)", price: "205.000 đ", stock: 0 },
-      ],
-      totalStock: 0,
-      status: "Out of Stock",
-      img: "/assets/Img/Mousse3.png",
-    },
-    {
-      id: 6,
-      name: "Peach Tea",
-      frenchName: "Trà lài thượng hạng & đào tươi giòn",
-      category: "Drink",
-      sizes: [
-        { name: "Ly 500ml", price: "35.000 đ", stock: 50 },
-      ],
-      totalStock: 50,
-      status: "Available",
-      img: "/assets/Img/drink1.png",
-    },
+    { key: "all", label: "Tất Cả", count: products.length },
+    ...apiCategories.map((c) => ({
+      key: c.category_id,
+      label: c.category_name,
+      count: products.filter((p) => p.category_id === c.category_id).length,
+    })),
   ];
 
   const filtered = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCat = categoryFilter === "all" || p.category === categoryFilter;
+    const matchSearch = p.product_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchCat = categoryFilter === "all" || p.category_id === categoryFilter;
     return matchSearch && matchCat;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = Math.min(currentPage, totalPages);
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleDelete = async (p) => {
+    if (!window.confirm(`Xóa món "${p.product_name}"? Thao tác này không thể hoàn tác.`)) return;
+    try {
+      await adminProductsApi.delete(p.product_id);
+      await loadData();
+    } catch (err) {
+      alert(apiErrorMessage(err, "Xóa sản phẩm thất bại"));
+    }
+  };
 
   return (
     <>
@@ -106,8 +70,8 @@ export default function ProductList() {
         {/* Header Row */}
         <div className="admin-page-header-row">
           <div className="admin-page-title-group">
-            <h1>Thực Đơn Bánh &amp; Thức Uống</h1>
-            <p>Quản lý danh mục 48+ món bánh ngọt Pháp &amp; bảng giá theo kích cỡ</p>
+            <h1>Danh Mục Bánh &amp; Thức Uống</h1>
+            <p>Quản lý danh mục bánh nhập khẩu &amp; bảng giá theo kích cỡ</p>
           </div>
 
           <div className="admin-page-actions">
@@ -127,7 +91,7 @@ export default function ProductList() {
           {categories.map((c) => (
             <button
               key={c.key}
-              onClick={() => setCategoryFilter(c.key)}
+              onClick={() => { setCategoryFilter(c.key); setCurrentPage(1); }}
               className={`tab-pill-btn ${categoryFilter === c.key ? "active" : ""}`}
             >
               {c.label} ({c.count})
@@ -143,9 +107,9 @@ export default function ProductList() {
               <ion-icon name="search-outline" style={{ color: "#94a3b8", fontSize: "17px" }}></ion-icon>
               <input
                 type="text"
-                placeholder="Tìm tên món bánh, nguyên liệu..."
+                placeholder="Tìm tên món bánh, mã sản phẩm..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 style={{ border: "none", background: "transparent", outline: "none", fontSize: "13px", width: "100%", color: "#1e293b", fontFamily: "inherit" }}
               />
             </div>
@@ -154,6 +118,10 @@ export default function ProductList() {
               Hiển thị <span style={{ color: "#1e293b", fontWeight: "800" }}>{filtered.length}</span> món bánh
             </div>
           </div>
+
+          {error && (
+            <div style={{ color: "#b91c1c", fontWeight: "600", marginBottom: "12px" }}>{error}</div>
+          )}
 
           <div className="admin-table-clean-wrapper">
             <table className="admin-table-clean">
@@ -169,28 +137,37 @@ export default function ProductList() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => (
-                  <tr key={p.id}>
+                {pageItems.length === 0 && (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: "center", color: "#8c9ba5" }}>
+                      {loading ? "Đang tải..." : "Không có món bánh nào."}
+                    </td>
+                  </tr>
+                )}
+                {pageItems.map((p) => {
+                  const totalStock = p.sizes.reduce((sum, sz) => sum + sz.stock_quantity, 0);
+                  return (
+                  <tr key={p.product_id}>
                     <td>
                       <img
-                        src={p.img}
-                        alt={p.name}
+                        src={imageUrl(p.image)}
+                        alt={p.product_name}
                         onError={(e) => { e.target.src = "/assets/Img/Sweets1.png"; }}
                         style={{ width: "46px", height: "46px", borderRadius: "14px", objectFit: "cover", background: "#fff0f4" }}
                       />
                     </td>
                     <td>
-                      <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "14px" }}>{p.name}</div>
-                      <div style={{ fontSize: "11.5px", color: "#8c9ba5", marginTop: "2px" }}>{p.frenchName}</div>
+                      <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "14px" }}>{p.product_name}</div>
+                      <div style={{ fontSize: "11.5px", color: "#8c9ba5", marginTop: "2px" }}>Mã SP: #{p.product_id}</div>
                     </td>
                     <td>
-                      <span className="badge-pill pink" style={{ fontSize: "11px" }}>{p.category}</span>
+                      <span className="badge-pill pink" style={{ fontSize: "11px" }}>{p.category_name || "—"}</span>
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                        {p.sizes.map((s, idx) => (
+                        {p.sizes.map((s) => (
                           <span
-                            key={idx}
+                            key={s.id}
                             style={{
                               background: "#f8fafc",
                               border: "1px solid #e5e7eb",
@@ -201,32 +178,32 @@ export default function ProductList() {
                               color: "#334155",
                             }}
                           >
-                            <span style={{ color: "#de5d7c", fontWeight: "700" }}>{s.name}</span>: {s.price}
-                            <span style={{ color: "#8c9ba5", fontSize: "10.5px", marginLeft: "4px" }}>({s.stock})</span>
+                            <span style={{ color: "#de5d7c", fontWeight: "700" }}>{s.size_name}</span>: {formatVND(s.price, " đ")}
+                            <span style={{ color: "#8c9ba5", fontSize: "10.5px", marginLeft: "4px" }}>({s.stock_quantity})</span>
                           </span>
                         ))}
                       </div>
                     </td>
                     <td>
-                      <span style={{ fontWeight: "700", color: p.totalStock > 0 ? "#1e293b" : "#ef4444" }}>
-                        {p.totalStock} cái
+                      <span style={{ fontWeight: "700", color: totalStock > 0 ? "#1e293b" : "#ef4444" }}>
+                        {totalStock} cái
                       </span>
                     </td>
                     <td>
                       {p.status === "Available" ? (
                         <span className="badge-pill mint" style={{ fontSize: "11.5px" }}>
-                          <span className="dot-status green"></span> Đang bán
+                          <span className="dot-status green"></span> {PRODUCT_STATUS[p.status]}
                         </span>
                       ) : (
                         <span className="badge-pill amber" style={{ fontSize: "11.5px" }}>
-                          <span className="dot-status orange"></span> Hết hàng
+                          <span className="dot-status orange"></span> {PRODUCT_STATUS[p.status] || p.status}
                         </span>
                       )}
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
                         <Link
-                          to={`/admin/products/edit/${p.id}`}
+                          to={`/admin/products/edit/${p.product_id}`}
                           className="btn-pill-outline"
                           style={{ padding: "5px 12px", fontSize: "12px" }}
                         >
@@ -236,14 +213,15 @@ export default function ProductList() {
                           type="button"
                           className="btn-pill-outline"
                           style={{ padding: "5px 10px", fontSize: "12px", color: "#ef4444" }}
-                          onClick={() => alert(`Xóa món: ${p.name}`)}
+                          onClick={() => handleDelete(p)}
                         >
                           <ion-icon name="trash-outline"></ion-icon>
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -251,21 +229,21 @@ export default function ProductList() {
           {/* Pagination */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #f8f9fa", flexWrap: "wrap", gap: "12px" }}>
             <span style={{ fontSize: "12.5px", color: "#8c9ba5" }}>
-              Hiển thị 1 - {filtered.length} trên 48 sản phẩm
+              Hiển thị {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1} - {(page - 1) * PAGE_SIZE + pageItems.length} trên {filtered.length} sản phẩm
             </span>
             <div style={{ display: "flex", gap: "6px" }}>
               <button
                 className="tab-pill-btn"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                style={{ opacity: currentPage === 1 ? 0.5 : 1 }}
+                disabled={page === 1}
+                onClick={() => setCurrentPage(Math.max(page - 1, 1))}
+                style={{ opacity: page === 1 ? 0.5 : 1 }}
               >
                 &larr; Trước
               </button>
-              {[1, 2, 3].map((num) => (
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
                 <button
                   key={num}
-                  className={`tab-pill-btn ${currentPage === num ? "active" : ""}`}
+                  className={`tab-pill-btn ${page === num ? "active" : ""}`}
                   onClick={() => setCurrentPage(num)}
                 >
                   {num}
@@ -273,9 +251,9 @@ export default function ProductList() {
               ))}
               <button
                 className="tab-pill-btn"
-                disabled={currentPage === 3}
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, 3))}
-                style={{ opacity: currentPage === 3 ? 0.5 : 1 }}
+                disabled={page === totalPages}
+                onClick={() => setCurrentPage(Math.min(page + 1, totalPages))}
+                style={{ opacity: page === totalPages ? 0.5 : 1 }}
               >
                 Sau &rarr;
               </button>

@@ -6,7 +6,7 @@ import "./Header.css";
 
 export default function Header() {
   const { user, logout } = useAuthStore();
-  const { totalItems, toggleCart } = useCartStore();
+  const { totalItems, toggleCart, resetLocal } = useCartStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
@@ -22,8 +22,12 @@ export default function Header() {
     }
   };
 
+  const displayName = user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.phone : "";
+
   const handleLogout = () => {
     logout();
+    resetLocal();
+    setMenuOpen(false);
     navigate("/login");
   };
 
@@ -71,7 +75,7 @@ export default function Header() {
             <div className="auth-container">
               {user ? (
                 <>
-                  <button className="btnLogin-popup" style={{border: 'none'}}>{user.username}</button>
+                  <button className="btnLogin-popup" style={{border: 'none'}}>{displayName}</button>
                   <button className="btnLogout-popup" onClick={handleLogout}>Logout</button>
                 </>
               ) : (

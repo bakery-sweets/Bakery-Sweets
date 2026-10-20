@@ -1,90 +1,48 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
+import { adminOrdersApi } from "../../api/admin";
+import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
+
+const URGENT_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+// Đơn chưa xong và giờ hẹn lấy bánh trong vòng 2 tiếng tới (hoặc đã quá giờ)
+const isUrgent = (o) =>
+  !["Completed", "Cancelled"].includes(o.status) &&
+  !!o.pickup_time &&
+  new Date(o.pickup_time).getTime() - Date.now() <= URGENT_WINDOW_MS;
 
 export default function OrderList() {
   const [activeTab, setActiveTab] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const tabs = [
-    { key: "all", label: "Tất Cả", count: 38 },
-    { key: "Pending", label: "Chờ Tiếp Nhận", count: 3 },
-    { key: "Processing", label: "Bếp Đang Làm", count: 8 },
-    { key: "Ready", label: "Sẵn Sàng Tại Quầy", count: 12 },
-    { key: "Completed", label: "Đã Hoàn Tất", count: 15 },
+    { key: "all", label: "Tất Cả" },
+    { key: "Pending", label: "Chờ Tiếp Nhận" },
+    { key: "Processing", label: "Đang Chuẩn Bị & Đóng Gói" },
+    { key: "Ready", label: "Sẵn Sàng Tại Quầy" },
+    { key: "Completed", label: "Đã Hoàn Tất" },
   ];
 
-  const orders = [
-    {
-      id: "ORD-9821",
-      customer: "Nguyễn Bảo Ngọc",
-      phone: "0901234567",
-      pickupTime: "14:30 Hôm nay (Tràng Tiền)",
-      isUrgent: true,
-      items: [
-        { name: "Framboise Entremet (16cm)", size: "Size S", qty: 1, price: "650.000 đ" },
-        { name: "Luxury Macaron Box (6 pcs)", size: "Tiêu chuẩn", qty: 2, price: "240.000 đ" },
-      ],
-      total: "890.000 đ",
-      notes: "Viết chữ socola: 'Chúc mừng sinh nhật Bảo Ngọc 22 tuổi', tặng 1 nến số.",
-      paymentMethod: "VietQR Đã Cọc",
-      paymentStatus: "Paid",
-      status: "Ready",
-      statusLabel: "Sẵn sàng",
-      badgeType: "mint",
-    },
-    {
-      id: "ORD-9820",
-      customer: "Trần Đình Khang",
-      phone: "0912345678",
-      pickupTime: "16:00 Hôm nay (Ship Hoàn Kiếm)",
-      isUrgent: false,
-      items: [
-        { name: "Saint-Honoré Caramel (20cm)", size: "Size M", qty: 1, price: "1.250.000 đ" },
-      ],
-      total: "1.250.000 đ",
-      notes: "Đóng hộp cao cấp thắt nơ đỏ tặng đối tác sự kiện.",
-      paymentMethod: "Thẻ Tín Dụng",
-      paymentStatus: "Paid",
-      status: "Processing",
-      statusLabel: "Đang decor",
-      badgeType: "amber",
-    },
-    {
-      id: "ORD-9819",
-      customer: "Phạm Mai Chi",
-      phone: "0987654321",
-      pickupTime: "17:30 Hôm nay (Tại Quầy)",
-      isUrgent: false,
-      items: [
-        { name: "Croissant Pure Butter AOP", size: "Tiêu chuẩn", qty: 4, price: "140.000 đ" },
-        { name: "Café Rose Latte", size: "Ly 500ml", qty: 2, price: "180.000 đ" },
-      ],
-      total: "320.000 đ",
-      notes: "Lấy bánh nóng vừa nướng xong, tách đá riêng.",
-      paymentMethod: "Tiền Mặt",
-      paymentStatus: "Paid",
-      status: "Completed",
-      statusLabel: "Hoàn tất",
-      badgeType: "mint",
-    },
-    {
-      id: "ORD-9818",
-      customer: "Vũ Hải Đăng",
-      phone: "0933445566",
-      pickupTime: "18:00 Hôm nay (Tại Quầy)",
-      isUrgent: false,
-      items: [
-        { name: "Tiramisu Mousse Cake", size: "Size L (24cm)", qty: 1, price: "260.000 đ" },
-      ],
-      total: "260.000 đ",
-      notes: "Không cắm nến, chuẩn bị thêm 5 bộ dao nĩa.",
-      paymentMethod: "VietQR Đã Cọc",
-      paymentStatus: "Unpaid",
-      status: "Pending",
-      statusLabel: "Chờ duyệt",
-      badgeType: "pink",
-    },
-  ];
+  const loadOrders = useCallback(async () => {
+    try {
+      const res = await adminOrdersApi.getAll();
+      setOrders(res.data);
+      setError("");
+    } catch (err) {
+      setError(apiErrorMessage(err, "Không tải được danh sách đơn hàng"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  const countFor = (key) => (key === "all" ? orders.length : orders.filter((o) => o.status === key).length);
 
   const filteredOrders = orders.filter((o) => {
     if (activeTab === "all") return true;
@@ -99,8 +57,8 @@ export default function OrderList() {
         {/* Page Title & Actions */}
         <div className="admin-page-header-row">
           <div className="admin-page-title-group">
-            <h1>Lịch Đặt Bánh &amp; Hóa Đơn</h1>
-            <p>Theo dõi 38 đơn đặt tiệc, lịch hẹn xuất xưởng &amp; đối soát hóa đơn bán lẻ</p>
+            <h1>Quản Lý Đơn Hàng &amp; Hóa Đơn</h1>
+            <p>Theo dõi {orders.length} đơn đặt hàng, lịch hẹn nhận tại quầy &amp; đối soát hóa đơn bán lẻ</p>
           </div>
 
           <div className="admin-page-actions">
@@ -108,7 +66,7 @@ export default function OrderList() {
               <ion-icon name="print-outline"></ion-icon>
               <span>In Bảng Đối Soát</span>
             </button>
-            <button className="btn-pill-primary" type="button">
+            <button className="btn-pill-primary" type="button" onClick={() => { setLoading(true); loadOrders(); }}>
               <ion-icon name="refresh-outline"></ion-icon>
               <span>Làm Mới (Live)</span>
             </button>
@@ -123,7 +81,7 @@ export default function OrderList() {
               onClick={() => setActiveTab(t.key)}
               className={`tab-pill-btn ${activeTab === t.key ? "active" : ""}`}
             >
-              {t.label} ({t.count})
+              {t.label} ({countFor(t.key)})
             </button>
           ))}
         </div>
@@ -145,22 +103,32 @@ export default function OrderList() {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((o) => (
-                  <tr key={o.id}>
+                {filteredOrders.length === 0 && (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: "center", color: "#8c9ba5" }}>
+                      {loading ? "Đang tải..." : error || "Không có đơn hàng nào."}
+                    </td>
+                  </tr>
+                )}
+                {filteredOrders.map((o) => {
+                  const urgent = isUrgent(o);
+                  const st = ORDER_STATUS[o.status] || {};
+                  return (
+                  <tr key={o.order_id}>
                     <td>
                       <span style={{ fontWeight: "800", color: "#de5d7c", fontSize: "14px" }}>
-                        #{o.id}
+                        #{o.order_code}
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: "700", color: "#1e293b" }}>{o.customer}</div>
-                      <div style={{ fontSize: "12px", color: "#8c9ba5" }}>{o.phone}</div>
+                      <div style={{ fontWeight: "700", color: "#1e293b" }}>{o.recipient_name}</div>
+                      <div style={{ fontSize: "12px", color: "#8c9ba5" }}>{o.recipient_phone}</div>
                     </td>
                     <td>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                        <ion-icon name="time-outline" style={{ color: o.isUrgent ? "#de5d7c" : "#8c9ba5" }}></ion-icon>
-                        <span style={{ fontWeight: o.isUrgent ? "800" : "600", color: o.isUrgent ? "#de5d7c" : "#334155", fontSize: "12.5px" }}>
-                          {o.pickupTime}
+                        <ion-icon name="time-outline" style={{ color: urgent ? "#de5d7c" : "#8c9ba5" }}></ion-icon>
+                        <span style={{ fontWeight: urgent ? "800" : "600", color: urgent ? "#de5d7c" : "#334155", fontSize: "12.5px" }}>
+                          {formatDateTime(o.pickup_time)}
                         </span>
                       </div>
                       {o.notes && (
@@ -171,27 +139,31 @@ export default function OrderList() {
                     </td>
                     <td>
                       <div style={{ fontSize: "12.5px", color: "#334155" }}>
-                        {o.items.map((it, idx) => (
-                          <div key={idx} style={{ marginBottom: "2px" }}>
-                            <span style={{ fontWeight: "700" }}>{it.qty}x</span> {it.name} <span style={{ color: "#8c9ba5" }}>({it.size})</span>
+                        {o.details.map((it) => (
+                          <div key={`${it.product_id}-${it.size_id}`} style={{ marginBottom: "2px" }}>
+                            <span style={{ fontWeight: "700" }}>{it.quantity}x</span> {it.product_name} <span style={{ color: "#8c9ba5" }}>({it.size_name})</span>
                           </div>
                         ))}
                       </div>
                     </td>
                     <td>
                       <span style={{ fontWeight: "800", color: "#1e293b", fontSize: "14px" }}>
-                        {o.total}
+                        {formatVND(o.final_cost, " đ")}
                       </span>
                     </td>
                     <td>
-                      <span className={`badge-pill ${o.paymentMethod.includes("VietQR") ? "mint" : o.paymentMethod.includes("Thẻ") ? "cyan" : "gray"}`} style={{ fontSize: "11.5px" }}>
-                        {o.paymentMethod}
+                      <span
+                        className={`badge-pill ${o.payment_status === "Paid" ? "mint" : "gray"}`}
+                        style={{ fontSize: "11.5px" }}
+                        title={PAYMENT_STATUS[o.payment_status] || o.payment_status}
+                      >
+                        {PAYMENT_METHOD[o.payment_method] || o.payment_method}
                       </span>
                     </td>
                     <td>
-                      <span className={`badge-pill ${o.badgeType}`} style={{ fontSize: "11.5px" }}>
-                        <span className={`dot-status ${o.badgeType === "mint" ? "green" : o.badgeType === "amber" ? "orange" : "pink"}`}></span>
-                        {o.statusLabel}
+                      <span className={`badge-pill ${st.badge}`} style={{ fontSize: "11.5px" }}>
+                        <span className={`dot-status ${st.dot}`}></span>
+                        {st.label || o.status}
                       </span>
                     </td>
                     <td style={{ textAlign: "right" }}>
@@ -205,7 +177,8 @@ export default function OrderList() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -244,7 +217,7 @@ export default function OrderList() {
                     PHIẾU HÓA ĐƠN BÁN LẺ
                   </span>
                   <h3 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: "800", color: "#1e293b" }}>
-                    #{selectedOrder.id}
+                    #{selectedOrder.order_code}
                   </h3>
                 </div>
                 <button
@@ -260,11 +233,11 @@ export default function OrderList() {
               <div style={{ background: "#fff0f4", borderRadius: "14px", padding: "12px 16px", marginBottom: "16px", fontSize: "12.5px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
                   <span style={{ color: "#64748b" }}>Khách hàng:</span>
-                  <span style={{ fontWeight: "700", color: "#1e293b" }}>{selectedOrder.customer} ({selectedOrder.phone})</span>
+                  <span style={{ fontWeight: "700", color: "#1e293b" }}>{selectedOrder.recipient_name} ({selectedOrder.recipient_phone})</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "#64748b" }}>Hẹn nhận bánh:</span>
-                  <span style={{ fontWeight: "700", color: "#de5d7c" }}>{selectedOrder.pickupTime}</span>
+                  <span style={{ fontWeight: "700", color: "#de5d7c" }}>{formatDateTime(selectedOrder.pickup_time)}</span>
                 </div>
               </div>
 
@@ -272,10 +245,10 @@ export default function OrderList() {
               <div style={{ marginBottom: "16px" }}>
                 <span style={{ fontSize: "11.5px", fontWeight: "800", color: "#8c9ba5", textTransform: "uppercase" }}>Danh Sách Bánh</span>
                 <div style={{ marginTop: "8px", borderTop: "1px solid #f8f9fa" }}>
-                  {selectedOrder.items.map((it, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f8f9fa", fontSize: "13px" }}>
-                      <span><strong>{it.qty}x</strong> {it.name} <small style={{ color: "#8c9ba5" }}>({it.size})</small></span>
-                      <span style={{ fontWeight: "700" }}>{it.price}</span>
+                  {selectedOrder.details.map((it) => (
+                    <div key={`${it.product_id}-${it.size_id}`} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f8f9fa", fontSize: "13px" }}>
+                      <span><strong>{it.quantity}x</strong> {it.product_name} <small style={{ color: "#8c9ba5" }}>({it.size_name})</small></span>
+                      <span style={{ fontWeight: "700" }}>{formatVND(it.total_price, " đ")}</span>
                     </div>
                   ))}
                 </div>
@@ -284,14 +257,21 @@ export default function OrderList() {
               {/* Notes */}
               {selectedOrder.notes && (
                 <div style={{ background: "#fef9ee", border: "1px solid #fef3c7", borderRadius: "12px", padding: "10px 14px", marginBottom: "16px", fontSize: "12px", color: "#b45309" }}>
-                  <strong>Ghi chú bếp:</strong> {selectedOrder.notes}
+                  <strong>Ghi chú đơn hàng:</strong> {selectedOrder.notes}
+                </div>
+              )}
+
+              {Number(selectedOrder.discount_amount) > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#64748b", marginBottom: "8px" }}>
+                  <span>Giảm giá:</span>
+                  <span style={{ fontWeight: "700", color: "#10b981" }}>-{formatVND(selectedOrder.discount_amount, " đ")}</span>
                 </div>
               )}
 
               {/* Total & Action */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "12px", borderTop: "2px dashed #e2e8f0", marginBottom: "20px" }}>
                 <span style={{ fontSize: "14px", fontWeight: "700", color: "#64748b" }}>Tổng Thanh Toán:</span>
-                <span style={{ fontSize: "20px", fontWeight: "800", color: "#de5d7c" }}>{selectedOrder.total}</span>
+                <span style={{ fontSize: "20px", fontWeight: "800", color: "#de5d7c" }}>{formatVND(selectedOrder.final_cost, " đ")}</span>
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>

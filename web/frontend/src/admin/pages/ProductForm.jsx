@@ -1,79 +1,165 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { adminProductsApi } from "../../api/admin";
+import { clientProductsApi } from "../../api/client";
+import { imageUrl, apiErrorMessage } from "../../utils/format";
 
 export default function ProductForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = !!id;
 
-  // Danh mục kích thước chuẩn (bám sát bảng size trong DB)
-  const defaultSizes = [
-    { id: 1, name: "Size S (Mini - 12cm)" },
-    { id: 2, name: "Size M (Tiêu chuẩn - 16cm)" },
-    { id: 3, name: "Size L (Lớn - 20cm)" },
-    { id: 4, name: "Size XL (Tiệc - 24cm)" },
-  ];
-
-  const [availableSizes, setAvailableSizes] = useState(defaultSizes);
+  const [categories, setCategories] = useState([]);
+  // Backend chưa có API danh sách size nên lấy các size đang được dùng trong product_sizes
+  const [availableSizes, setAvailableSizes] = useState([]);
   const [newSizeName, setNewSizeName] = useState("");
   const [showAddSizeModal, setShowAddSizeModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   // Form State bám sát bảng product & product_sizes trong createTable.sql
   const [formData, setFormData] = useState({
-    name: isEdit ? "Chocolate Mousse" : "",
-    category: isEdit ? "Mousse" : "Mousse",
-    status: isEdit ? "Available" : "Available",
-    
+    name: "",
+    category_id: "",
+    status: "Available",
+
     // Kích thước chính (chế độ 1 size)
-    selected_size: isEdit ? "2" : "2",
-    price: isEdit ? "45000" : "45000",
-    stock: isEdit ? "25" : "15",
-    
-    image: isEdit ? "/assets/Img/Mousse1.png" : "",
-    expiration_date: isEdit ? "3 ngày từ ngày sản xuất" : "3 ngày ở nhiệt độ 2-5°C",
-    storage_instructions: isEdit ? "Bảo quản ngăn mát tủ lạnh" : "Bảo quản ngăn mát tủ lạnh từ 2°C - 5°C",
-    ingredients: isEdit ? "Chocolate đen 70%, kem tươi whipping cream, trứng gà, đường cát" : "",
-    description: isEdit ? "Bánh mousse sô-cô-la ngọt ngào đậm vị, kết cấu mịn màng tan ngay trong miệng." : "",
-    
+    selected_size: "",
+    price: "",
+    stock: "",
+
+    image: "",
+    expiration_date: "",
+    storage_instructions: "",
+    ingredients: "",
+    description: "",
+
     // Cấu hình nhiều kích cỡ (bảng product_sizes)
-    enable_multi_size: isEdit ? false : false,
-    sizes: [
-      { size_id: 1, size_name: "Size S (Mini - 12cm)", enabled: true, price: "35000", stock: 20 },
-      { size_id: 2, size_name: "Size M (Tiêu chuẩn - 16cm)", enabled: true, price: "45000", stock: 25 },
-      { size_id: 3, size_name: "Size L (Lớn - 20cm)", enabled: false, price: "60000", stock: 10 },
-      { size_id: 4, size_name: "Size XL (Tiệc - 24cm)", enabled: false, price: "85000", stock: 5 },
-    ],
+    enable_multi_size: false,
+    sizes: [],
   });
 
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [cats, prods, product] = await Promise.all([
+          clientProductsApi.getCategories(),
+          adminProductsApi.getAll(),
+          isEdit ? adminProductsApi.getById(id) : Promise.resolve(null),
+        ]);
+
+        const sizeNames = new Map();
+        prods.data.forEach((pr) => pr.sizes.forEach((sz) => sizeNames.set(sz.size_id, sz.size_name)));
+        const sizes = [...sizeNames.entries()]
+          .sort((a, b) => a[0] - b[0])
+          .map(([sizeId, name]) => ({ id: sizeId, name }));
+
+        setCategories(cats.data);
+        setAvailableSizes(sizes);
+
+        if (product) {
+          const pd = product.data;
+          const first = pd.sizes[0];
+          setFormData({
+            name: pd.product_name,
+            category_id: pd.category_id ?? "",
+            status: pd.status,
+            selected_size: first ? first.size_id : sizes[0]?.id ?? "",
+            price: first ? Number(first.price) : "",
+            stock: first ? first.stock_quantity : "",
+            image: pd.image || "",
+            expiration_date: pd.expiration_date || "",
+            storage_instructions: pd.storage_instructions || "",
+            ingredients: pd.ingredients || "",
+            description: "",
+            enable_multi_size: pd.sizes.length > 1,
+            sizes: sizes.map((sz) => {
+              const ps = pd.sizes.find((x) => x.size_id === sz.id);
+              return {
+                size_id: sz.id,
+                size_name: sz.name,
+                enabled: !!ps,
+                price: ps ? Number(ps.price) : "",
+                stock: ps ? ps.stock_quantity : "",
+              };
+            }),
+          });
+        } else {
+          setFormData((f) => ({
+            ...f,
+            category_id: cats.data[0]?.category_id ?? "",
+            selected_size: sizes[0]?.id ?? "",
+            sizes: sizes.map((sz) => ({ size_id: sz.id, size_name: sz.name, enabled: false, price: "", stock: "" })),
+          }));
+        }
+      } catch (err) {
+        alert(apiErrorMessage(err, "Không tải được dữ liệu sản phẩm"));
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [id, isEdit]);
+
   const handleSizeChange = (index, field, value) => {
-    const updatedSizes = [...formData.sizes];
-    updatedSizes[index][field] = value;
-    setFormData({ ...formData, sizes: updatedSizes });
+    setFormData({
+      ...formData,
+      sizes: formData.sizes.map((sz, i) => (i === index ? { ...sz, [field]: value } : sz)),
+    });
   };
 
   const handleAddNewSize = () => {
-    if (!newSizeName.trim()) return;
-    const newId = availableSizes.length + 1;
-    const newSizeObj = { id: newId, name: newSizeName.trim() };
-    
-    setAvailableSizes([...availableSizes, newSizeObj]);
-    setFormData({
-      ...formData,
-      sizes: [
-        ...formData.sizes,
-        { size_id: newId, size_name: newSizeName.trim(), enabled: true, price: "50000", stock: 10 }
-      ]
-    });
+    alert("Backend chưa hỗ trợ thêm kích cỡ mới (bảng size).");
     setNewSizeName("");
     setShowAddSizeModal(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Nối API POST/PUT /api/products & /api/product_sizes tại đây sau này
-    alert(isEdit ? "Cập nhật sản phẩm & kích thước thành công (Mock)!" : "Thêm bánh mới & cấu hình kích thước thành công (Mock)!");
-    navigate("/admin/products");
+
+    const sizes = formData.enable_multi_size
+      ? formData.sizes
+          .filter((sz) => sz.enabled)
+          .map((sz) => ({ size_id: sz.size_id, price: Number(sz.price), stock_quantity: Number(sz.stock) || 0 }))
+      : formData.selected_size
+        ? [{ size_id: Number(formData.selected_size), price: Number(formData.price), stock_quantity: Number(formData.stock) || 0 }]
+        : [];
+
+    if (sizes.length === 0) {
+      alert("Vui lòng chọn ít nhất một kích thước bán.");
+      return;
+    }
+    if (sizes.some((sz) => Number.isNaN(sz.price) || sz.price < 0)) {
+      alert("Giá bán của mỗi kích thước phải là số hợp lệ.");
+      return;
+    }
+
+    // Bảng product không có cột mô tả nên trường description không được gửi lên
+    const body = {
+      product_name: formData.name.trim(),
+      category_id: formData.category_id === "" ? null : Number(formData.category_id),
+      status: formData.status,
+      ingredients: formData.ingredients || null,
+      expiration_date: formData.expiration_date || null,
+      storage_instructions: formData.storage_instructions || null,
+      image: formData.image || null,
+      sizes,
+    };
+
+    setSubmitting(true);
+    try {
+      if (isEdit) {
+        await adminProductsApi.update(id, body);
+      } else {
+        await adminProductsApi.create(body);
+      }
+      navigate("/admin/products");
+    } catch (err) {
+      alert(apiErrorMessage(err, "Lưu sản phẩm thất bại"));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -85,19 +171,22 @@ export default function ProductForm() {
         <div className="admin-page-header-row" style={{ maxWidth: "960px", margin: "0 auto 24px" }}>
           <div className="admin-page-title-group">
             <h1>{isEdit ? "Chỉnh Sửa Món Bánh" : "Thêm Món Bánh Mới"}</h1>
-            <p>Cấu hình thông số kỹ thuật, công thức nguyên liệu &amp; bảng giá kích cỡ</p>
+            <p>Cấu hình thông tin bánh nhập khẩu, hạn bảo quản &amp; bảng giá kích cỡ</p>
           </div>
 
           <div className="admin-page-actions">
             <Link to="/admin/products" className="btn-pill-outline">
               <ion-icon name="arrow-back-outline"></ion-icon>
-              <span>Quay Lại Thực Đơn</span>
+              <span>Quay Lại Danh Mục</span>
             </Link>
           </div>
         </div>
 
         <div className="admin-card-box" style={{ maxWidth: "960px", margin: "0 auto" }}>
 
+          {loading ? (
+            <div style={{ textAlign: "center", color: "#8c9ba5", padding: "30px 0" }}>Đang tải...</div>
+          ) : (
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             
             {/* 1. THÔNG TIN CƠ BẢN */}
@@ -117,15 +206,13 @@ export default function ProductForm() {
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>Danh mục sản phẩm *</label>
                 <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  value={formData.category_id}
+                  onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
                   style={{ width: "100%", padding: "11px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box", background: "#fff" }}
                 >
-                  <option value="Mousse">Bánh Mousse</option>
-                  <option value="Croissant">Bánh Croissant</option>
-                  <option value="Drink">Đồ uống (Drink)</option>
-                  <option value="Cupcake">Bánh Cupcake</option>
-                  <option value="Tart">Bánh Tart trứng</option>
+                  {categories.map((c) => (
+                    <option key={c.category_id} value={c.category_id}>{c.category_name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -286,14 +373,14 @@ export default function ProductForm() {
                 <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                   <input
                     type="text"
-                    placeholder="VD: /assets/Img/Mousse1.png"
+                    placeholder="VD: /uploads/Mousse/Tiramisu_Mousse.jpg"
                     value={formData.image}
                     onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                     style={{ flex: 1, padding: "11px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }}
                   />
                   {formData.image && (
                     <img
-                      src={formData.image}
+                      src={imageUrl(formData.image)}
                       alt="Preview"
                       style={{ width: "42px", height: "42px", objectFit: "cover", borderRadius: "8px", border: "1px solid #cbd5e1", flexShrink: 0 }}
                       onError={(e) => { e.target.style.display = "none"; }}
@@ -352,7 +439,7 @@ export default function ProductForm() {
 
             {/* Action Buttons */}
             <div style={{ display: "flex", gap: "12px", marginTop: "12px", flexWrap: "wrap" }}>
-              <button type="submit" className="btn-pill-primary">
+              <button type="submit" className="btn-pill-primary" disabled={submitting}>
                 <ion-icon name="checkmark-circle-outline"></ion-icon>
                 <span>{isEdit ? "Cập nhật sản phẩm & kích thước" : "Lưu bánh mới"}</span>
               </button>
@@ -364,6 +451,7 @@ export default function ProductForm() {
             </div>
 
           </form>
+          )}
         </div>
 
         {/* MODAL THÊM KÍCH THƯỚC BÁNH MỚI */}

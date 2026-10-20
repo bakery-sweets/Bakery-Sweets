@@ -15,10 +15,12 @@ def _to_client_order_out(o) -> ClientOrderOut:
             product_id=d.product_id,
             product_name=d.product.product_name if d.product else "",
             image=d.product.image if d.product else None,
+            size_id=d.size_id,
             size_name=d.size.size_name if d.size else "",
             quantity=d.quantity,
-            unit_price=d.unit_price,
-            total_price=d.total_price,
+            price=d.price,
+            total_price=d.price * d.quantity,
+            note=d.note,
         )
         for d in o.details
     ]
@@ -26,8 +28,12 @@ def _to_client_order_out(o) -> ClientOrderOut:
         order_id=o.order_id,
         order_code=o.order_code,
         recipient_name=o.recipient_name,
-        shipping_address=o.shipping_address,
+        recipient_phone=o.recipient_phone,
+        pickup_time=o.pickup_time,
+        notes=o.notes,
         total_quantity=o.total_quantity,
+        total_cost=o.total_cost,
+        discount_amount=o.discount_amount or 0,
         final_cost=o.final_cost,
         payment_method=o.payment_method,
         payment_status=o.payment_status,

@@ -13,11 +13,21 @@ from app.schemas.common import ResponseBase
 
 router = APIRouter()
 
+def to_profile_out(user: User) -> ClientProfileOut:
+    cust = user.customer
+    return ClientProfileOut(
+        phone=user.phone,
+        email=user.email,
+        first_name=cust.first_name if cust else "",
+        last_name=cust.last_name if cust else "",
+        role=user.role,
+    )
+
 @router.post("/register", response_model=ResponseBase[ClientProfileOut], status_code=status.HTTP_201_CREATED, summary="Đăng ký tài khoản khách hàng")
 def register(data: ClientRegisterRequest, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.user_name == data.user_name).first()
+    existing_user = db.query(User).filter(User.phone == data.phone).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Tên đăng nhập đã tồn tại")
+        raise HTTPException(status_code=400, detail="Số điện thoại đã được đăng ký")
 
     existing_email = db.query(User).filter(User.email == data.email).first()
     if existing_email:
@@ -25,7 +35,7 @@ def register(data: ClientRegisterRequest, db: Session = Depends(get_db)):
 
     hashed_pw = get_password_hash(data.password)
     user = User(
-        user_name=data.user_name,
+        phone=data.phone,
         email=data.email,
         password=hashed_pw,
         role="customer",
@@ -35,62 +45,33 @@ def register(data: ClientRegisterRequest, db: Session = Depends(get_db)):
     db.flush()
 
     customer = Customer(
-        user_name=user.user_name,
+        phone=user.phone,
         first_name=data.first_name,
         last_name=data.last_name,
-        phone=data.phone,
-        gender=data.gender or "Other",
-        loyalty_points=0,
     )
     db.add(customer)
     db.commit()
     db.refresh(user)
 
-    profile = ClientProfileOut(
-        user_name=user.user_name,
-        email=user.email,
-        first_name=customer.first_name,
-        last_name=customer.last_name,
-        phone=customer.phone,
-        gender=customer.gender,
-        loyalty_points=customer.loyalty_points,
-    )
-    return ResponseBase(message="Đăng ký tài khoản thành công", data=profile)
+    return ResponseBase(message="Đăng ký tài khoản thành công", data=to_profile_out(user))
 
 @router.post("/login", response_model=ClientTokenResponse, summary="Đăng nhập tài khoản khách hàng")
 def login(data: ClientLoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.user_name == data.username).first()
+    user = db.query(User).filter(User.phone == data.phone).first()
     if not user or not verify_password(data.password, user.password):
-        raise HTTPException(status_code=400, detail="Tên đăng nhập hoặc mật khẩu không chính xác")
+        raise HTTPException(status_code=400, detail="Số điện thoại hoặc mật khẩu không chính xác")
 
     if user.status == "locked":
         raise HTTPException(status_code=403, detail="Tài khoản của bạn đã bị khóa")
 
-    token = create_access_token({"sub": user.user_name, "role": user.role})
+    token = create_access_token({"sub": user.phone, "role": user.role})
     return ClientTokenResponse(
         access_token=token,
-        user_name=user.user_name,
+        phone=user.phone,
         email=user.email,
         role=user.role,
     )
 
 @router.get("/me", response_model=ResponseBase[ClientProfileOut], summary="Xem thông tin cá nhân khách hàng")
 def get_me(current_user: User = Depends(get_current_user)):
-    fn, ln, ph, gd, pts = "", "", None, None, 0
-    if current_user.customer:
-        fn = current_user.customer.first_name
-        ln = current_user.customer.last_name
-        ph = current_user.customer.phone
-        gd = current_user.customer.gender
-        pts = current_user.customer.loyalty_points
-
-    profile = ClientProfileOut(
-        user_name=current_user.user_name,
-        email=current_user.email,
-        first_name=fn,
-        last_name=ln,
-        phone=ph,
-        gender=gd,
-        loyalty_points=pts,
-    )
-    return ResponseBase(data=profile)
+    return ResponseBase(data=to_profile_out(current_user))

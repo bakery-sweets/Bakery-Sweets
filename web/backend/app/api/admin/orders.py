@@ -14,20 +14,26 @@ def _to_order_out(o) -> AdminOrderOut:
         AdminOrderDetailOut(
             product_id=d.product_id,
             product_name=d.product.product_name if d.product else "",
+            size_id=d.size_id,
             size_name=d.size.size_name if d.size else "",
             quantity=d.quantity,
-            unit_price=d.unit_price,
-            total_price=d.total_price,
+            price=d.price,
+            total_price=d.price * d.quantity,
+            note=d.note,
         )
         for d in o.details
     ]
     return AdminOrderOut(
         order_id=o.order_id,
         order_code=o.order_code,
+        customer_id=o.customer_id,
         recipient_name=o.recipient_name,
         recipient_phone=o.recipient_phone,
-        shipping_address=o.shipping_address,
+        pickup_time=o.pickup_time,
+        notes=o.notes,
+        total_quantity=o.total_quantity,
         total_cost=o.total_cost,
+        discount_amount=o.discount_amount or 0,
         final_cost=o.final_cost,
         status=o.status,
         payment_method=o.payment_method,
@@ -63,7 +69,7 @@ def update_order_status(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ):
-    order = AdminOrderService.update_status(db, order_id, data.status, admin.user_name, data.note)
+    order = AdminOrderService.update_status(db, order_id, data.status, admin.phone, data.note)
     if not order:
         raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
     return ResponseBase(message="Cập nhật trạng thái đơn hàng thành công", data=_to_order_out(order))
