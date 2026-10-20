@@ -7,11 +7,15 @@ class ClientProductService:
     @staticmethod
     def get_products(db: Session, category_name: Optional[str] = None, search: Optional[str] = None) -> List[Product]:
         query = db.query(Product).filter(Product.status == "Available")
-        if category_name and category_name.upper() != "ALL":
-            query = query.join(Product.category).filter(Category.category_name.ilike(f"%{category_name}%"))
-        if search:
-            query = query.filter(Product.product_name.ilike(f"%{search}%"))
-        return query.all()
+        if category_name and str(category_name).strip().upper() != "ALL":
+            cat_str = str(category_name).strip()
+            if cat_str.isdigit():
+                query = query.filter(Product.category_id == int(cat_str))
+            else:
+                query = query.join(Product.category).filter(Category.category_name.ilike(f"%{cat_str}%"))
+        if search and search.strip():
+            query = query.filter(Product.product_name.ilike(f"%{search.strip()}%"))
+        return query.order_by(Product.product_id.asc()).all()
 
     @staticmethod
     def get_by_id(db: Session, product_id: int) -> Optional[Product]:
@@ -19,4 +23,4 @@ class ClientProductService:
 
     @staticmethod
     def get_categories(db: Session) -> List[Category]:
-        return db.query(Category).all()
+        return db.query(Category).order_by(Category.category_id.asc()).all()

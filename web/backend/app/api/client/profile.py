@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
 from app.api.client.auth import to_profile_out
@@ -14,10 +14,11 @@ router = APIRouter()
 class ProfileUpdateRequest(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=6, description="Mật khẩu mới tối thiểu 6 ký tự")
 
 @router.put("", response_model=ResponseBase[ClientProfileOut], summary="Cập nhật thông tin cá nhân")
 def update_profile(
@@ -30,9 +31,14 @@ def update_profile(
 
     cust = user.customer
     if data.first_name is not None:
-        cust.first_name = data.first_name
+        cust.first_name = data.first_name.strip()
     if data.last_name is not None:
-        cust.last_name = data.last_name
+        cust.last_name = data.last_name.strip()
+    if data.email is not None and data.email != user.email:
+        existing = db.query(User).filter(User.email == data.email, User.phone != user.phone).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email này đã được sử dụng bởi tài khoản khác")
+        user.email = data.email
 
     db.commit()
     db.refresh(user)
@@ -46,6 +52,9 @@ def change_password(
 ):
     if not verify_password(data.old_password, user.password):
         raise HTTPException(status_code=400, detail="Mật khẩu cũ không chính xác")
+
+    if data.old_password == data.new_password:
+        raise HTTPException(status_code=400, detail="Mật khẩu mới phải khác mật khẩu cũ")
 
     user.password = get_password_hash(data.new_password)
     db.commit()

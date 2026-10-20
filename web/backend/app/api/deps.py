@@ -79,3 +79,21 @@ def get_current_customer(
             detail="Chức năng dành cho khách hàng",
         )
     return current_user
+
+def get_optional_current_user(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Dependency lấy thông tin user nếu có token, không raise 401 nếu chưa đăng nhập."""
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    phone: Optional[str] = payload.get("sub")
+    if not phone:
+        return None
+    user = db.query(User).filter(User.phone == phone).first()
+    if not user or user.status == "locked":
+        return None
+    return user

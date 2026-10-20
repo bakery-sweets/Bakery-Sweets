@@ -1,10 +1,15 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_customer
 from app.models.user import User
 from app.services.client.order_service import ClientOrderService
-from app.schemas.client.order import CheckoutRequest, ClientOrderOut, ClientOrderDetailOut
+from app.schemas.client.order import (
+    CheckoutRequest,
+    ClientOrderOut,
+    ClientOrderDetailOut,
+    CancelOrderRequest,
+)
 from app.schemas.common import ResponseBase
 
 router = APIRouter()
@@ -31,6 +36,8 @@ def _to_client_order_out(o) -> ClientOrderOut:
         recipient_phone=o.recipient_phone,
         pickup_time=o.pickup_time,
         notes=o.notes,
+        promotion_id=o.promotion_id,
+        promotion_code=o.promotion.promotion_code if getattr(o, "promotion", None) else None,
         total_quantity=o.total_quantity,
         total_cost=o.total_cost,
         discount_amount=o.discount_amount or 0,
@@ -75,3 +82,16 @@ def get_order_by_id(
     if not order:
         raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng này")
     return ResponseBase(data=_to_client_order_out(order))
+
+@router.put("/{order_id}/cancel", response_model=ResponseBase[ClientOrderOut], summary="Hủy đơn hàng đang chờ xử lý")
+def cancel_my_order(
+    order_id: int,
+    data: Optional[CancelOrderRequest] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_customer),
+):
+    if not user.customer:
+        raise HTTPException(status_code=400, detail="Tài khoản chưa có hồ sơ khách hàng")
+    note = data.note if data else None
+    order = ClientOrderService.cancel_order(db, user.customer.customer_id, order_id, note)
+    return ResponseBase(message="Hủy đơn hàng thành công", data=_to_client_order_out(order))

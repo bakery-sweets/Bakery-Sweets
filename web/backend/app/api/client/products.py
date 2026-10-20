@@ -22,9 +22,9 @@ def _to_client_product_out(p) -> ClientProductOut:
             price=s.price,
             stock_quantity=s.stock_quantity,
         )
-        for s in p.sizes
+        for s in sorted(p.sizes, key=lambda x: x.price)
     ]
-    min_price = min((s.price for s in sizes_out), default=Decimal("0.00")) if sizes_out else None
+    min_price = sizes_out[0].price if sizes_out else Decimal("0.00")
 
     return ClientProductOut(
         product_id=p.product_id,

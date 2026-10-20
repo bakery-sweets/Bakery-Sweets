@@ -65,11 +65,14 @@ def login(data: ClientLoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Tài khoản của bạn đã bị khóa")
 
     token = create_access_token({"sub": user.phone, "role": user.role})
+    cust = user.customer
     return ClientTokenResponse(
         access_token=token,
         phone=user.phone,
         email=user.email,
         role=user.role,
+        first_name=cust.first_name if cust else None,
+        last_name=cust.last_name if cust else None,
     )
 
 @router.get("/me", response_model=ResponseBase[ClientProfileOut], summary="Xem thông tin cá nhân khách hàng")

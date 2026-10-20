@@ -15,6 +15,10 @@ class CheckoutRequest(BaseModel):
     notes: Optional[str] = None
     payment_method: Literal["COD", "Banking", "Momo", "Credit Card", "VNPay"] = "COD"
     items: Optional[List[CheckoutOrderItem]] = None
+    voucher_code: Optional[str] = None
+
+class CancelOrderRequest(BaseModel):
+    note: Optional[str] = None
 
 class ClientOrderDetailOut(BaseModel):
     product_id: int
@@ -34,6 +38,8 @@ class ClientOrderOut(BaseModel):
     recipient_phone: str
     pickup_time: Optional[datetime] = None
     notes: Optional[str] = None
+    promotion_id: Optional[int] = None
+    promotion_code: Optional[str] = None
     total_quantity: int
     total_cost: Decimal
     discount_amount: Decimal

@@ -1,7 +1,8 @@
 from .auth import ClientRegisterRequest, ClientLoginRequest, ClientTokenResponse, ClientProfileOut
 from .product import ClientProductOut, ClientSizeOut, ClientCategoryOut, ClientProductSizeOut
 from .cart import CartItemAdd, CartItemUpdate, CartItemOut, CartSummaryOut
-from .order import CheckoutRequest, CheckoutOrderItem, ClientOrderOut, ClientOrderDetailOut
+from .order import CheckoutRequest, CheckoutOrderItem, ClientOrderOut, ClientOrderDetailOut, CancelOrderRequest
+from .promotion import PromotionOut, InvoicePromotionOut, ApplyPromotionRequest, ApplyPromotionResponse
 
 __all__ = [
     "ClientRegisterRequest",
@@ -20,4 +21,9 @@ __all__ = [
     "CheckoutOrderItem",
     "ClientOrderOut",
     "ClientOrderDetailOut",
+    "CancelOrderRequest",
+    "PromotionOut",
+    "InvoicePromotionOut",
+    "ApplyPromotionRequest",
+    "ApplyPromotionResponse",
 ]

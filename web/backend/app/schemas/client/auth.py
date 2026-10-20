@@ -18,6 +18,8 @@ class ClientTokenResponse(BaseModel):
     phone: str
     email: str
     role: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class ClientProfileOut(BaseModel):
     phone: str

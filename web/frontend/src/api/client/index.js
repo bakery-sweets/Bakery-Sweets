@@ -26,4 +26,10 @@ export const clientOrdersApi = {
   createOrder: (orderData) => axiosClient.post("/client/orders", orderData),
   getMyOrders: () => axiosClient.get("/client/orders"),
   getOrderById: (id) => axiosClient.get(`/client/orders/${id}`),
+  cancelOrder: (id, data) => axiosClient.put(`/client/orders/${id}/cancel`, data),
+};
+
+export const clientPromotionsApi = {
+  getAll: () => axiosClient.get("/client/promotions"),
+  apply: (data) => axiosClient.post("/client/promotions/apply", data),
 };

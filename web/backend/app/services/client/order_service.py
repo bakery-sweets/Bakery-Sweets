@@ -5,7 +5,9 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.order import Order, OrderDetail, Cart, OrderStatusLog
 from app.models.product import ProductSize
+from app.models.promotion import OrderPromotion
 from app.schemas.client.order import CheckoutRequest
+from app.services.client.promotion_service import ClientPromotionService
 
 class ClientOrderService:
     @staticmethod
@@ -30,6 +32,7 @@ class ClientOrderService:
         total_cost = Decimal("0.00")
         details_to_create = []
 
+        # Kiểm tra sự tồn tại của sản phẩm và số lượng tồn kho
         for (product_id, size_id), quantity in merged.items():
             ps = db.query(ProductSize).filter(
                 ProductSize.product_id == product_id,
@@ -38,17 +41,36 @@ class ClientOrderService:
             if not ps:
                 raise HTTPException(status_code=400, detail=f"Sản phẩm #{product_id} không có kích cỡ #{size_id}")
 
+            if ps.stock_quantity < quantity:
+                p_name = ps.product.product_name if ps.product else f"#{product_id}"
+                s_name = ps.size.size_name if ps.size else f"#{size_id}"
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Sản phẩm '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái trong kho, không đủ số lượng yêu cầu ({quantity})",
+                )
+
             total_quantity += quantity
             total_cost += ps.price * quantity
             details_to_create.append({
+                "ps_ref": ps,
                 "product_id": product_id,
                 "size_id": size_id,
                 "quantity": quantity,
                 "price": ps.price,
             })
 
+        # Xử lý áp dụng voucher khuyến mãi nếu có
         discount_amount = Decimal("0.00")
-        final_cost = total_cost - discount_amount
+        applied_promo = None
+        if data.voucher_code and data.voucher_code.strip():
+            applied_promo, discount_amount = ClientPromotionService.calculate_discount(
+                db=db,
+                code=data.voucher_code.strip(),
+                total_amount=total_cost,
+                customer_id=customer_id,
+            )
+
+        final_cost = max(Decimal("0.00"), total_cost - discount_amount)
 
         order = Order(
             order_code=order_code,
@@ -57,12 +79,12 @@ class ClientOrderService:
             recipient_phone=data.recipient_phone,
             pickup_time=data.pickup_time,
             notes=data.notes,
+            promotion_id=applied_promo.promotion_id if applied_promo else None,
             discount_amount=discount_amount,
             total_quantity=total_quantity,
             total_cost=total_cost,
             final_cost=final_cost,
             payment_method=data.payment_method,
-            # Chưa có cổng xác nhận thanh toán nên mọi đơn mới đều là Unpaid
             payment_status="Unpaid",
             status="Pending",
         )
@@ -70,7 +92,25 @@ class ClientOrderService:
         db.flush()
 
         for d in details_to_create:
-            db.add(OrderDetail(order_id=order.order_id, **d))
+            # Trừ số lượng tồn kho
+            ps = d["ps_ref"]
+            ps.stock_quantity -= d["quantity"]
+
+            db.add(OrderDetail(
+                order_id=order.order_id,
+                product_id=d["product_id"],
+                size_id=d["size_id"],
+                quantity=d["quantity"],
+                price=d["price"],
+            ))
+
+        # Lưu thông tin voucher đã áp dụng vào bảng order_promotions
+        if applied_promo:
+            db.add(OrderPromotion(
+                order_id=order.order_id,
+                promotion_id=applied_promo.promotion_id,
+                discount_amount=discount_amount,
+            ))
 
         # Log trạng thái khởi tạo
         db.add(OrderStatusLog(
@@ -81,8 +121,17 @@ class ClientOrderService:
             note="Khách hàng tạo đơn hàng mới",
         ))
 
-        # Xóa giỏ hàng sau khi đặt thành công
-        db.query(Cart).filter(Cart.customer_id == customer_id).delete()
+        # Xóa giỏ hàng sau khi đặt thành công (nếu đặt từ giỏ hàng hoặc gộp toàn bộ)
+        if not data.items:
+            db.query(Cart).filter(Cart.customer_id == customer_id).delete()
+        else:
+            # Nếu đặt từ danh sách items cụ thể, xóa các item tương ứng khỏi giỏ
+            for (p_id, s_id) in merged.keys():
+                db.query(Cart).filter(
+                    Cart.customer_id == customer_id,
+                    Cart.product_id == p_id,
+                    Cart.size_id == s_id
+                ).delete()
 
         db.commit()
         db.refresh(order)
@@ -95,3 +144,40 @@ class ClientOrderService:
     @staticmethod
     def get_order_by_id(db: Session, customer_id: int, order_id: int) -> Optional[Order]:
         return db.query(Order).filter(Order.order_id == order_id, Order.customer_id == customer_id).first()
+
+    @staticmethod
+    def cancel_order(db: Session, customer_id: int, order_id: int, note: Optional[str] = None) -> Order:
+        order = db.query(Order).filter(Order.order_id == order_id, Order.customer_id == customer_id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng này")
+
+        if order.status != "Pending":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Không thể hủy đơn hàng ở trạng thái '{order.status}'. Chỉ có thể hủy đơn khi đang chờ xử lý (Pending)",
+            )
+
+        old_status = order.status
+        order.status = "Cancelled"
+
+        # Hoàn lại số lượng tồn kho cho các sản phẩm trong đơn
+        for detail in order.details:
+            ps = db.query(ProductSize).filter(
+                ProductSize.product_id == detail.product_id,
+                ProductSize.size_id == detail.size_id
+            ).first()
+            if ps:
+                ps.stock_quantity += detail.quantity
+
+        cancel_note = note or "Khách hàng hủy đơn hàng"
+        db.add(OrderStatusLog(
+            order_id=order.order_id,
+            changed_by="Khách hàng",
+            old_status=old_status,
+            new_status="Cancelled",
+            note=cancel_note,
+        ))
+
+        db.commit()
+        db.refresh(order)
+        return order

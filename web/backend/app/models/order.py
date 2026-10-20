@@ -31,8 +31,7 @@ class Order(Base):
     recipient_phone = Column(String(20), nullable=False)
     pickup_time = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
-    # FK tới bảng promotions (backend web chưa có module khuyến mãi nên chỉ lưu id)
-    promotion_id = Column(Integer, nullable=True)
+    promotion_id = Column(Integer, ForeignKey("promotions.promotion_id", ondelete="SET NULL"), nullable=True)
     discount_amount = Column(Numeric(15, 2), default=0)
     total_quantity = Column(Integer, default=1, nullable=False)
     total_cost = Column(Numeric(20, 2), default=0, nullable=False)
@@ -44,6 +43,8 @@ class Order(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     customer = relationship("Customer", back_populates="orders")
+    promotion = relationship("app.models.promotion.Promotion")
+    applied_promotions = relationship("app.models.promotion.OrderPromotion", back_populates="order", cascade="all, delete-orphan")
     details = relationship("OrderDetail", back_populates="order", cascade="all, delete-orphan")
     status_logs = relationship("OrderStatusLog", back_populates="order", cascade="all, delete-orphan")
 

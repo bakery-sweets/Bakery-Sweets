@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_customer
 from app.models.user import User
+from app.models.order import Cart
 from app.services.client.cart_service import ClientCartService
 from app.schemas.client.cart import CartItemAdd, CartItemUpdate, CartSummaryOut
 from app.schemas.common import ResponseBase
@@ -36,8 +37,9 @@ def update_cart_item(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_customer),
 ):
-    if not user.customer:
-        raise HTTPException(status_code=400, detail="Tài khoản chưa có hồ sơ khách hàng")
+    item = db.query(Cart).filter(Cart.cart_id == cart_id, Cart.customer_id == user.customer.customer_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Món hàng không tồn tại trong giỏ")
     ClientCartService.update_quantity(db, user.customer.customer_id, cart_id, data.quantity)
     return ResponseBase(message="Cập nhật giỏ hàng thành công")
 

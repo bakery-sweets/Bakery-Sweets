@@ -169,6 +169,7 @@ export default function Pay() {
         pickup_time: `${shippingInfo.pickupDate}T${shippingInfo.pickupTime}:00`,
         notes: shippingInfo.note.trim() || null,
         payment_method: shippingInfo.paymentMethod,
+        voucher_code: selectedVoucher ? selectedVoucher.code : undefined,
       });
       const order = res.data;
       alert(

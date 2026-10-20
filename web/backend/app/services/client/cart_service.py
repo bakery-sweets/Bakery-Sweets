@@ -1,5 +1,6 @@
 from typing import List, Optional
 from decimal import Decimal
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.order import Cart
 from app.models.product import ProductSize, Product, Size
@@ -44,14 +45,33 @@ class ClientCartService:
 
     @staticmethod
     def add_item(db: Session, customer_id: int, data: CartItemAdd) -> Cart:
+        # Kiểm tra sản phẩm và biến thể kích cỡ
+        ps = db.query(ProductSize).filter(
+            ProductSize.product_id == data.product_id,
+            ProductSize.size_id == data.size_id
+        ).first()
+
+        if not ps:
+            raise HTTPException(status_code=404, detail="Sản phẩm hoặc kích cỡ không tồn tại")
+
+        if ps.product and ps.product.status != "Available":
+            raise HTTPException(status_code=400, detail="Sản phẩm này hiện không còn khả dụng")
+
         existing = db.query(Cart).filter(
             Cart.customer_id == customer_id,
             Cart.product_id == data.product_id,
             Cart.size_id == data.size_id,
         ).first()
 
+        new_total_qty = (existing.quantity if existing else 0) + data.quantity
+        if ps.stock_quantity < new_total_qty:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
+            )
+
         if existing:
-            existing.quantity += data.quantity
+            existing.quantity = new_total_qty
             db.commit()
             db.refresh(existing)
             return existing
@@ -72,10 +92,22 @@ class ClientCartService:
         item = db.query(Cart).filter(Cart.cart_id == cart_id, Cart.customer_id == customer_id).first()
         if not item:
             return None
+
         if quantity <= 0:
             db.delete(item)
             db.commit()
             return None
+
+        ps = db.query(ProductSize).filter(
+            ProductSize.product_id == item.product_id,
+            ProductSize.size_id == item.size_id
+        ).first()
+        if ps and ps.stock_quantity < quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
+            )
+
         item.quantity = quantity
         db.commit()
         db.refresh(item)
