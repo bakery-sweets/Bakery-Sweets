@@ -1,0 +1,407 @@
+/* ============================================================
+   GLOBAL POPUP & TOAST NOTIFICATIONS
+   Haute Patisserie / The Sweets Luxury Concept Design
+   ============================================================ */
+
+/* OVERLAY / BACKDROP */
+.sweets-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: sweetsPopupBackdrop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sweetsPopupBackdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* POPUP MODAL CARD */
+.sweets-popup-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 26px;
+  width: 100%;
+  max-width: 440px;
+  padding: 28px 24px 22px;
+  box-shadow: 
+    0 25px 60px -12px rgba(15, 23, 42, 0.25),
+    0 0 0 1px rgba(240, 241, 244, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  animation: sweetsPopupCardPop 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+@keyframes sweetsPopupCardPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* CLOSE (X) BUTTON */
+.sweets-popup-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f8fafc;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.sweets-popup-close-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+  transform: scale(1.06);
+}
+
+/* ICON BADGE CIRCLE */
+.sweets-popup-icon-wrapper {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 4px;
+}
+
+/* Icon Variations */
+.sweets-popup-icon-wrapper.danger {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border: 1.5px solid #fecdd3;
+  color: #e11d48;
+  box-shadow: 0 8px 20px rgba(225, 29, 72, 0.15);
+}
+
+.sweets-popup-icon-wrapper.warning {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1.5px solid #fde68a;
+  color: #d97706;
+  box-shadow: 0 8px 20px rgba(217, 119, 6, 0.15);
+}
+
+.sweets-popup-icon-wrapper.success {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 1.5px solid #a7f3d0;
+  color: #059669;
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.15);
+}
+
+.sweets-popup-icon-wrapper.info,
+.sweets-popup-icon-wrapper.primary {
+  background: linear-gradient(135deg, #fff0f4 0%, #fce4ec 100%);
+  border: 1.5px solid #f8bbd0;
+  color: #de5d7c;
+  box-shadow: 0 8px 20px rgba(222, 93, 124, 0.18);
+}
+
+.sweets-popup-icon-svg {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+/* CONTENT */
+.sweets-popup-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #1e293b;
+  text-align: center;
+  margin: 12px 0 0;
+  letter-spacing: -0.3px;
+  line-height: 1.35;
+}
+
+.sweets-popup-message {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #475569;
+  text-align: center;
+  margin: 8px 0 0;
+  line-height: 1.55;
+}
+
+/* SUBTITLE / NOTE CALLOUT BOX */
+.sweets-popup-subtitle-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+}
+
+.sweets-popup-subtitle-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #64748b;
+}
+
+.sweets-popup-subtitle-text {
+  font-size: 12.5px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* BUTTONS FOOTER */
+.sweets-popup-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 22px;
+}
+
+.sweets-popup-btn {
+  flex: 1;
+  padding: 11px 18px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  border: none;
+  outline: none;
+}
+
+.sweets-popup-btn:active {
+  transform: scale(0.98);
+}
+
+/* Cancel Button */
+.sweets-popup-btn-cancel {
+  background: #ffffff;
+  color: #475569;
+  border: 1.5px solid #e2e8f0;
+}
+
+.sweets-popup-btn-cancel:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+/* Confirm Button by Type */
+.sweets-popup-btn-confirm.danger {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35);
+}
+
+.sweets-popup-btn-confirm.danger:hover {
+  box-shadow: 0 6px 18px rgba(225, 29, 72, 0.45);
+  transform: translateY(-1px);
+}
+
+.sweets-popup-btn-confirm.warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+}
+
+.sweets-popup-btn-confirm.warning:hover {
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.45);
+  transform: translateY(-1px);
+}
+
+.sweets-popup-btn-confirm.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.sweets-popup-btn-confirm.success:hover {
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+  transform: translateY(-1px);
+}
+
+.sweets-popup-btn-confirm.info,
+.sweets-popup-btn-confirm.primary {
+  background: linear-gradient(135deg, #e46080 0%, #de5d7c 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(222, 93, 124, 0.35);
+}
+
+.sweets-popup-btn-confirm.info:hover,
+.sweets-popup-btn-confirm.primary:hover {
+  box-shadow: 0 6px 18px rgba(222, 93, 124, 0.45);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   FLOATING TOAST NOTIFICATIONS
+   ============================================================ */
+.sweets-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+.sweets-toast-item {
+  pointer-events: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: 
+    0 12px 32px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(226, 232, 240, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 340px;
+  max-width: 100%;
+  box-sizing: border-box;
+  animation: sweetsToastSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+  overflow: hidden;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+@keyframes sweetsToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.sweets-toast-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sweets-toast-icon-wrap.success {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.sweets-toast-icon-wrap.error {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.sweets-toast-icon-wrap.warning {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.sweets-toast-icon-wrap.info {
+  background: #fff0f4;
+  color: #de5d7c;
+}
+
+.sweets-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sweets-toast-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.sweets-toast-msg {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+  margin: 2px 0 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.sweets-toast-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.sweets-toast-close:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+/* Toast bottom countdown bar */
+.sweets-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #de5d7c, #f43f5e);
+  width: 100%;
+  animation: sweetsToastProgress linear forwards;
+}
+
+@keyframes sweetsToastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
