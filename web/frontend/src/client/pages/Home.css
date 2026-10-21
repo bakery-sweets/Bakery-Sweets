@@ -207,8 +207,8 @@
 
 .filter-input:focus {
   background: #ffffff;
-  border-color: #d4845a;
-  box-shadow: 0 0 0 2px rgba(212, 132, 90, 0.15);
+  border-color: #8bb4f7;
+  box-shadow: 0 0 0 2px rgba(202, 219, 251, 0.5);
 }
 
 .filter-clear-input {
@@ -301,17 +301,17 @@
 }
 
 .filter-category-item.active {
-  background: #fdf5f0;
-  color: #d4845a;
-  border-color: #fbd6c2;
+  background: #cadbfb;
+  color: #1a2639;
+  border-color: #8bb4f7;
 }
 
 .filter-category-item.active .cat-name ion-icon {
-  color: #d4845a;
+  color: #1a2639;
 }
 
 .filter-category-item.active .cat-count {
-  background: #d4845a;
+  background: #1a2639;
   color: #ffffff;
 }
 
@@ -358,9 +358,10 @@
 }
 
 .price-chip.active {
-  background: #d4845a;
-  color: #ffffff;
-  border-color: #d4845a;
+  background: #cadbfb;
+  color: #1a2639;
+  border-color: #8bb4f7;
+  font-weight: 700;
 }
 
 /* SẮP XẾP SELECT */
@@ -379,7 +380,8 @@
 }
 
 .filter-select:focus {
-  border-color: #d4845a;
+  border-color: #8bb4f7;
+  box-shadow: 0 0 0 2px rgba(202, 219, 251, 0.5);
 }
 
 /* ==========================================================================
@@ -418,11 +420,11 @@
 .products-count-badge {
   font-size: 12px;
   font-weight: 700;
-  color: #d4845a;
-  background: #fdf5f0;
+  color: #1a2639;
+  background: #cadbfb;
   padding: 3px 8px;
   border-radius: 16px;
-  border: 1px solid #fbd6c2;
+  border: 1px solid #8bb4f7;
 }
 
 /* ACTIVE FILTER TAGS */
@@ -439,9 +441,9 @@
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: #475569;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  color: #1a2639;
+  background: #cadbfb;
+  border: 1px solid #8bb4f7;
   padding: 3px 8px;
   border-radius: 16px;
 }
@@ -561,6 +563,11 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   min-height: 38px;
+  transition: color 0.2s ease;
+}
+
+.home-product-card:hover .home-product-title {
+  color: #1e293b;
 }
 
 .product-card-bottom {
@@ -572,7 +579,7 @@
 .home-product-price {
   font-size: 16px;
   font-weight: 800;
-  color: #d4845a;
+  color: #ed8a9f;
   margin: 0;
 }
 
@@ -635,8 +642,8 @@
 
 /* KHI LIA TRỰC TIẾP CHUỘT LÊN NÚT BẤM */
 .product-expand-cart-btn:hover {
-  background: #d4845a !important;
-  border-color: #d4845a !important;
+  background: #ed8a9f !important;
+  border-color: #ed8a9f !important;
   color: #ffffff !important;
   transform: translateY(-1px) scale(1.03);
 }

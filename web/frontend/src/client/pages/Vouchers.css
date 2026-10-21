@@ -1,0 +1,606 @@
+.vouchers-page-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #fbfbfd;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   HERO BANNER VOUCHERS
+   ========================================================================== */
+.vouchers-hero-banner {
+  width: 100%;
+  background: linear-gradient(135deg, #1a2639 0%, #2c3e50 100%);
+  padding: 55px 24px 60px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.vouchers-hero-banner::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(237, 138, 159, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.vouchers-hero-content {
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.vouchers-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(202, 219, 251, 0.2);
+  border: 1px solid rgba(202, 219, 251, 0.4);
+  color: #cadbfb;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.vouchers-hero-badge ion-icon {
+  font-size: 15px;
+  color: #ed8a9f;
+}
+
+.vouchers-hero-title {
+  font-size: 34px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.vouchers-hero-subtitle {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin: 0;
+  max-width: 600px;
+}
+
+/* SEARCH BAR */
+.vouchers-search-bar {
+  margin-top: 10px;
+  width: 100%;
+  max-width: 580px;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 30px;
+  padding: 6px 16px 6px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  gap: 10px;
+}
+
+.vouchers-search-bar ion-icon {
+  font-size: 20px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.vouchers-search-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #1e293b;
+  background: transparent;
+}
+
+.clear-search-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
+
+.clear-search-btn:hover {
+  color: #ef4444;
+}
+
+/* ==========================================================================
+   CONTAINER & TABS
+   ========================================================================== */
+.vouchers-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 35px 24px 80px;
+  box-sizing: border-box;
+}
+
+.vouchers-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 30px;
+  scrollbar-width: thin;
+}
+
+.voucher-tab-btn {
+  padding: 9px 18px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.voucher-tab-btn:hover {
+  border-color: #cadbfb;
+  color: #1a2639;
+  background: #f8fafc;
+}
+
+.voucher-tab-btn.active {
+  background: #cadbfb;
+  border-color: #8bb4f7;
+  color: #1a2639;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(139, 180, 247, 0.25);
+}
+
+/* ==========================================================================
+   VOUCHER TICKET CARDS GRID
+   ========================================================================== */
+.vouchers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+}
+
+.voucher-ticket-card {
+  display: flex;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.voucher-ticket-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+}
+
+/* CỘT TRÁI VÉ */
+.voucher-ticket-left {
+  width: 140px;
+  background: linear-gradient(145deg, #1a2639 0%, #263852 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 12px;
+  gap: 8px;
+  color: #ffffff;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* VẾT CẮT TRÒN RĂNG CƯA TRÊN DƯỚI */
+.ticket-cutout {
+  position: absolute;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: #fbfbfd;
+  border-radius: 50%;
+  z-index: 3;
+}
+
+.ticket-cutout-top {
+  top: -8px;
+}
+
+.ticket-cutout-bottom {
+  bottom: -8px;
+}
+
+.ticket-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(237, 138, 159, 0.2);
+  color: #ed8a9f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.ticket-discount-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.discount-number {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.discount-unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: #cadbfb;
+  letter-spacing: 0.8px;
+  margin-top: 3px;
+}
+
+.discount-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ed8a9f;
+}
+
+.ticket-badge-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* ĐƯỜNG RÃNH ĐỨT */
+.voucher-ticket-divider {
+  width: 0;
+  border-right: 1.5px dashed #cbd5e1;
+  margin: 10px 0;
+  flex-shrink: 0;
+}
+
+/* CỘT PHẢI VÉ */
+.voucher-ticket-right {
+  flex: 1;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.ticket-info-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticket-code-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px dashed #94a3b8;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #1a2639;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.ticket-code-pill ion-icon {
+  font-size: 13px;
+  color: #d4845a;
+}
+
+.ticket-expiry {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.ticket-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a2639;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.ticket-desc {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.ticket-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.condition-pill {
+  font-size: 11px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.condition-pill strong {
+  color: #1e293b;
+}
+
+/* ACTION BUTTONS */
+.ticket-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ticket-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #1a2639;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ticket-copy-btn:hover {
+  background: #cadbfb;
+  border-color: #8bb4f7;
+  color: #1a2639;
+}
+
+.ticket-copy-btn.copied {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.ticket-use-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  background: #d4845a;
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ticket-use-btn:hover {
+  background: #b5623a;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   LOADING & EMPTY STATE
+   ========================================================================== */
+.vouchers-loading-box,
+.vouchers-empty-box {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  padding: 60px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.spin-icon {
+  font-size: 36px;
+  color: #d4845a;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vouchers-empty-box ion-icon {
+  font-size: 48px;
+  color: #94a3b8;
+}
+
+.vouchers-empty-box h3 {
+  font-size: 17px;
+  color: #1e293b;
+  margin: 0;
+}
+
+.vouchers-empty-box p {
+  color: #64748b;
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.vouchers-reset-btn {
+  margin-top: 6px;
+  padding: 8px 18px;
+  background: #1a2639;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   HƯỚNG DẪN SỬ DỤNG
+   ========================================================================== */
+.vouchers-guide-section {
+  margin-top: 60px;
+  padding: 35px 30px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.guide-header ion-icon {
+  font-size: 24px;
+  color: #d4845a;
+}
+
+.guide-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1a2639;
+  margin: 0;
+}
+
+.guide-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.guide-step-card {
+  padding: 20px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  position: relative;
+}
+
+.step-num {
+  font-size: 28px;
+  font-weight: 900;
+  color: #cbd5e1;
+  display: block;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.guide-step-card h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a2639;
+  margin: 0 0 6px;
+}
+
+.guide-step-card p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 991px) {
+  .vouchers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-steps-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 767px) {
+  .vouchers-hero-banner {
+    padding: 35px 16px 40px;
+  }
+
+  .vouchers-hero-title {
+    font-size: 24px;
+  }
+
+  .vouchers-container {
+    padding: 20px 14px 50px;
+  }
+
+  .voucher-ticket-card {
+    flex-direction: column;
+  }
+
+  .voucher-ticket-left {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 14px 18px;
+  }
+
+  .ticket-cutout {
+    display: none;
+  }
+
+  .voucher-ticket-divider {
+    width: 100%;
+    height: 0;
+    border-right: none;
+    border-bottom: 1.5px dashed #cbd5e1;
+    margin: 0;
+  }
+
+  .ticket-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ticket-copy-btn,
+  .ticket-use-btn {
+    justify-content: center;
+  }
+}

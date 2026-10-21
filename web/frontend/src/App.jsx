@@ -8,6 +8,7 @@ import ProductDetail from "./client/pages/ProductDetail";
 import Receipt from "./client/pages/Receipt";
 import Pay from "./client/pages/Pay";
 import About from "./client/pages/About";
+import Vouchers from "./client/pages/Vouchers";
 
 // Admin Imports
 import AdminLogin from "./admin/pages/AdminLogin";
@@ -32,6 +33,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/receipt" element={<Receipt />} />
+          <Route path="/vouchers" element={<Vouchers />} />
           <Route path="/pay" element={<Pay />} />
           <Route path="/search" element={<Navigate to="/" replace />} />
         </Route>
