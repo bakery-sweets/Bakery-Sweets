@@ -3,8 +3,31 @@ export const formatVND = (value, unit = "₫") =>
   `${Number(value || 0).toLocaleString("vi-VN")}${unit}`;
 
 // DB lưu ảnh dạng "/uploads/Mousse/x.jpg"; frontend phục vụ cùng file ở "/assets/Img/Mousse/x.jpg"
-export const imageUrl = (path) =>
-  path ? path.replace(/^\/uploads\//, "/assets/Img/") : "/assets/Img/Sweets1.png";
+// Các ảnh mới tải lên từ máy được phục vụ bởi Backend qua http://localhost:5000/uploads/...
+export const imageUrl = (path) => {
+  if (!path) return "/assets/Img/Sweets1.png";
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:") ||
+    path.startsWith("data:")
+  ) {
+    return path;
+  }
+  const staticCategories = [
+    "/uploads/Mousse/",
+    "/uploads/Drink/",
+    "/uploads/Croissant/",
+    "/uploads/Pay_final/",
+  ];
+  if (staticCategories.some((cat) => path.startsWith(cat))) {
+    return path.replace(/^\/uploads\//, "/assets/Img/");
+  }
+  if (path.startsWith("/uploads/")) {
+    return `http://localhost:5000${path}`;
+  }
+  return path;
+};
 
 export const formatDateTime = (iso) =>
   iso

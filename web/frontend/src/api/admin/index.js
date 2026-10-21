@@ -17,6 +17,13 @@ export const adminProductsApi = {
   create: (data) => axiosClient.post("/admin/products", data),
   update: (id, data) => axiosClient.put(`/admin/products/${id}`, data),
   delete: (id) => axiosClient.delete(`/admin/products/${id}`),
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return axiosClient.post("/admin/products/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };
 
 export const adminOrdersApi = {

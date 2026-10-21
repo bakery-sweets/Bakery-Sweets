@@ -6,6 +6,7 @@ import {
   formatVND, formatDate, formatDateTime, apiErrorMessage, imageUrl,
   ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS,
 } from '../../utils/format';
+import popup from '../../utils/popup';
 import './Receipt.css';
 
 const STATUS_CLASS = { Completed: 'success', Ready: 'success', Pending: 'warning', Processing: 'warning' };

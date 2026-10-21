@@ -4,6 +4,7 @@ import useCartStore from '../../store/cartStore';
 import useAuthStore from '../../store/authStore';
 import { clientOrdersApi } from '../../api/client';
 import { formatVND, apiErrorMessage, toLocalDateInput } from '../../utils/format';
+import popup from '../../utils/popup';
 import './Pay.css';
 
 // Danh sách các chương trình khuyến mãi & Voucher trong hệ thống (khớp với Database)
@@ -109,11 +110,16 @@ export default function Pay() {
   const handleSelectVoucher = (voucher) => {
     if (total < voucher.minOrder) {
       const needed = voucher.minOrder - total;
-      alert(`Đơn hàng chưa đạt mức tối thiểu ${voucher.minOrder.toLocaleString('vi-VN')}₫.\nBạn cần mua thêm ${needed.toLocaleString('vi-VN')}₫ để áp dụng mã này.`);
+      popup.warning({
+        title: "Chưa đủ điều kiện Voucher",
+        message: `Đơn hàng cần đạt mức tối thiểu ${voucher.minOrder.toLocaleString('vi-VN')}₫ để áp dụng mã "${voucher.code}".`,
+        subtitle: `Bạn cần mua thêm ${needed.toLocaleString('vi-VN')}₫ để hưởng ưu đãi.`,
+      });
       return;
     }
     setSelectedVoucher(voucher);
     setIsVoucherModalOpen(false);
+    popup.success(`Đã áp dụng mã voucher "${voucher.code}"!`);
   };
 
   const handleApplyCustomCode = (e) => {
@@ -122,7 +128,7 @@ export default function Pay() {
     if (!code) return;
     const found = AVAILABLE_VOUCHERS.find(v => v.code === code);
     if (!found) {
-      alert("Mã voucher không tồn tại hoặc đã hết hạn!");
+      popup.warning("Mã voucher không tồn tại hoặc đã hết hạn!", { title: "Voucher không hợp lệ" });
       return;
     }
     handleSelectVoucher(found);
@@ -141,19 +147,19 @@ export default function Pay() {
     e.preventDefault();
     if (shippingInfo.recipientMode === 'other') {
       if (!shippingInfo.otherName.trim() || !shippingInfo.otherPhone.trim()) {
-        alert("Vui lòng điền đầy đủ họ tên và số điện thoại của người nhận dùm!");
+        popup.warning("Vui lòng điền đầy đủ họ tên và số điện thoại của người nhận dùm!");
         return;
       }
     } else {
       if (!shippingInfo.selfName.trim() || !shippingInfo.selfPhone.trim()) {
-        alert("Vui lòng kiểm tra lại họ tên và số điện thoại của bạn!");
+        popup.warning("Vui lòng kiểm tra lại họ tên và số điện thoại của bạn!");
         return;
       }
     }
 
     const pickupAt = new Date(`${shippingInfo.pickupDate}T${shippingInfo.pickupTime}`);
     if (Number.isNaN(pickupAt.getTime()) || pickupAt < new Date()) {
-      alert("Giờ lấy bánh phải ở thời điểm sau hiện tại!");
+      popup.warning("Giờ lấy bánh phải ở thời điểm sau hiện tại!");
       return;
     }
 
@@ -183,7 +189,7 @@ export default function Pay() {
       });
       await fetchCart();
     } catch (err) {
-      alert(apiErrorMessage(err, "Đặt bánh thất bại, vui lòng thử lại."));
+      popup.error(apiErrorMessage(err, "Đặt bánh thất bại, vui lòng thử lại."));
     } finally {
       setSubmitting(false);
     }

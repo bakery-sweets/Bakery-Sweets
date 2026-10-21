@@ -21,9 +21,12 @@ import OrderList from "./admin/pages/OrderList";
 import UserList from "./admin/pages/UserList";
 import Statistical from "./admin/pages/Statistical";
 
+import GlobalPopup from "./components/common/GlobalPopup";
+
 function App() {
   return (
     <BrowserRouter>
+      <GlobalPopup />
       <Routes>
         {/* Nhóm trang Khách hàng (ClientLayout gồm Header & Footer của tiệm bánh) */}
         <Route element={<ClientLayout />}>

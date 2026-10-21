@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import { clientProductsApi } from '../../api/client';
 import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
+import popup from '../../utils/popup';
 import './Home.css';
 
 const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
@@ -64,8 +65,9 @@ export default function Home() {
       );
       setAddedId(product.product_id);
       setTimeout(() => setAddedId(null), 1200);
+      popup.success(`Đã thêm "${product.product_name}" vào giỏ hàng!`);
     } catch (err) {
-      alert(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
+      popup.error(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
     }
   };
 

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import AdminHeader from "../components/AdminHeader";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { adminProductsApi } from "../../api/admin";
 import { clientProductsApi } from "../../api/client";
 import { imageUrl, apiErrorMessage } from "../../utils/format";
+import popup from "../../utils/popup";
 
 export default function ProductForm() {
   const { id } = useParams();
@@ -17,6 +18,45 @@ export default function ProductForm() {
   const [showAddSizeModal, setShowAddSizeModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Chọn ảnh từ máy tính
+  const fileInputRef = useRef(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      popup.warning("Vui lòng chọn tệp hình ảnh (PNG, JPG, WEBP, ...)", { title: "Tệp không hợp lệ" });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      popup.warning("Dung lượng ảnh không được vượt quá 10MB.", { title: "Dung lượng quá lớn" });
+      return;
+    }
+
+    // Hiển thị xem trước ảnh tức thì
+    const objectUrl = URL.createObjectURL(file);
+    setImagePreview(objectUrl);
+
+    setUploadingImage(true);
+    try {
+      const res = await adminProductsApi.uploadImage(file);
+      const uploadedUrl = res.data?.url || res.url;
+      setFormData((prev) => ({ ...prev, image: uploadedUrl }));
+      popup.success("Đã tải ảnh lên máy chủ thành công!");
+    } catch (err) {
+      popup.error(apiErrorMessage(err, "Không thể tải ảnh lên máy chủ"));
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   // Form State bám sát bảng product & product_sizes trong createTable.sql
   const [formData, setFormData] = useState({
@@ -94,7 +134,7 @@ export default function ProductForm() {
           }));
         }
       } catch (err) {
-        alert(apiErrorMessage(err, "Không tải được dữ liệu sản phẩm"));
+        popup.error(apiErrorMessage(err, "Không tải được dữ liệu sản phẩm"));
       } finally {
         setLoading(false);
       }
@@ -110,7 +150,9 @@ export default function ProductForm() {
   };
 
   const handleAddNewSize = () => {
-    alert("Backend chưa hỗ trợ thêm kích cỡ mới (bảng size).");
+    popup.info("Tính năng tạo kích cỡ mới đang được cập nhật ở phiên bản tiếp theo.", {
+      title: "Thông báo hệ thống",
+    });
     setNewSizeName("");
     setShowAddSizeModal(false);
   };
@@ -127,11 +169,15 @@ export default function ProductForm() {
         : [];
 
     if (sizes.length === 0) {
-      alert("Vui lòng chọn ít nhất một kích thước bán.");
+      popup.warning("Vui lòng chọn ít nhất một kích thước và nhập giá bán cho bánh.", {
+        title: "Chưa chọn kích thước",
+      });
       return;
     }
     if (sizes.some((sz) => Number.isNaN(sz.price) || sz.price < 0)) {
-      alert("Giá bán của mỗi kích thước phải là số hợp lệ.");
+      popup.warning("Giá bán của mỗi kích thước phải là số dương hợp lệ.", {
+        title: "Giá bán không hợp lệ",
+      });
       return;
     }
 
@@ -151,12 +197,14 @@ export default function ProductForm() {
     try {
       if (isEdit) {
         await adminProductsApi.update(id, body);
+        popup.success(`Đã cập nhật món bánh "${formData.name.trim()}" thành công!`);
       } else {
         await adminProductsApi.create(body);
+        popup.success(`Đã thêm mới món bánh "${formData.name.trim()}" thành công!`);
       }
       navigate("/admin/products");
     } catch (err) {
-      alert(apiErrorMessage(err, "Lưu sản phẩm thất bại"));
+      popup.error(apiErrorMessage(err, "Lưu sản phẩm thất bại"));
     } finally {
       setSubmitting(false);
     }
@@ -190,7 +238,7 @@ export default function ProductForm() {
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             
             {/* 1. THÔNG TIN CƠ BẢN */}
-            <div className="admin-grid-2" style={{ gap: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>Tên bánh ngọt *</label>
                 <input
@@ -213,6 +261,20 @@ export default function ProductForm() {
                   {categories.map((c) => (
                     <option key={c.category_id} value={c.category_id}>{c.category_name}</option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>Trạng thái kinh doanh *</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  style={{ width: "100%", padding: "11px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box", background: "#fff" }}
+                >
+                  <option value="Available">Đang bán (Available)</option>
+                  <option value="Out of Stock">Tạm hết hàng (Out of Stock)</option>
+                  <option value="Discontinued">Ngừng kinh doanh (Discontinued)</option>
+                  <option value="Hidden">Đang ẩn (Hidden)</option>
                 </select>
               </div>
             </div>
@@ -369,23 +431,140 @@ export default function ProductForm() {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "6px" }}>Đường dẫn hình ảnh (URL / File path)</label>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                  <input
-                    type="text"
-                    placeholder="VD: /uploads/Mousse/Tiramisu_Mousse.jpg"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    style={{ flex: 1, padding: "11px 14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }}
-                  />
-                  {formData.image && (
-                    <img
-                      src={imageUrl(formData.image)}
-                      alt="Preview"
-                      style={{ width: "42px", height: "42px", objectFit: "cover", borderRadius: "8px", border: "1px solid #cbd5e1", flexShrink: 0 }}
-                      onError={(e) => { e.target.style.display = "none"; }}
-                    />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                  <label style={{ fontSize: "13px", fontWeight: "600", color: "#334155" }}>
+                    Hình ảnh sản phẩm *
+                  </label>
+                  {(formData.image || imagePreview) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, image: "" });
+                        setImagePreview(null);
+                      }}
+                      style={{ background: "none", border: "none", color: "#e11d48", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
+                    >
+                      Xóa ảnh
+                    </button>
                   )}
+                </div>
+
+                {/* Input chọn file ẩn */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleFileSelect}
+                />
+
+                {/* Khung tải ảnh & xem trước */}
+                <div
+                  style={{
+                    border: "1.5px dashed #cbd5e1",
+                    borderRadius: "12px",
+                    padding: "12px",
+                    background: "#f8fafc",
+                    display: "flex",
+                    gap: "12px",
+                    alignItems: "center",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {/* Thumbnail Preview Box */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      borderRadius: "10px",
+                      background: "#ffffff",
+                      border: "1.5px solid #e2e8f0",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      position: "relative",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+                    }}
+                    title="Bấm để chọn / đổi ảnh từ máy"
+                  >
+                    {imagePreview || formData.image ? (
+                      <img
+                        src={imagePreview || imageUrl(formData.image)}
+                        alt="Preview"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "/assets/Img/Sweets1.png";
+                        }}
+                      />
+                    ) : (
+                      <ion-icon name="image-outline" style={{ fontSize: "26px", color: "#94a3b8" }}></ion-icon>
+                    )}
+
+                    {uploadingImage && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background: "rgba(255,255,255,0.8)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <ion-icon name="sync-outline" style={{ fontSize: "20px", color: "#de5d7c", animation: "spin 1s linear infinite" }}></ion-icon>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nút Chọn ảnh từ máy & input đường dẫn */}
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn-pill-primary"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        style={{
+                          padding: "6px 14px",
+                          fontSize: "12px",
+                          cursor: uploadingImage ? "not-allowed" : "pointer",
+                          opacity: uploadingImage ? 0.7 : 1,
+                        }}
+                      >
+                        <ion-icon name="cloud-upload-outline"></ion-icon>
+                        <span>{uploadingImage ? "Đang tải ảnh lên..." : "Chọn ảnh từ máy"}</span>
+                      </button>
+
+                      <span style={{ fontSize: "11.5px", color: "#8c9ba5" }}>
+                        JPG, PNG, WEBP (tối đa 10MB)
+                      </span>
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="Hoặc nhập URL / file path (VD: /uploads/Drink/Tira_Latte.png)"
+                      value={formData.image}
+                      onChange={(e) => {
+                        setFormData({ ...formData, image: e.target.value });
+                        setImagePreview(null);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "7px 10px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "8px",
+                        fontSize: "12.5px",
+                        boxSizing: "border-box",
+                        background: "#ffffff",
+                        color: "#334155",
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

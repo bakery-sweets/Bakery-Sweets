@@ -4,6 +4,7 @@ import useAuthStore from '../../store/authStore';
 import useCartStore from '../../store/cartStore';
 import { clientProductsApi } from '../../api/client';
 import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
+import popup from '../../utils/popup';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
@@ -48,9 +49,9 @@ export default function ProductDetail() {
         currentSizeObj,
         quantity
       );
-      alert('Đã thêm sản phẩm vào giỏ hàng thành công!');
+      popup.success(`Đã thêm ${quantity}x "${product.product_name}" vào giỏ hàng!`);
     } catch (err) {
-      alert(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
+      popup.error(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
     }
   };
 
