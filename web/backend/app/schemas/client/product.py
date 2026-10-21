@@ -18,6 +18,7 @@ class ClientProductSizeOut(BaseModel):
     size_name: str
     price: Decimal
     stock_quantity: int
+    stock_display: str = ""
 
 class ClientProductOut(BaseModel):
     product_id: int
@@ -30,4 +31,6 @@ class ClientProductOut(BaseModel):
     storage_instructions: Optional[str] = None
     image: Optional[str] = None
     min_price: Optional[Decimal] = None
+    stock_quantity: int = 0
+    stock_display: str = ""
     sizes: List[ClientProductSizeOut] = []

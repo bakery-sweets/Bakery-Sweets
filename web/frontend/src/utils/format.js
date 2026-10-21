@@ -2,6 +2,16 @@
 export const formatVND = (value, unit = "₫") =>
   `${Number(value || 0).toLocaleString("vi-VN")}${unit}`;
 
+// Hiển thị số lượng: nếu vượt quá 20 thì để 20+
+export const formatStock = (value) => {
+  if (value === null || value === undefined || value === "") return "0";
+  if (typeof value === "string" && value.includes("+")) return value;
+  const num = Number(value);
+  if (isNaN(num) || num <= 0) return "0";
+  if (num > 20) return "20+";
+  return String(num);
+};
+
 // DB lưu ảnh dạng "/uploads/Mousse/x.jpg"; frontend phục vụ cùng file ở "/assets/Img/Mousse/x.jpg"
 // Các ảnh mới tải lên từ máy được phục vụ bởi Backend qua http://localhost:5000/uploads/...
 export const imageUrl = (path) => {
