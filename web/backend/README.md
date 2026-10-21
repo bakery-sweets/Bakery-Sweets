@@ -16,6 +16,8 @@ Hệ thống Backend phục vụ ứng dụng **Web (Admin Portal & Client Store
 
 ## 📂 Cấu trúc thư mục (Phân tách Admin & Client)
 
+> 📖 **Xem tài liệu chi tiết đầy đủ về từng file và chức năng:** [BACKEND_STRUCTURE.md](BACKEND_STRUCTURE.md)
+
 ```text
 web/backend/
 ├── app/
