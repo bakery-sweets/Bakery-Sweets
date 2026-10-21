@@ -53,8 +53,9 @@ class OrderDetail(Base):
     __tablename__ = "order_detail"
 
     order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), primary_key=True)
-    product_id = Column(Integer, ForeignKey("product.product_id", ondelete="CASCADE"), primary_key=True)
-    size_id = Column(Integer, ForeignKey("size.size_id", ondelete="CASCADE"), primary_key=True)
+    # RESTRICT: không cho xóa cứng sản phẩm/kích cỡ đã có trong đơn hàng (dùng xóa mềm Discontinued)
+    product_id = Column(Integer, ForeignKey("product.product_id", ondelete="RESTRICT"), primary_key=True)
+    size_id = Column(Integer, ForeignKey("size.size_id", ondelete="RESTRICT"), primary_key=True)
     quantity = Column(Integer, nullable=False)
     price = Column(Numeric(15, 2), nullable=False)
     note = Column(Text, nullable=True)

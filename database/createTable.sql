@@ -278,8 +278,9 @@ CREATE TABLE order_detail (
     note TEXT,
     PRIMARY KEY (order_id, product_id, size_id),
     FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
-    FOREIGN KEY (size_id) REFERENCES size(size_id) ON DELETE CASCADE
+    -- RESTRICT: giữ lịch sử đơn hàng, sản phẩm ngừng bán dùng xóa mềm (status = 'Discontinued')
+    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE RESTRICT,
+    FOREIGN KEY (size_id) REFERENCES size(size_id) ON DELETE RESTRICT
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 -- ==============================================================================
 -- PHẦN 7: THÔNG BÁO & LỊCH SỬ THAY ĐỔI TRẠNG THÁI

@@ -30,6 +30,7 @@ export const adminOrdersApi = {
   getAll: (params) => axiosClient.get("/admin/orders", { params }),
   getById: (id) => axiosClient.get(`/admin/orders/${id}`),
   updateStatus: (id, status, note) => axiosClient.patch(`/admin/orders/${id}/status`, { status, note }),
+  confirmPayment: (id, note) => axiosClient.patch(`/admin/orders/${id}/payment`, { note }),
 };
 
 export const adminUsersApi = {

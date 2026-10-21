@@ -13,6 +13,14 @@ class AdminOrderDetailOut(BaseModel):
     total_price: Decimal
     note: Optional[str] = None
 
+class AdminOrderStatusLogOut(BaseModel):
+    log_id: int
+    old_status: Optional[str] = None
+    new_status: str
+    changed_by: Optional[str] = None
+    note: Optional[str] = None
+    changed_at: Optional[datetime] = None
+
 class AdminOrderOut(BaseModel):
     order_id: int
     order_code: Optional[str] = None
@@ -30,7 +38,13 @@ class AdminOrderOut(BaseModel):
     payment_status: str
     order_date: datetime
     details: List[AdminOrderDetailOut] = []
+    status_logs: List[AdminOrderStatusLogOut] = []
+    # Các trạng thái admin được phép chuyển tới từ trạng thái hiện tại
+    next_statuses: List[str] = []
 
 class AdminOrderStatusUpdate(BaseModel):
     status: Literal["Pending", "Processing", "Ready", "Completed", "Cancelled"]
+    note: Optional[str] = None
+
+class AdminOrderPaymentConfirm(BaseModel):
     note: Optional[str] = None

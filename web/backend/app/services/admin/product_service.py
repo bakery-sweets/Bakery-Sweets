@@ -1,6 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.models.product import Product, ProductSize, Category
+from app.models.order import Cart
 from app.schemas.admin.product import ProductCreate, ProductUpdate
 
 class AdminProductService:
@@ -71,9 +72,11 @@ class AdminProductService:
 
     @staticmethod
     def delete(db: Session, product_id: int) -> bool:
+        # Xóa mềm: chuyển sang ngừng kinh doanh để giữ nguyên lịch sử đơn hàng (order_detail)
         product = db.query(Product).filter(Product.product_id == product_id).first()
         if not product:
             return False
-        db.delete(product)
+        product.status = "Discontinued"
+        db.query(Cart).filter(Cart.product_id == product_id).delete()
         db.commit()
         return True
