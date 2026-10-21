@@ -1,25 +1,38 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
 import useCartStore from "../../store/cartStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./Header.css";
 
 export default function Header() {
   const { user, logout } = useAuthStore();
   const { totalItems, toggleCart, resetLocal } = useCartStore();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const isHome = location.pathname === "/";
+
+  // Lấy từ khóa search hiện tại từ URL query
+  const urlSearch = new URLSearchParams(location.search).get("search") || "";
+  const [search, setSearch] = useState(urlSearch);
+
+  // Đồng bộ ô tìm kiếm khi URL thay đổi
+  useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
-    if (search.trim()) {
-      navigate(`/?search=${encodeURIComponent(search.trim())}`);
+    if (e) e.preventDefault();
+    const query = search.trim();
+    if (query) {
+      navigate(`/?search=${encodeURIComponent(query)}`);
     } else {
       navigate("/");
     }
+  };
+
+  const handleClear = () => {
+    setSearch("");
+    navigate("/");
   };
 
   const displayName = user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.phone : "";
@@ -53,7 +66,7 @@ export default function Header() {
             </div>
           </div>
 
-          <div className="nav-center" style={{ visibility: isHome ? "visible" : "hidden", pointerEvents: isHome ? "auto" : "none" }}>
+          <div className="nav-center">
             <form onSubmit={handleSearch} className="search-container">
               <div className="input-wrapper">
                 <input
@@ -61,10 +74,19 @@ export default function Header() {
                   className="search-input"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search for names.."
-                  disabled={!isHome}
+                  placeholder="Tìm kiếm theo tên bánh..."
                 />
-                <button className="searchBtn" type="submit" disabled={!isHome}>
+                {search && (
+                  <button
+                    type="button"
+                    className="header-clear-btn"
+                    onClick={handleClear}
+                    title="Xóa từ khóa"
+                  >
+                    <ion-icon name="close-circle"></ion-icon>
+                  </button>
+                )}
+                <button className="searchBtn" type="submit" title="Tìm kiếm" aria-label="Tìm kiếm">
                   <ion-icon name="search-outline"></ion-icon>
                 </button>
               </div>

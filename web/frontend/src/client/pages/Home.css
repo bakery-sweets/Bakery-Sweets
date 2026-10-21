@@ -189,11 +189,12 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .filter-input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 60px 8px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-size: 13px;
@@ -212,7 +213,7 @@
 
 .filter-clear-input {
   position: absolute;
-  right: 8px;
+  right: 32px;
   background: none;
   border: none;
   color: #94a3b8;
@@ -220,6 +221,35 @@
   font-size: 16px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 2px;
+  transition: color 0.15s;
+}
+
+.filter-clear-input:hover {
+  color: #ef4444;
+}
+
+.filter-search-btn {
+  position: absolute;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  background: #d4845a;
+  border: none;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.filter-search-btn:hover {
+  background: #b5623a;
+  transform: scale(1.05);
 }
 
 /* DANH MỤC CATEGORY LIST */
@@ -442,12 +472,12 @@
 }
 
 /* ==========================================================================
-   LƯỚI SẢN PHẨM: 6 SẢN PHẨM / 1 DÒNG TRÊN DESKTOP
+   LƯỚI SẢN PHẨM: 5 SẢN PHẨM / 1 DÒNG TRÊN DESKTOP
    ========================================================================== */
 .home-product-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr); /* 6 sản phẩm 1 dòng */
-  gap: 14px;
+  grid-template-columns: repeat(5, 1fr); /* 5 sản phẩm 1 dòng giúp thẻ rộng rãi hơn */
+  gap: 16px;
   width: 100%;
 }
 
@@ -736,8 +766,8 @@
   }
 }
 
-/* 2. MÀN HÌNH TABLET / MÀN NHỎ (768px - 1199px) */
-@media (min-width: 768px) and (max-width: 1199px) {
+/* 2. MÀN HÌNH TABLET (768px - 991px) */
+@media (min-width: 768px) and (max-width: 991px) {
   .home-banner-container {
     height: 340px;
   }
@@ -761,10 +791,19 @@
   }
 }
 
-/* 3. MÀN HÌNH DESKTOP (>= 1200px) — 6 CỘT CHUẨN */
+/* 3. MÀN HÌNH LAPTOP / MÀN HÌNH VỪA (992px - 1199px) — 4 CỘT */
+@media (min-width: 992px) and (max-width: 1199px) {
+  .home-product-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+
+/* 4. MÀN HÌNH DESKTOP (>= 1200px) — 5 CỘT RỘNG RÃI */
 @media (min-width: 1200px) {
   .home-product-grid {
-    grid-template-columns: repeat(6, 1fr); /* 6 sản phẩm trên 1 dòng */
+    grid-template-columns: repeat(5, 1fr); /* 5 sản phẩm trên 1 dòng */
+    gap: 16px;
   }
 }
 

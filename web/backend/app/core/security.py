@@ -8,7 +8,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Kiểm tra mật khẩu nhập vào khớp với chuỗi băm."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        # Convert PHP $2y$ prefix to $2b$ if needed for Python bcrypt compatibility
+        if hashed_password and hashed_password.startswith("$2y$"):
+            hashed_password = "$2b$" + hashed_password[4:]
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
     """Tạo chuỗi băm Bcrypt cho mật khẩu."""

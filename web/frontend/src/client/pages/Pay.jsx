@@ -80,6 +80,7 @@ export default function Pay() {
   const [customVoucherCode, setCustomVoucherCode] = useState('');
   const [copiedStk, setCopiedStk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [orderSuccessModal, setOrderSuccessModal] = useState(null);
 
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
@@ -172,17 +173,15 @@ export default function Pay() {
         voucher_code: selectedVoucher ? selectedVoucher.code : undefined,
       });
       const order = res.data;
-      alert(
-        `🎉 ĐẶT BÁNH THÀNH CÔNG!\n\n` +
-        `• Mã đơn hàng: #${order.order_code}\n` +
-        `• Người nhận bánh: ${recipientDesc}\n` +
-        `• Nơi nhận: The Sweets Bakery (120 Hai Bà Trưng, Quận 1)\n` +
-        `• Giờ lấy bánh: ${shippingInfo.pickupTime} ngày ${shippingInfo.pickupDate}\n` +
-        `• Hình thức: ${shippingInfo.paymentMethod === 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản Vietcombank'}\n` +
-        `• Tổng thanh toán: ${formatVND(order.final_cost)}`
-      );
+      setOrderSuccessModal({
+        order_code: order.order_code,
+        recipient_desc: recipientDesc,
+        store_address: 'The Sweets Bakery (120 Hai Bà Trưng, Quận 1)',
+        pickup_time: `${shippingInfo.pickupTime} ngày ${shippingInfo.pickupDate}`,
+        payment_method_label: shippingInfo.paymentMethod === 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản Vietcombank',
+        final_cost: order.final_cost,
+      });
       await fetchCart();
-      navigate('/receipt');
     } catch (err) {
       alert(apiErrorMessage(err, "Đặt bánh thất bại, vui lòng thử lại."));
     } finally {
@@ -197,7 +196,7 @@ export default function Pay() {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (items.length === 0) {
+  if (items.length === 0 && !orderSuccessModal) {
     return (
       <div className="pay-page-wrapper">
         <div className="pay-container" style={{ textAlign: 'center', padding: '60px 16px' }}>
@@ -765,6 +764,70 @@ export default function Pay() {
                 </button>
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* POPUP MODAL ĐẶT HÀNG THÀNH CÔNG */}
+        {orderSuccessModal && (
+          <div className="order-success-modal-backdrop">
+            <div className="order-success-modal-window" onClick={e => e.stopPropagation()}>
+              <div className="order-success-icon-wrap">
+                <ion-icon name="checkmark-outline"></ion-icon>
+              </div>
+
+              <h2 className="order-success-title">Đặt Bánh Thành Công!</h2>
+              <p className="order-success-desc">
+                Cảm ơn bạn đã lựa chọn tiệm bánh The Sweets! Đơn hàng của bạn đã được ghi nhận và đang chuẩn bị sẵn sàng.
+              </p>
+
+              <div className="order-success-details-card">
+                <div className="order-success-row">
+                  <span className="label">Mã đơn hàng:</span>
+                  <span className="value">
+                    <span className="order-success-code-badge">#{orderSuccessModal.order_code}</span>
+                  </span>
+                </div>
+                <div className="order-success-row">
+                  <span className="label">Người nhận bánh:</span>
+                  <span className="value">{orderSuccessModal.recipient_desc}</span>
+                </div>
+                <div className="order-success-row">
+                  <span className="label">Nơi nhận bánh:</span>
+                  <span className="value">{orderSuccessModal.store_address}</span>
+                </div>
+                <div className="order-success-row">
+                  <span className="label">Thời gian lấy bánh:</span>
+                  <span className="value">{orderSuccessModal.pickup_time}</span>
+                </div>
+                <div className="order-success-row">
+                  <span className="label">Hình thức:</span>
+                  <span className="value">{orderSuccessModal.payment_method_label}</span>
+                </div>
+                <div className="order-success-row order-success-row-total">
+                  <span className="label" style={{ fontWeight: '700', color: '#1e293b' }}>Tổng thanh toán:</span>
+                  <span className="order-success-total-price">{formatVND(orderSuccessModal.final_cost)}</span>
+                </div>
+              </div>
+
+              <div className="order-success-actions">
+                <button
+                  type="button"
+                  className="order-success-btn-home"
+                  onClick={() => navigate('/')}
+                >
+                  <ion-icon name="arrow-back-outline"></ion-icon>
+                  <span>Quay về trang chủ</span>
+                </button>
+                <button
+                  type="button"
+                  className="order-success-btn-receipt"
+                  onClick={() => navigate('/receipt')}
+                >
+                  <ion-icon name="receipt-outline"></ion-icon>
+                  <span>Qua xem hóa đơn</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

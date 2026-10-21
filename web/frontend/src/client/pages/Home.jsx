@@ -71,6 +71,7 @@ export default function Home() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [searchInput, setSearchInput] = useState(urlSearch);
   const [category, setCategory] = useState('ALL');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -83,9 +84,8 @@ export default function Home() {
 
   // Sync search input if URL search param changes
   useEffect(() => {
-    if (urlSearch !== searchTerm) {
-      setSearchTerm(urlSearch);
-    }
+    setSearchTerm(urlSearch);
+    setSearchInput(urlSearch);
   }, [urlSearch]);
 
   // Banner slideshow
@@ -116,8 +116,42 @@ export default function Home() {
 
   const categoryName = (id) => categories.find((c) => c.id === id)?.name || id;
 
+  // Xử lý tìm kiếm khi ấn Enter hoặc bấm kính lúp
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    const query = searchInput.trim();
+    setSearchTerm(query);
+    setPage(1);
+    if (query) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('search', query);
+        return next;
+      });
+    } else {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('search');
+        return next;
+      });
+    }
+  };
+
+  // Xóa từ khóa tìm kiếm
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setPage(1);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('search');
+      return next;
+    });
+  };
+
   // Reset all filters
   const handleResetFilters = () => {
+    setSearchInput('');
     setSearchTerm('');
     setCategory('ALL');
     setMinPrice('');
@@ -190,27 +224,33 @@ export default function Home() {
                   <ion-icon name="search-outline"></ion-icon>
                   Tên bánh
                 </label>
-                <div className="filter-input-wrap">
+                <form onSubmit={handleSearchSubmit} className="filter-input-wrap">
                   <input
                     type="text"
                     className="filter-input"
                     placeholder="Nhập tên bánh..."
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setPage(1);
-                    }}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                   />
-                  {searchTerm && (
+                  {searchInput && (
                     <button
                       type="button"
                       className="filter-clear-input"
-                      onClick={() => setSearchTerm('')}
+                      onClick={handleClearSearch}
+                      title="Xóa từ khóa"
                     >
                       <ion-icon name="close-circle"></ion-icon>
                     </button>
                   )}
-                </div>
+                  <button
+                    type="submit"
+                    className="filter-search-btn"
+                    title="Tìm kiếm"
+                    aria-label="Tìm kiếm"
+                  >
+                    <ion-icon name="search-outline"></ion-icon>
+                  </button>
+                </form>
               </div>
 
               {/* 2. LỌC THEO DANH MỤC */}
@@ -346,7 +386,7 @@ export default function Home() {
                   {searchTerm && (
                     <span className="active-filter-tag">
                       Từ khóa: "{searchTerm}"
-                      <button onClick={() => setSearchTerm('')}>×</button>
+                      <button onClick={handleClearSearch}>×</button>
                     </span>
                   )}
                   {category !== 'ALL' && (

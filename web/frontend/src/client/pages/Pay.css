@@ -1172,3 +1172,208 @@
     gap: 0;
   }
 }
+
+/* ==========================================================================
+   POPUP MODAL THÔNG BÁO ĐẶT HÀNG THÀNH CÔNG
+   ========================================================================== */
+.order-success-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  animation: fadeInSuccessBackdrop 0.25s ease-out;
+}
+
+@keyframes fadeInSuccessBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.order-success-modal-window {
+  background: #ffffff;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 24px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3);
+  padding: 32px 28px 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: modalScaleUpSuccess 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+@keyframes modalScaleUpSuccess {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.order-success-icon-wrap {
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);
+  margin-bottom: 16px;
+}
+
+.order-success-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1a2639;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.order-success-desc {
+  font-size: 14px;
+  color: #64748b;
+  text-align: center;
+  margin: 0 0 22px;
+  line-height: 1.5;
+}
+
+.order-success-details-card {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.order-success-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+  gap: 12px;
+}
+
+.order-success-row .label {
+  color: #64748b;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.order-success-row .value {
+  color: #1e293b;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+.order-success-code-badge {
+  background: #e0f2fe;
+  color: #0284c7;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.order-success-row-total {
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.order-success-total-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: #d4845a;
+}
+
+.order-success-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.order-success-btn-home {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 16px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.order-success-btn-home:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.order-success-btn-home ion-icon {
+  font-size: 18px;
+}
+
+.order-success-btn-receipt {
+  flex: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 16px;
+  background: #d4845a;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(212, 132, 90, 0.35);
+}
+
+.order-success-btn-receipt:hover {
+  background: #b5623a;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(212, 132, 90, 0.45);
+}
+
+.order-success-btn-receipt ion-icon {
+  font-size: 18px;
+}
+
+@media (max-width: 600px) {
+  .order-success-modal-window {
+    padding: 24px 18px 20px;
+  }
+
+  .order-success-actions {
+    flex-direction: column-reverse;
+  }
+}
+
