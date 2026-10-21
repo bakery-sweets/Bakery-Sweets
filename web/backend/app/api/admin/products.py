@@ -75,7 +75,7 @@ def update_product(
         raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm để cập nhật")
     return ResponseBase(message="Cập nhật sản phẩm thành công", data=_to_product_out(product))
 
-@router.delete("/{product_id}", response_model=ResponseBase, summary="Xóa sản phẩm")
+@router.delete("/{product_id}", response_model=ResponseBase, summary="Ngừng kinh doanh sản phẩm (xóa mềm)")
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
@@ -84,4 +84,4 @@ def delete_product(
     success = AdminProductService.delete(db, product_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm để xóa")
-    return ResponseBase(message="Xóa sản phẩm thành công")
+    return ResponseBase(message="Đã chuyển sản phẩm sang ngừng kinh doanh")

@@ -52,13 +52,14 @@ export default function ProductList() {
   const page = Math.min(currentPage, totalPages);
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Xóa mềm: món chuyển sang "Ngừng kinh doanh", vẫn giữ trong lịch sử đơn hàng
   const handleDelete = async (p) => {
-    if (!window.confirm(`Xóa món "${p.product_name}"? Thao tác này không thể hoàn tác.`)) return;
+    if (!window.confirm(`Ngừng kinh doanh món "${p.product_name}"? Món sẽ bị ẩn khỏi cửa hàng nhưng vẫn giữ trong lịch sử đơn hàng.`)) return;
     try {
       await adminProductsApi.delete(p.product_id);
       await loadData();
     } catch (err) {
-      alert(apiErrorMessage(err, "Xóa sản phẩm thất bại"));
+      alert(apiErrorMessage(err, "Ngừng kinh doanh sản phẩm thất bại"));
     }
   };
 
@@ -209,14 +210,17 @@ export default function ProductList() {
                         >
                           Sửa
                         </Link>
-                        <button
-                          type="button"
-                          className="btn-pill-outline"
-                          style={{ padding: "5px 10px", fontSize: "12px", color: "#ef4444" }}
-                          onClick={() => handleDelete(p)}
-                        >
-                          <ion-icon name="trash-outline"></ion-icon>
-                        </button>
+                        {p.status !== "Discontinued" && (
+                          <button
+                            type="button"
+                            className="btn-pill-outline"
+                            style={{ padding: "5px 10px", fontSize: "12px", color: "#ef4444" }}
+                            onClick={() => handleDelete(p)}
+                            title="Ngừng kinh doanh"
+                          >
+                            <ion-icon name="trash-outline"></ion-icon>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
