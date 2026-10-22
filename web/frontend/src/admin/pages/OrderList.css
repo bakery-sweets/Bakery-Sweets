@@ -1,0 +1,1087 @@
+/* Trang Quản Lý Đơn Hàng — dùng chung token & component từ AdminLayout.css */
+
+/* ===== Header: trạng thái làm mới ===== */
+.order-last-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-pill-primary.is-spinning ion-icon {
+  animation: order-spin 0.9s linear infinite;
+}
+
+@keyframes order-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== Toolbar: tìm kiếm ===== */
+.order-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.order-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 1 340px;
+  min-width: 240px;
+}
+
+.order-search-box > ion-icon {
+  position: absolute;
+  left: 16px;
+  font-size: 17px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.order-search-box input {
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 44px 0 42px;
+  background: #f8fafc;
+  border: 1px solid #f1f2f4;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--admin-text);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.order-search-box input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.order-search-box input:focus {
+  background: #ffffff;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px rgba(222, 93, 124, 0.12);
+}
+
+.order-search-clear {
+  position: absolute;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.order-search-clear:hover {
+  color: var(--admin-primary);
+}
+
+.order-toolbar-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.order-toolbar-meta strong {
+  font-weight: 800;
+  color: var(--admin-text);
+}
+
+.order-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.order-error-banner ion-icon {
+  flex-shrink: 0;
+  font-size: 17px;
+}
+
+/* ===== Bảng đơn hàng ===== */
+.admin-table-clean .col-currency {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.admin-table-clean .col-actions {
+  text-align: right;
+}
+
+.order-code {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--admin-primary);
+  white-space: nowrap;
+}
+
+.order-customer-name {
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.order-customer-phone {
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.order-pickup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.order-pickup ion-icon {
+  color: var(--admin-muted);
+}
+
+.order-pickup.is-urgent,
+.order-pickup.is-urgent ion-icon {
+  font-weight: 800;
+  color: var(--admin-primary);
+}
+
+/* Ghi chú (viết chữ lên bánh, nến, ít ngọt...) phải đọc đầy đủ ngay trên bảng, không cắt chữ */
+.order-note-inline {
+  min-width: 180px;
+  max-width: 260px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #b45309;
+  background: #fef9ee;
+  border: 1px solid #fef3c7;
+  border-radius: 8px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.order-note-inline ion-icon {
+  margin-right: 3px;
+  vertical-align: -2px;
+}
+
+.order-items {
+  font-size: 12.5px;
+  color: #334155;
+}
+
+.order-item + .order-item {
+  margin-top: 2px;
+}
+
+.order-item-size {
+  color: var(--admin-muted);
+}
+
+.order-total {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--admin-text);
+}
+
+.order-pay-method {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.order-pay-method + .badge-pill {
+  margin-top: 4px;
+}
+
+.badge-pill.order-badge {
+  font-size: 11.5px;
+}
+
+.badge-pill.order-badge-sm {
+  font-size: 11px;
+}
+
+/* ===== Interactive Status Badge & Popover ===== */
+.order-status-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.badge-pill.order-badge-interactive {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  font-family: inherit;
+  outline: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.badge-pill.order-badge-interactive:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.96);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.badge-pill.order-badge-interactive:active {
+  transform: translateY(0);
+}
+
+.badge-pill.order-badge-interactive:focus-visible {
+  box-shadow: 0 0 0 2px var(--admin-primary);
+}
+
+.order-badge-chevron {
+  font-size: 11px;
+  color: currentColor;
+  opacity: 0.7;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-left: 2px;
+}
+
+.order-badge-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.order-badge-spinner {
+  width: 8px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: order-spin 0.8s linear infinite;
+}
+
+.order-status-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 80;
+  min-width: 200px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  padding: 6px;
+  animation: order-popover-in 0.16s ease-out;
+}
+
+.order-status-popover.is-dropup {
+  top: auto;
+  bottom: calc(100% + 6px);
+  box-shadow: 0 -10px 25px -5px rgba(15, 23, 42, 0.12), 0 -8px 10px -6px rgba(15, 23, 42, 0.08);
+  animation: order-popover-in-dropup 0.16s ease-out;
+}
+
+@keyframes order-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes order-popover-in-dropup {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.order-popover-header {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #94a3b8;
+  padding: 6px 10px 4px 10px;
+}
+
+.order-popover-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+  min-height: 38px;
+  box-sizing: border-box;
+}
+
+.order-popover-item:hover {
+  background: #f8fafc;
+}
+
+.order-popover-item ion-icon {
+  font-size: 16px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.order-popover-item.is-primary {
+  color: #0f172a;
+}
+
+.order-popover-item.is-primary:hover {
+  background: #fdf2f4;
+  color: var(--admin-primary);
+}
+
+.order-popover-item.is-primary:hover ion-icon {
+  color: var(--admin-primary);
+}
+
+.order-popover-item.is-danger {
+  color: #ef4444;
+}
+
+.order-popover-item.is-danger ion-icon {
+  color: #ef4444;
+}
+
+.order-popover-item.is-danger:hover {
+  background: #fef2f2;
+}
+
+.order-popover-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 6px;
+}
+
+.btn-pill-outline.order-view-btn {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* Hàng skeleton / empty state không đổi nền khi hover */
+.admin-table-clean tbody tr.order-static-row td,
+.admin-table-clean tbody tr.order-static-row:hover td {
+  background: transparent;
+}
+
+.order-skeleton-bar {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f1f2f4 25%, #e8e9eb 50%, #f1f2f4 75%);
+  background-size: 200% 100%;
+  animation: order-shimmer 1.5s infinite;
+}
+
+@keyframes order-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.order-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 56px 20px;
+  text-align: center;
+}
+
+.order-empty-state > ion-icon {
+  font-size: 48px;
+  color: #cbd5e1;
+}
+
+.order-empty-state h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.order-empty-state p {
+  max-width: 420px;
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.order-empty-state .btn-pill-outline {
+  margin-top: 8px;
+}
+
+.order-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f2f4;
+}
+
+.order-pagination-info {
+  font-size: 12.5px;
+  color: var(--admin-muted);
+}
+
+.order-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-pagination-page {
+  min-width: 90px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Modal phiếu hóa đơn ===== */
+.order-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.order-modal {
+  width: 100%;
+  max-width: 616px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.order-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f2f4;
+}
+
+.order-modal-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--admin-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.order-modal-title {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--admin-text);
+}
+
+.order-modal-close {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 1px solid var(--admin-border);
+  border-radius: 50%;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.order-modal-close:hover {
+  background: #f1f2f4;
+  color: var(--admin-text);
+}
+
+.order-meta {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--admin-primary-light);
+  border-radius: 14px;
+  font-size: 12.5px;
+}
+
+.order-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-meta-row + .order-meta-row {
+  margin-top: 4px;
+}
+
+.order-meta-label {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.order-meta-value {
+  font-weight: 700;
+  color: var(--admin-text);
+  text-align: right;
+}
+
+.order-meta-value.is-accent {
+  color: var(--admin-primary);
+}
+
+.order-meta-pay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-pill-outline.order-pay-confirm-btn {
+  padding: 4px 12px;
+  font-size: 11.5px;
+}
+
+.order-section {
+  margin-bottom: 16px;
+}
+
+.order-section-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+}
+
+.order-receipt-items {
+  margin-top: 8px;
+  border-top: 1px solid #f8f9fa;
+}
+
+.order-receipt-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8f9fa;
+  font-size: 13px;
+}
+
+.order-receipt-item-price {
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-note-box {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #fef9ee;
+  border: 1px solid #fef3c7;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #b45309;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.order-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.order-receipt-discount-row {
+  align-items: center;
+}
+
+.order-receipt-discount-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.order-voucher-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: #ecfdf5;
+  border: 1px dashed #10b981;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #047857;
+  line-height: 1.4;
+}
+
+.order-voucher-badge ion-icon {
+  font-size: 13px;
+  color: #10b981;
+}
+
+.order-voucher-code {
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #065f46;
+}
+
+.order-voucher-name {
+  color: #047857;
+  font-weight: 500;
+}
+
+.order-receipt-discount {
+  font-weight: 700;
+  color: #10b981;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-receipt-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-top: 12px;
+  border-top: 2px dashed #e2e8f0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.order-receipt-total-amount {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--admin-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Timeline lịch sử xử lý */
+.order-timeline-section {
+  margin-bottom: 18px;
+}
+
+.order-timeline {
+  margin-top: 10px;
+}
+
+.order-timeline-item {
+  display: flex;
+  gap: 12px;
+}
+
+.order-timeline-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.order-timeline-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--admin-primary);
+}
+
+.order-timeline-item.is-payment .order-timeline-dot {
+  background: #10b981;
+}
+
+.order-timeline-item.is-cancelled .order-timeline-dot {
+  background: #ef4444;
+}
+
+.order-timeline-line {
+  flex: 1;
+  width: 2px;
+  margin: 2px 0;
+  background: #f1f2f4;
+}
+
+.order-timeline-body {
+  padding-bottom: 12px;
+  font-size: 12.5px;
+}
+
+.order-timeline-item:last-child .order-timeline-line {
+  display: none;
+}
+
+.order-timeline-item:last-child .order-timeline-body {
+  padding-bottom: 0;
+}
+
+.order-timeline-title {
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.order-timeline-meta {
+  font-size: 11.5px;
+  color: var(--admin-muted);
+}
+
+.order-timeline-note {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.order-timeline-item.is-cancelled .order-timeline-note {
+  color: #b91c1c;
+}
+
+/* Khu vực footer modal & các nút hành động nghiệp vụ */
+.order-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #f1f2f4;
+  flex-wrap: wrap;
+}
+
+.order-modal-footer-spacer {
+  display: none;
+}
+
+.order-modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto; /* Luôn ép cụm nút xử lý sang góc phải */
+  flex-wrap: wrap;
+}
+
+/* Nút Tiếp Nhận / Hoàn Tất (Primary Action) - to, nổi bật nhất */
+.btn-pill-primary.order-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  min-height: 44px;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(222, 93, 124, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-pill-primary.order-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(222, 93, 124, 0.4);
+}
+
+.btn-pill-primary.order-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-pill-primary.order-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Nút In Phiếu Thu (Secondary Action) - Nền xám nhạt / outline trung tính */
+.order-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 18px;
+  min-height: 44px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.order-btn-secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.order-btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.order-btn-secondary ion-icon {
+  font-size: 17px;
+  color: #64748b;
+}
+
+/* Nút Hủy Đơn (Destructive Action) - Viền đỏ, đẩy sang góc trái */
+.order-btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  min-height: 42px;
+  background: transparent;
+  border: 1px solid #fca5a5;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.order-btn-cancel:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.order-btn-cancel:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.order-btn-cancel ion-icon {
+  font-size: 16px;
+  color: #ef4444;
+}
+
+/* Hộp nhập lý do hủy đơn (cancelMode) */
+.order-cancel-box {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #fff5f5;
+  border: 1px solid #fee2e2;
+  border-radius: 14px;
+  animation: order-popover-in 0.16s ease-out;
+}
+
+.order-cancel-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.order-cancel-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+  background: #ffffff;
+}
+
+.order-cancel-textarea:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.order-cancel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.order-btn-danger-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 20px;
+  min-height: 44px;
+  background: #ef4444;
+  border: none;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.28);
+  transition: all 0.15s ease;
+}
+
+.order-btn-danger-solid:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.order-btn-danger-solid:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.order-actions-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #b45309;
+}
+
+.order-actions-hint ion-icon {
+  font-size: 16px;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+/* Touch target đạt chuẩn 44px tối thiểu trên tablet (iPad 10.9": ngang 1180px / dọc 820px) */
+@media (max-width: 1180px) {
+  .btn-pill-outline.order-view-btn,
+  .btn-pill-outline.order-pay-confirm-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .order-popover-item {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .badge-pill.order-badge-interactive {
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .order-modal {
+    padding: 20px;
+  }
+
+  .order-modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .order-modal-footer-actions {
+    width: 100%;
+    flex-direction: column;
+    margin-left: 0;
+    gap: 10px;
+  }
+
+  .order-modal-footer-actions button,
+  .order-btn-cancel,
+  .order-btn-secondary,
+  .btn-pill-primary.order-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .order-cancel-actions {
+    flex-direction: column;
+  }
+
+  .order-cancel-actions button {
+    width: 100%;
+  }
+}
+
+@media print {
+  .order-pagination {
+    display: none;
+  }
+}

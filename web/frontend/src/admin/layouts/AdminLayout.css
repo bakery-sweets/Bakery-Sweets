@@ -126,6 +126,13 @@
   transform: translateY(-1px);
 }
 
+.btn-pill-primary:disabled,
+.btn-pill-outline:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Cards */
 .admin-card-box {
   background: #ffffff;
@@ -239,10 +246,17 @@
   color: #334155;
   border-bottom: 1px solid #f8f9fa;
   vertical-align: middle;
+  /* Số cùng độ rộng để cột tiền/giờ thẳng hàng khi quét dọc */
+  font-variant-numeric: tabular-nums;
 }
 
-.admin-table-clean tr:hover td {
+/* Zebra nhẹ để mắt không lạc hàng khi quét bảng dài */
+.admin-table-clean tbody tr:nth-child(even) td {
   background: #fafbfc;
+}
+
+.admin-table-clean tbody tr:hover td {
+  background: #f0f4f8;
 }
 
 /* Category Filter Tabs */
@@ -276,6 +290,13 @@
   color: #ffffff;
   border-color: #de5d7c;
   box-shadow: 0 3px 10px rgba(222, 93, 124, 0.28);
+}
+
+.tab-pill-btn:disabled {
+  background: #ffffff;
+  color: #64748b;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Responsive Grid helpers */
@@ -334,5 +355,20 @@
   .admin-main-content {
     margin-left: 250px;
     width: calc(100% - 250px);
+  }
+}
+
+/* Tablet/màn hình cảm ứng tại quầy & bếp: vùng chạm tối thiểu 44px (Apple HIG) */
+@media (max-width: 1180px), (pointer: coarse) {
+  .btn-pill-primary,
+  .btn-pill-outline {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .tab-pill-btn {
+    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 14px;
   }
 }
