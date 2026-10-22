@@ -109,6 +109,72 @@
   color: var(--admin-text);
 }
 
+.order-pagesize-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 3px 6px 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+
+.order-pagesize-label {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.order-pagesize-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #ffffff;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+
+.order-pagesize-btn {
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.order-pagesize-btn:hover {
+  color: var(--admin-primary);
+  background: rgba(222, 93, 124, 0.08);
+}
+
+.order-pagesize-btn.active {
+  color: #ffffff;
+  background: var(--admin-primary);
+  box-shadow: 0 1px 3px rgba(222, 93, 124, 0.35);
+}
+
+.order-pagesize-unit {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-right: 4px;
+}
+
+.order-toolbar-total {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
 .order-error-banner {
   display: flex;
   align-items: center;
@@ -222,16 +288,52 @@
   white-space: nowrap;
 }
 
+.order-pay-status {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.order-pay-status.is-unpaid {
+  color: #de5d7c;
+}
+
+.order-pay-status.is-paid {
+  color: #0e9f6e;
+}
+
+.order-pay-status.is-refunded {
+  color: #f59e0b;
+}
+
 .order-pay-method + .badge-pill {
   margin-top: 4px;
 }
 
 .badge-pill.order-badge {
-  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 8px; /* Dáng chữ nhật/vuông bo tròn nhẹ */
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  min-height: 36px;
+  min-width: 125px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .badge-pill.order-badge-sm {
-  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* ===== Interactive Status Badge & Popover ===== */
@@ -243,11 +345,20 @@
 .badge-pill.order-badge-interactive {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 8px; /* Dáng chữ nhật/vuông bo tròn nhẹ */
   cursor: pointer;
   border: 1px solid transparent;
   background-clip: padding-box;
   font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  min-height: 36px;
+  min-width: 125px;
+  box-sizing: border-box;
   outline: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
   user-select: none;
@@ -269,11 +380,17 @@
 }
 
 .order-badge-chevron {
-  font-size: 11px;
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: currentColor;
-  opacity: 0.7;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0.85;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   margin-left: 2px;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .order-badge-chevron.is-open {

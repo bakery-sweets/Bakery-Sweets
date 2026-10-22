@@ -8,7 +8,7 @@ import "./OrderList.css";
 
 const URGENT_WINDOW_MS = 2 * 60 * 60 * 1000;
 const AUTO_REFRESH_MS = 30 * 1000;
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 // Đơn chưa xong và giờ hẹn lấy bánh trong vòng 2 tiếng tới (hoặc đã quá giờ)
 const isUrgent = (o) =>
@@ -79,6 +79,7 @@ export default function OrderList() {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -285,9 +286,9 @@ export default function OrderList() {
   const countFor = (key) => (key === "all" ? searched.length : searched.filter((o) => o.status === key).length);
 
   const filteredOrders = activeTab === "all" ? searched : searched.filter((o) => o.status === activeTab);
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const page = Math.min(currentPage, totalPages);
-  const visibleOrders = printAll ? filteredOrders : filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visibleOrders = printAll ? filteredOrders : filteredOrders.slice((page - 1) * pageSize, page * pageSize);
 
   const lastUpdatedText = lastUpdated?.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
   const showSkeleton = loading && orders.length === 0;
@@ -380,8 +381,28 @@ export default function OrderList() {
                   Cập nhật lúc {lastUpdatedText}
                 </span>
               )}
-              <span>
-                Hiển thị <strong>{filteredOrders.length}</strong> đơn
+              <div className="order-pagesize-selector">
+                <span className="order-pagesize-label">Hiển thị:</span>
+                <div className="order-pagesize-buttons">
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      className={`order-pagesize-btn ${pageSize === size ? "active" : ""}`}
+                      onClick={() => {
+                        setPageSize(size);
+                        setCurrentPage(1);
+                      }}
+                      title={`${size} đơn mỗi trang`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+                <span className="order-pagesize-unit">đơn/trang</span>
+              </div>
+              <span className="order-toolbar-total">
+                (Tổng <strong>{filteredOrders.length}</strong> đơn)
               </span>
             </div>
           </div>
@@ -456,10 +477,9 @@ export default function OrderList() {
                     </td>
                     <td>
                       <div className="order-pay-method">{PAYMENT_METHOD[o.payment_method] || o.payment_method}</div>
-                      <span className={`badge-pill order-badge ${pay.badge}`}>
-                        <span className={`dot-status ${pay.dot}`}></span>
+                      <div className={`order-pay-status is-${(o.payment_status || "unpaid").toLowerCase()}`}>
                         {PAYMENT_STATUS[o.payment_status] || o.payment_status}
-                      </span>
+                      </div>
                     </td>
                     <td className="col-status">
                       <div className="order-status-wrapper">
@@ -476,20 +496,23 @@ export default function OrderList() {
                             aria-haspopup="true"
                             aria-expanded={isOpen}
                           >
-                            {isRowLoading ? (
-                              <span className="order-badge-spinner"></span>
-                            ) : (
-                              <span className={`dot-status ${st.dot}`}></span>
-                            )}
+                            {isRowLoading && <span className="order-badge-spinner"></span>}
                             <span>{st.label || o.status}</span>
-                            <ion-icon
-                              name="chevron-down-outline"
+                            <svg
                               className={`order-badge-chevron ${isOpen ? "is-open" : ""}`}
-                            ></ion-icon>
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              aria-hidden="true"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                           </button>
                         ) : (
                           <span className={`badge-pill order-badge ${st.badge}`}>
-                            <span className={`dot-status ${st.dot}`}></span>
                             <span>{st.label || o.status}</span>
                           </span>
                         )}
@@ -548,20 +571,22 @@ export default function OrderList() {
             </table>
           </div>
 
-          {totalPages > 1 && (
+          {(totalPages > 1 || filteredOrders.length > PAGE_SIZE_OPTIONS[0]) && (
             <div className="order-pagination">
               <span className="order-pagination-info">
-                Hiển thị {(page - 1) * PAGE_SIZE + 1} - {(page - 1) * PAGE_SIZE + visibleOrders.length} trên {filteredOrders.length} đơn
+                Hiển thị {filteredOrders.length === 0 ? 0 : (page - 1) * pageSize + 1} - {(page - 1) * pageSize + visibleOrders.length} trên {filteredOrders.length} đơn
               </span>
-              <div className="order-pagination-controls">
-                <button type="button" className="tab-pill-btn" disabled={page === 1} onClick={() => setCurrentPage(page - 1)}>
-                  &larr; Trước
-                </button>
-                <span className="order-pagination-page">Trang {page} / {totalPages}</span>
-                <button type="button" className="tab-pill-btn" disabled={page === totalPages} onClick={() => setCurrentPage(page + 1)}>
-                  Sau &rarr;
-                </button>
-              </div>
+              {totalPages > 1 && (
+                <div className="order-pagination-controls">
+                  <button type="button" className="tab-pill-btn" disabled={page === 1} onClick={() => setCurrentPage(page - 1)}>
+                    &larr; Trước
+                  </button>
+                  <span className="order-pagination-page">Trang {page} / {totalPages}</span>
+                  <button type="button" className="tab-pill-btn" disabled={page === totalPages} onClick={() => setCurrentPage(page + 1)}>
+                    Sau &rarr;
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -594,7 +619,6 @@ export default function OrderList() {
                 <div className="order-meta-row">
                   <span className="order-meta-label">Trạng thái:</span>
                   <span className={`badge-pill order-badge-sm ${selectedStatus.badge || ""}`}>
-                    <span className={`dot-status ${selectedStatus.dot || ""}`}></span>
                     {selectedStatus.label || selectedOrder.status}
                   </span>
                 </div>
