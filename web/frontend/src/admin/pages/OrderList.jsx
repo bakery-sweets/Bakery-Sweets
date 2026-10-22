@@ -189,7 +189,7 @@ export default function OrderList() {
                       </div>
                       {o.notes && (
                         <div style={{ fontSize: "11px", color: "#d97706", marginTop: "3px", maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          ✍️ {o.notes}
+                          <ion-icon name="create-outline" style={{ verticalAlign: "-2px", marginRight: "3px" }}></ion-icon>{o.notes}
                         </div>
                       )}
                     </td>
@@ -283,7 +283,7 @@ export default function OrderList() {
                   onClick={() => setSelectedOrder(null)}
                   style={{ background: "#f8fafc", border: "none", width: "32px", height: "32px", borderRadius: "50%", cursor: "pointer", fontSize: "18px", color: "#64748b" }}
                 >
-                  ✕
+                  <ion-icon name="close-outline"></ion-icon>
                 </button>
               </div>
 

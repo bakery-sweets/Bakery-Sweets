@@ -547,7 +547,7 @@ export default function ProductForm() {
 
                     <input
                       type="text"
-                      placeholder="Hoặc nhập URL / file path (VD: /uploads/Drink/Tira_Latte.png)"
+                      placeholder="Hoặc nhập URL / file path (VD: /uploads/Mousse/Tiramisu_Mousse.jpg)"
                       value={formData.image}
                       onChange={(e) => {
                         setFormData({ ...formData, image: e.target.value });

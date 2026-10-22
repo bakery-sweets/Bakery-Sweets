@@ -26,7 +26,6 @@ export const imageUrl = (path) => {
   }
   const staticCategories = [
     "/uploads/Mousse/",
-    "/uploads/Drink/",
     "/uploads/Croissant/",
     "/uploads/Pay_final/",
   ];

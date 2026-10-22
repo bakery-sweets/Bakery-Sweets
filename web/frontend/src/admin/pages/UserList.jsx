@@ -255,7 +255,7 @@ export default function UserList() {
                   onClick={() => setShowModal(false)}
                   style={{ background: "#f8fafc", border: "none", width: "32px", height: "32px", borderRadius: "50%", cursor: "pointer", fontSize: "18px" }}
                 >
-                  ✕
+                  <ion-icon name="close-outline"></ion-icon>
                 </button>
               </div>
 

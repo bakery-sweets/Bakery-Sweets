@@ -119,7 +119,7 @@ export default function Dashboard() {
           <div className="dashboard-hero-card">
             <div className="kpi-card-header">
               <span className="kpi-label">TỔNG DOANH THU (ĐƠN HOÀN TẤT)</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
+              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : formatVND(overview?.total_revenue, " đ")}</div>
@@ -135,7 +135,7 @@ export default function Dashboard() {
           <div className="kpi-card-white">
             <div className="kpi-card-header">
               <span className="kpi-label">ĐƠN BÁNH HOÀN THÀNH</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
+              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : stats.completedCount} <span style={{ fontSize: "18px", fontWeight: "600", color: "#64748b" }}>đơn</span></div>
@@ -150,7 +150,7 @@ export default function Dashboard() {
           <div className="kpi-card-white">
             <div className="kpi-card-header">
               <span className="kpi-label">TỶ LỆ ĐÃ THANH TOÁN</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
+              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : `${stats.paidRate.toFixed(1)}%`}</div>
@@ -165,7 +165,7 @@ export default function Dashboard() {
           <div className="kpi-card-white">
             <div className="kpi-card-header">
               <span className="kpi-label">BÁN CHẠY NHẤT</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
+              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
             </div>
             {stats.topProduct ? (
               <div>

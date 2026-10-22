@@ -94,7 +94,7 @@ export default function ProductList() {
         {/* Header Row */}
         <div className="admin-page-header-row">
           <div className="admin-page-title-group">
-            <h1>Danh Mục Bánh &amp; Thức Uống</h1>
+            <h1>Danh Mục Bánh</h1>
             <p>Quản lý danh mục bánh nhập khẩu &amp; bảng giá theo kích cỡ</p>
           </div>
 
