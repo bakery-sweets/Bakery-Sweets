@@ -32,6 +32,9 @@ class AdminOrderOut(BaseModel):
     total_quantity: int
     total_cost: Decimal
     discount_amount: Decimal
+    promotion_id: Optional[int] = None
+    promotion_code: Optional[str] = None
+    promotion_name: Optional[str] = None
     final_cost: Decimal
     status: str
     payment_method: str

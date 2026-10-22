@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import AdminHeader from "../components/AdminHeader";
 import { adminOrdersApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
+import popup from "../../utils/popup";
+import "./OrderList.css";
 
 const URGENT_WINDOW_MS = 2 * 60 * 60 * 1000;
+const AUTO_REFRESH_MS = 30 * 1000;
+const PAGE_SIZE = 20;
 
 // Đơn chưa xong và giờ hẹn lấy bánh trong vòng 2 tiếng tới (hoặc đã quá giờ)
 const isUrgent = (o) =>
@@ -21,32 +26,108 @@ const NEXT_STEP = {
 // Đơn không phải COD phải được xác nhận thanh toán trước khi hoàn tất; đơn COD tự đánh dấu đã thu tiền
 const needsPaymentFirst = (o) => o.payment_status !== "Paid" && o.payment_method !== "COD";
 
+// Trạng thái thanh toán hiện thẳng bằng badge (tablet không có hover nên không dựa vào tooltip)
+const PAYMENT_BADGE = {
+  Paid: { badge: "mint", dot: "green" },
+  Unpaid: { badge: "pink", dot: "pink" },
+  Refunded: { badge: "gray", dot: "orange" },
+};
+
+const TABS = [
+  { key: "all", label: "Tất Cả" },
+  { key: "Pending", label: "Chờ Tiếp Nhận" },
+  { key: "Processing", label: "Đang Chuẩn Bị & Đóng Gói" },
+  { key: "Ready", label: "Sẵn Sàng Tại Quầy" },
+  { key: "Completed", label: "Đã Hoàn Tất" },
+  { key: "Cancelled", label: "Đã Hủy" },
+];
+
+// Bỏ dấu tiếng Việt để gõ "nguyen" vẫn tìm ra "Nguyễn"
+const normalize = (s) =>
+  (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
+
+// Độ rộng cố định cho thanh skeleton (không dùng Math.random để mỗi lần render không bị nhảy)
+const SKELETON_WIDTHS = [55, 85, 70, 90, 60, 75, 65, 45];
+
+const SkeletonRows = () =>
+  [0, 1, 2, 3, 4, 5].map((r) => (
+    <tr key={r} className="order-static-row" aria-hidden="true">
+      {SKELETON_WIDTHS.map((_, c) => (
+        <td key={c}>
+          <div className="order-skeleton-bar" style={{ width: `${SKELETON_WIDTHS[(r + c) % SKELETON_WIDTHS.length]}%` }} />
+        </td>
+      ))}
+    </tr>
+  ));
+
+function EmptyState({ icon, title, text, actionLabel, onAction }) {
+  return (
+    <div className="order-empty-state">
+      <ion-icon name={icon}></ion-icon>
+      <h4>{title}</h4>
+      {text && <p>{text}</p>}
+      {onAction && (
+        <button type="button" className="btn-pill-outline" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function OrderList() {
   const [activeTab, setActiveTab] = useState("all");
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [printAll, setPrintAll] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [modalError, setModalError] = useState("");
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [activeDropdownOrderId, setActiveDropdownOrderId] = useState(null);
+  const [rowLoadingId, setRowLoadingId] = useState(null);
+  // Tăng mỗi lần tải/thao tác: phản hồi danh sách về muộn (VD: auto-refresh chạy song song lúc đổi trạng thái) sẽ bị bỏ qua
+  const loadSeq = useRef(0);
 
-  const tabs = [
-    { key: "all", label: "Tất Cả" },
-    { key: "Pending", label: "Chờ Tiếp Nhận" },
-    { key: "Processing", label: "Đang Chuẩn Bị & Đóng Gói" },
-    { key: "Ready", label: "Sẵn Sàng Tại Quầy" },
-    { key: "Completed", label: "Đã Hoàn Tất" },
-    { key: "Cancelled", label: "Đã Hủy" },
-  ];
+  // Đóng popover đổi trạng thái khi bấm ra ngoài hoặc nhấn phím Escape
+  useEffect(() => {
+    if (!activeDropdownOrderId) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest(".order-status-wrapper")) {
+        setActiveDropdownOrderId(null);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setActiveDropdownOrderId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeDropdownOrderId]);
 
   const loadOrders = useCallback(async () => {
+    const seq = ++loadSeq.current;
     try {
       const res = await adminOrdersApi.getAll();
+      if (seq !== loadSeq.current) return;
       setOrders(res.data);
+      // Đồng bộ phiếu đang mở với dữ liệu mới (đơn có thể vừa được nhân viên khác cập nhật)
+      setSelectedOrder((prev) => (prev && res.data.find((o) => o.order_id === prev.order_id)) || prev);
+      setLastUpdated(new Date());
       setError("");
     } catch (err) {
+      if (seq !== loadSeq.current) return;
       setError(apiErrorMessage(err, "Không tải được danh sách đơn hàng"));
     } finally {
       setLoading(false);
@@ -55,55 +136,186 @@ export default function OrderList() {
 
   useEffect(() => {
     loadOrders();
+    // Tự làm mới định kỳ khi tab trình duyệt đang hiển thị
+    const timer = setInterval(() => {
+      if (!document.hidden) loadOrders();
+    }, AUTO_REFRESH_MS);
+    return () => clearInterval(timer);
   }, [loadOrders]);
+
+  // Khi in bảng đối soát, hiển thị toàn bộ đơn đang lọc thay vì chỉ trang hiện tại
+  useEffect(() => {
+    const showAll = () => flushSync(() => setPrintAll(true));
+    const restore = () => setPrintAll(false);
+    window.addEventListener("beforeprint", showAll);
+    window.addEventListener("afterprint", restore);
+    return () => {
+      window.removeEventListener("beforeprint", showAll);
+      window.removeEventListener("afterprint", restore);
+    };
+  }, []);
+
+  const handleRefresh = () => {
+    setLoading(true);
+    loadOrders();
+  };
+
+  const handleSearch = (value) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
 
   const openOrder = (o) => {
     setSelectedOrder(o);
-    setModalError("");
     setCancelMode(false);
     setCancelReason("");
   };
 
-  const runOrderAction = async (request, fallback) => {
+  const runOrderAction = async (request, successMessage, fallback) => {
     setActionLoading(true);
-    setModalError("");
     try {
       const res = await request();
       const updated = res.data;
+      loadSeq.current++;
       setOrders((prev) => prev.map((o) => (o.order_id === updated.order_id ? updated : o)));
-      setSelectedOrder(updated);
+      // Chỉ cập nhật phiếu nếu vẫn đang mở đúng đơn này (người dùng có thể đã đóng phiếu khi đang chờ)
+      setSelectedOrder((prev) => (prev?.order_id === updated.order_id ? updated : prev));
       setCancelMode(false);
       setCancelReason("");
+      popup.success(successMessage(updated));
     } catch (err) {
-      setModalError(apiErrorMessage(err, fallback));
+      popup.error(apiErrorMessage(err, fallback));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleChangeStatus = (status) =>
-    runOrderAction(() => adminOrdersApi.updateStatus(selectedOrder.order_id, status), "Cập nhật trạng thái thất bại");
+    runOrderAction(
+      () => adminOrdersApi.updateStatus(selectedOrder.order_id, status),
+      (u) => `Đơn #${u.order_code} đã chuyển sang "${ORDER_STATUS[u.status]?.label || u.status}".`,
+      "Cập nhật trạng thái thất bại"
+    );
 
   const handleCancelOrder = () => {
     const reason = cancelReason.trim();
-    if (!reason) {
-      setModalError("Vui lòng nhập lý do hủy đơn hàng");
+    if (!reason) return;
+    runOrderAction(
+      () => adminOrdersApi.updateStatus(selectedOrder.order_id, "Cancelled", reason),
+      (u) => `Đã hủy đơn #${u.order_code}.`,
+      "Hủy đơn hàng thất bại"
+    );
+  };
+
+  const handleConfirmPayment = async () => {
+    const order = selectedOrder;
+    const confirmed = await popup.confirm({
+      title: "Xác nhận đã thu tiền?",
+      message: `Đơn #${order.order_code} đã thanh toán ${formatVND(order.final_cost, " đ")}?`,
+      subtitle: `Phương thức: ${PAYMENT_METHOD[order.payment_method] || order.payment_method}. Thao tác sẽ được ghi vào lịch sử xử lý đơn.`,
+      confirmText: "Đã thu tiền",
+      cancelText: "Quay lại",
+      type: "success",
+    });
+    if (!confirmed) return;
+    runOrderAction(
+      () => adminOrdersApi.confirmPayment(order.order_id),
+      (u) => `Đã xác nhận thanh toán đơn #${u.order_code}.`,
+      "Xác nhận thanh toán thất bại"
+    );
+  };
+
+  const handleQuickStatusChange = async (order, nextStatus) => {
+    setActiveDropdownOrderId(null);
+
+    // Kiểm tra ràng buộc thanh toán trước khi hoàn tất
+    if (nextStatus === "Completed") {
+      if (needsPaymentFirst(order)) {
+        popup.warning(
+          `Đơn #${order.order_code} (${PAYMENT_METHOD[order.payment_method] || order.payment_method}) chưa được thanh toán online. Vui lòng kiểm tra hoặc xác nhận thanh toán trước.`
+        );
+        openOrder(order);
+        return;
+      }
+      if (order.payment_status !== "Paid" && order.payment_method === "COD") {
+        const confirmed = await popup.confirm({
+          title: "Hoàn tất & Xác nhận thu tiền?",
+          message: `Đơn #${order.order_code} đã thanh toán ${formatVND(order.final_cost, " đ")} tiền mặt tại quầy?`,
+          subtitle: "Thao tác sẽ tự động chuyển đơn sang Hoàn Tất và đánh dấu Đã Thanh Toán.",
+          confirmText: "Hoàn tất & Đã thu tiền",
+          cancelText: "Quay lại",
+          type: "success",
+        });
+        if (!confirmed) return;
+      }
+    }
+
+    // Nếu chọn hủy đơn, mở modal chi tiết ở chế độ hủy để nhập lý do (bắt buộc hoàn kho)
+    if (nextStatus === "Cancelled") {
+      openOrder(order);
+      setCancelMode(true);
       return;
     }
-    runOrderAction(() => adminOrdersApi.updateStatus(selectedOrder.order_id, "Cancelled", reason), "Hủy đơn hàng thất bại");
+
+    setRowLoadingId(order.order_id);
+    try {
+      const res = await adminOrdersApi.updateStatus(order.order_id, nextStatus);
+      const updated = res.data;
+      loadSeq.current++;
+      setOrders((prev) => prev.map((o) => (o.order_id === updated.order_id ? updated : o)));
+      setSelectedOrder((prev) => (prev?.order_id === updated.order_id ? updated : prev));
+      popup.success(`Đơn #${updated.order_code} đã chuyển sang "${ORDER_STATUS[updated.status]?.label || updated.status}".`);
+    } catch (err) {
+      popup.error(apiErrorMessage(err, "Cập nhật trạng thái thất bại"));
+    } finally {
+      setRowLoadingId(null);
+    }
   };
 
-  const handleConfirmPayment = () => {
-    if (!window.confirm(`Xác nhận đơn #${selectedOrder.order_code} đã thanh toán ${formatVND(selectedOrder.final_cost, " đ")}?`)) return;
-    runOrderAction(() => adminOrdersApi.confirmPayment(selectedOrder.order_id), "Xác nhận thanh toán thất bại");
+  const query = normalize(search.trim().replace(/^#/, ""));
+  const searched = query
+    ? orders.filter(
+        (o) =>
+          normalize(o.order_code).includes(query) ||
+          normalize(o.recipient_name).includes(query) ||
+          (o.recipient_phone || "").includes(query.replace(/\s+/g, ""))
+      )
+    : orders;
+
+  const countFor = (key) => (key === "all" ? searched.length : searched.filter((o) => o.status === key).length);
+
+  const filteredOrders = activeTab === "all" ? searched : searched.filter((o) => o.status === activeTab);
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const page = Math.min(currentPage, totalPages);
+  const visibleOrders = printAll ? filteredOrders : filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const lastUpdatedText = lastUpdated?.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  const showSkeleton = loading && orders.length === 0;
+
+  const renderEmptyState = () => {
+    if (error && orders.length === 0) {
+      return <EmptyState icon="cloud-offline-outline" title="Không tải được đơn hàng" text={error} actionLabel="Thử lại" onAction={handleRefresh} />;
+    }
+    if (orders.length === 0) {
+      return <EmptyState icon="receipt-outline" title="Chưa có đơn hàng nào" text="Đơn hàng mới sẽ xuất hiện ở đây khi khách đặt bánh." />;
+    }
+    const tabLabel = TABS.find((t) => t.key === activeTab)?.label;
+    if (query) {
+      return (
+        <EmptyState
+          icon="search-outline"
+          title="Không tìm thấy đơn hàng"
+          text={`Không có đơn nào khớp "${search.trim()}"${activeTab !== "all" ? ` trong mục "${tabLabel}"` : ""}.`}
+          actionLabel="Xóa tìm kiếm"
+          onAction={() => handleSearch("")}
+        />
+      );
+    }
+    return <EmptyState icon="file-tray-outline" title={`Không có đơn ở mục "${tabLabel}"`} text="Đơn hàng sẽ hiện ở đây khi chuyển sang trạng thái này." />;
   };
 
-  const countFor = (key) => (key === "all" ? orders.length : orders.filter((o) => o.status === key).length);
-
-  const filteredOrders = orders.filter((o) => {
-    if (activeTab === "all") return true;
-    return o.status === activeTab;
-  });
+  const selectedStatus = selectedOrder && (ORDER_STATUS[selectedOrder.status] || {});
+  const selectedPay = selectedOrder && (PAYMENT_BADGE[selectedOrder.payment_status] || PAYMENT_BADGE.Unpaid);
 
   return (
     <>
@@ -122,7 +334,7 @@ export default function OrderList() {
               <ion-icon name="print-outline"></ion-icon>
               <span>In Bảng Đối Soát</span>
             </button>
-            <button className="btn-pill-primary" type="button" onClick={() => { setLoading(true); loadOrders(); }}>
+            <button className={`btn-pill-primary ${loading ? "is-spinning" : ""}`} type="button" disabled={loading} onClick={handleRefresh}>
               <ion-icon name="refresh-outline"></ion-icon>
               <span>Làm Mới (Live)</span>
             </button>
@@ -131,10 +343,11 @@ export default function OrderList() {
 
         {/* Tab Pills Filter */}
         <div className="admin-filter-tabs">
-          {tabs.map((t) => (
+          {TABS.map((t) => (
             <button
               key={t.key}
-              onClick={() => setActiveTab(t.key)}
+              type="button"
+              onClick={() => { setActiveTab(t.key); setCurrentPage(1); }}
               className={`tab-pill-btn ${activeTab === t.key ? "active" : ""}`}
             >
               {t.label} ({countFor(t.key)})
@@ -144,91 +357,187 @@ export default function OrderList() {
 
         {/* Main Orders Table */}
         <div className="admin-card-box">
+          <div className="order-toolbar">
+            <div className="order-search-box">
+              <ion-icon name="search-outline"></ion-icon>
+              <input
+                type="search"
+                placeholder="Tìm mã đơn, tên khách, SĐT..."
+                aria-label="Tìm đơn hàng theo mã đơn, tên khách hoặc số điện thoại"
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+              {search && (
+                <button type="button" className="order-search-clear" aria-label="Xóa tìm kiếm" onClick={() => handleSearch("")}>
+                  <ion-icon name="close-circle"></ion-icon>
+                </button>
+              )}
+            </div>
+            <div className="order-toolbar-meta">
+              {lastUpdatedText && (
+                <span className="order-last-updated">
+                  <span className={`dot-status ${error ? "orange" : "green"}`}></span>
+                  Cập nhật lúc {lastUpdatedText}
+                </span>
+              )}
+              <span>
+                Hiển thị <strong>{filteredOrders.length}</strong> đơn
+              </span>
+            </div>
+          </div>
+
+          {error && orders.length > 0 && (
+            <div className="order-error-banner" role="alert">
+              <ion-icon name="cloud-offline-outline"></ion-icon>
+              <span>{error} — đang hiển thị dữ liệu lúc {lastUpdatedText}.</span>
+            </div>
+          )}
+
           <div className="admin-table-clean-wrapper">
-            <table className="admin-table-clean">
+            <table className="admin-table-clean" aria-busy={loading}>
               <thead>
                 <tr>
                   <th>MÃ ĐƠN</th>
                   <th>KHÁCH HÀNG &amp; SĐT</th>
                   <th>HẸN LẤY BÁNH</th>
                   <th>MÓN &amp; KÍCH CỠ</th>
-                  <th>TỔNG TIỀN</th>
+                  <th className="col-currency">TỔNG TIỀN</th>
                   <th>THANH TOÁN</th>
                   <th>TRẠNG THÁI</th>
-                  <th style={{ textAlign: "right" }}>CHI TIẾT</th>
+                  <th className="col-actions">CHI TIẾT</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.length === 0 && (
-                  <tr>
-                    <td colSpan="8" style={{ textAlign: "center", color: "#8c9ba5" }}>
-                      {loading ? "Đang tải..." : error || "Không có đơn hàng nào."}
-                    </td>
+                {showSkeleton && <SkeletonRows />}
+                {!showSkeleton && filteredOrders.length === 0 && (
+                  <tr className="order-static-row">
+                    <td colSpan="8">{renderEmptyState()}</td>
                   </tr>
                 )}
-                {filteredOrders.map((o) => {
+                {visibleOrders.map((o, idx) => {
                   const urgent = isUrgent(o);
                   const st = ORDER_STATUS[o.status] || {};
+                  const pay = PAYMENT_BADGE[o.payment_status] || PAYMENT_BADGE.Unpaid;
+                  const canChangeStatus = o.next_statuses && o.next_statuses.length > 0;
+                  const isNearBottom = idx >= visibleOrders.length - 2 && visibleOrders.length >= 3;
+                  const isOpen = activeDropdownOrderId === o.order_id;
+                  const isRowLoading = rowLoadingId === o.order_id;
                   return (
                   <tr key={o.order_id}>
                     <td>
-                      <span style={{ fontWeight: "800", color: "#de5d7c", fontSize: "14px" }}>
-                        #{o.order_code}
-                      </span>
+                      <span className="order-code">#{o.order_code}</span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: "700", color: "#1e293b" }}>{o.recipient_name}</div>
-                      <div style={{ fontSize: "12px", color: "#8c9ba5" }}>{o.recipient_phone}</div>
+                      <div className="order-customer-name">{o.recipient_name}</div>
+                      <div className="order-customer-phone">{o.recipient_phone}</div>
                     </td>
                     <td>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                        <ion-icon name="time-outline" style={{ color: urgent ? "#de5d7c" : "#8c9ba5" }}></ion-icon>
-                        <span style={{ fontWeight: urgent ? "800" : "600", color: urgent ? "#de5d7c" : "#334155", fontSize: "12.5px" }}>
-                          {formatDateTime(o.pickup_time)}
-                        </span>
+                      <div className={`order-pickup ${urgent ? "is-urgent" : ""}`}>
+                        <ion-icon name="time-outline"></ion-icon>
+                        <span>{formatDateTime(o.pickup_time)}</span>
                       </div>
                       {o.notes && (
-                        <div style={{ fontSize: "11px", color: "#d97706", marginTop: "3px", maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          <ion-icon name="create-outline" style={{ verticalAlign: "-2px", marginRight: "3px" }}></ion-icon>{o.notes}
+                        <div className="order-note-inline">
+                          <ion-icon name="create-outline"></ion-icon>{o.notes}
                         </div>
                       )}
                     </td>
                     <td>
-                      <div style={{ fontSize: "12.5px", color: "#334155" }}>
+                      <div className="order-items">
                         {o.details.map((it) => (
-                          <div key={`${it.product_id}-${it.size_id}`} style={{ marginBottom: "2px" }}>
-                            <span style={{ fontWeight: "700" }}>{it.quantity}x</span> {it.product_name} <span style={{ color: "#8c9ba5" }}>({it.size_name})</span>
+                          <div key={`${it.product_id}-${it.size_id}`} className="order-item">
+                            <strong>{it.quantity}x</strong> {it.product_name} <span className="order-item-size">({it.size_name})</span>
                           </div>
                         ))}
                       </div>
                     </td>
-                    <td>
-                      <span style={{ fontWeight: "800", color: "#1e293b", fontSize: "14px" }}>
-                        {formatVND(o.final_cost, " đ")}
-                      </span>
+                    <td className="col-currency">
+                      <span className="order-total">{formatVND(o.final_cost, " đ")}</span>
                     </td>
                     <td>
-                      <span
-                        className={`badge-pill ${o.payment_status === "Paid" ? "mint" : "gray"}`}
-                        style={{ fontSize: "11.5px" }}
-                        title={PAYMENT_STATUS[o.payment_status] || o.payment_status}
-                      >
-                        {PAYMENT_METHOD[o.payment_method] || o.payment_method}
+                      <div className="order-pay-method">{PAYMENT_METHOD[o.payment_method] || o.payment_method}</div>
+                      <span className={`badge-pill order-badge ${pay.badge}`}>
+                        <span className={`dot-status ${pay.dot}`}></span>
+                        {PAYMENT_STATUS[o.payment_status] || o.payment_status}
                       </span>
                     </td>
-                    <td>
-                      <span className={`badge-pill ${st.badge}`} style={{ fontSize: "11.5px" }}>
-                        <span className={`dot-status ${st.dot}`}></span>
-                        {st.label || o.status}
-                      </span>
+                    <td className="col-status">
+                      <div className="order-status-wrapper">
+                        {canChangeStatus ? (
+                          <button
+                            type="button"
+                            className={`badge-pill order-badge order-badge-interactive ${st.badge}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveDropdownOrderId(isOpen ? null : o.order_id);
+                            }}
+                            disabled={isRowLoading}
+                            title="Nhấp để chuyển nhanh trạng thái đơn hàng"
+                            aria-haspopup="true"
+                            aria-expanded={isOpen}
+                          >
+                            {isRowLoading ? (
+                              <span className="order-badge-spinner"></span>
+                            ) : (
+                              <span className={`dot-status ${st.dot}`}></span>
+                            )}
+                            <span>{st.label || o.status}</span>
+                            <ion-icon
+                              name="chevron-down-outline"
+                              className={`order-badge-chevron ${isOpen ? "is-open" : ""}`}
+                            ></ion-icon>
+                          </button>
+                        ) : (
+                          <span className={`badge-pill order-badge ${st.badge}`}>
+                            <span className={`dot-status ${st.dot}`}></span>
+                            <span>{st.label || o.status}</span>
+                          </span>
+                        )}
+
+                        {isOpen && canChangeStatus && (
+                          <div
+                            className={`order-status-popover ${isNearBottom ? "is-dropup" : ""}`}
+                            onClick={(e) => e.stopPropagation()}
+                            role="menu"
+                          >
+                            <div className="order-popover-header">Chuyển trạng thái</div>
+                            {o.next_statuses
+                              .filter((s) => s !== "Cancelled")
+                              .map((s) => {
+                                const stepInfo = NEXT_STEP[s] || { label: ORDER_STATUS[s]?.label || s, icon: "arrow-forward-outline" };
+                                return (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    className="order-popover-item is-primary"
+                                    onClick={() => handleQuickStatusChange(o, s)}
+                                    role="menuitem"
+                                  >
+                                    <ion-icon name={stepInfo.icon}></ion-icon>
+                                    <span>{stepInfo.label}</span>
+                                  </button>
+                                );
+                              })}
+                            {o.next_statuses.includes("Cancelled") && (
+                              <>
+                                <div className="order-popover-divider"></div>
+                                <button
+                                  type="button"
+                                  className="order-popover-item is-danger"
+                                  onClick={() => handleQuickStatusChange(o, "Cancelled")}
+                                  role="menuitem"
+                                >
+                                  <ion-icon name="close-circle-outline"></ion-icon>
+                                  <span>Hủy đơn hàng...</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        onClick={() => openOrder(o)}
-                        className="btn-pill-outline"
-                        style={{ padding: "6px 14px", fontSize: "12px" }}
-                      >
+                    <td className="col-actions">
+                      <button type="button" onClick={() => openOrder(o)} className="btn-pill-outline order-view-btn">
                         Xem Phiếu
                       </button>
                     </td>
@@ -238,86 +547,71 @@ export default function OrderList() {
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="order-pagination">
+              <span className="order-pagination-info">
+                Hiển thị {(page - 1) * PAGE_SIZE + 1} - {(page - 1) * PAGE_SIZE + visibleOrders.length} trên {filteredOrders.length} đơn
+              </span>
+              <div className="order-pagination-controls">
+                <button type="button" className="tab-pill-btn" disabled={page === 1} onClick={() => setCurrentPage(page - 1)}>
+                  &larr; Trước
+                </button>
+                <span className="order-pagination-page">Trang {page} / {totalPages}</span>
+                <button type="button" className="tab-pill-btn" disabled={page === totalPages} onClick={() => setCurrentPage(page + 1)}>
+                  Sau &rarr;
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal Xem Phiếu / Chi Tiết Hóa Đơn */}
         {selectedOrder && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(15, 23, 42, 0.45)",
-              backdropFilter: "blur(4px)",
-              zIndex: 1100,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "16px",
-            }}
-          >
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: "24px",
-                width: "100%",
-                maxWidth: "560px",
-                maxHeight: "92vh",
-                overflowY: "auto",
-                padding: "28px",
-                boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
-                border: "1px solid #f0f1f4",
-              }}
-            >
+          <div className="order-modal-overlay">
+            <div className="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
               {/* Modal Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f2f4", paddingBottom: "14px", marginBottom: "18px" }}>
+              <div className="order-modal-header">
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: "800", color: "#de5d7c", textTransform: "uppercase", letterSpacing: "1px" }}>
-                    PHIẾU HÓA ĐƠN BÁN LẺ
-                  </span>
-                  <h3 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: "800", color: "#1e293b" }}>
-                    #{selectedOrder.order_code}
-                  </h3>
+                  <span className="order-modal-eyebrow">PHIẾU HÓA ĐƠN BÁN LẺ</span>
+                  <h3 id="order-modal-title" className="order-modal-title">#{selectedOrder.order_code}</h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedOrder(null)}
-                  style={{ background: "#f8fafc", border: "none", width: "32px", height: "32px", borderRadius: "50%", cursor: "pointer", fontSize: "18px", color: "#64748b" }}
-                >
+                <button type="button" className="order-modal-close" aria-label="Đóng phiếu" onClick={() => setSelectedOrder(null)}>
                   <ion-icon name="close-outline"></ion-icon>
                 </button>
               </div>
 
               {/* Info meta */}
-              <div style={{ background: "#fff0f4", borderRadius: "14px", padding: "12px 16px", marginBottom: "16px", fontSize: "12.5px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <span style={{ color: "#64748b" }}>Khách hàng:</span>
-                  <span style={{ fontWeight: "700", color: "#1e293b" }}>{selectedOrder.recipient_name} ({selectedOrder.recipient_phone})</span>
+              <div className="order-meta">
+                <div className="order-meta-row">
+                  <span className="order-meta-label">Khách hàng:</span>
+                  <span className="order-meta-value">{selectedOrder.recipient_name} ({selectedOrder.recipient_phone})</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <span style={{ color: "#64748b" }}>Hẹn nhận bánh:</span>
-                  <span style={{ fontWeight: "700", color: "#de5d7c" }}>{formatDateTime(selectedOrder.pickup_time)}</span>
+                <div className="order-meta-row">
+                  <span className="order-meta-label">Hẹn nhận bánh:</span>
+                  <span className="order-meta-value is-accent">{formatDateTime(selectedOrder.pickup_time)}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                  <span style={{ color: "#64748b" }}>Trạng thái:</span>
-                  <span className={`badge-pill ${ORDER_STATUS[selectedOrder.status]?.badge || ""}`} style={{ fontSize: "11px" }}>
-                    <span className={`dot-status ${ORDER_STATUS[selectedOrder.status]?.dot || ""}`}></span>
-                    {ORDER_STATUS[selectedOrder.status]?.label || selectedOrder.status}
+                <div className="order-meta-row">
+                  <span className="order-meta-label">Trạng thái:</span>
+                  <span className={`badge-pill order-badge-sm ${selectedStatus.badge || ""}`}>
+                    <span className={`dot-status ${selectedStatus.dot || ""}`}></span>
+                    {selectedStatus.label || selectedOrder.status}
                   </span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
-                  <span style={{ color: "#64748b" }}>Thanh toán:</span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontWeight: "700", color: "#1e293b" }}>
+                <div className="order-meta-row">
+                  <span className="order-meta-label">Thanh toán:</span>
+                  <span className="order-meta-pay">
+                    <span className="order-meta-value">
                       {PAYMENT_METHOD[selectedOrder.payment_method] || selectedOrder.payment_method}
                     </span>
-                    <span className={`badge-pill ${selectedOrder.payment_status === "Paid" ? "mint" : "gray"}`} style={{ fontSize: "11px" }}>
+                    <span className={`badge-pill order-badge-sm ${selectedPay.badge}`}>
+                      <span className={`dot-status ${selectedPay.dot}`}></span>
                       {PAYMENT_STATUS[selectedOrder.payment_status] || selectedOrder.payment_status}
                     </span>
                     {selectedOrder.payment_status === "Unpaid" && selectedOrder.status !== "Cancelled" && (
                       <button
                         type="button"
-                        className="btn-pill-outline"
-                        style={{ padding: "3px 10px", fontSize: "11px" }}
+                        className="btn-pill-outline order-pay-confirm-btn"
                         disabled={actionLoading}
                         onClick={handleConfirmPayment}
                       >
@@ -329,13 +623,13 @@ export default function OrderList() {
               </div>
 
               {/* Items List */}
-              <div style={{ marginBottom: "16px" }}>
-                <span style={{ fontSize: "11.5px", fontWeight: "800", color: "#8c9ba5", textTransform: "uppercase" }}>Danh Sách Bánh</span>
-                <div style={{ marginTop: "8px", borderTop: "1px solid #f8f9fa" }}>
+              <div className="order-section">
+                <span className="order-section-label">Danh Sách Bánh</span>
+                <div className="order-receipt-items">
                   {selectedOrder.details.map((it) => (
-                    <div key={`${it.product_id}-${it.size_id}`} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f8f9fa", fontSize: "13px" }}>
-                      <span><strong>{it.quantity}x</strong> {it.product_name} <small style={{ color: "#8c9ba5" }}>({it.size_name})</small></span>
-                      <span style={{ fontWeight: "700" }}>{formatVND(it.total_price, " đ")}</span>
+                    <div key={`${it.product_id}-${it.size_id}`} className="order-receipt-item">
+                      <span><strong>{it.quantity}x</strong> {it.product_name} <small className="order-item-size">({it.size_name})</small></span>
+                      <span className="order-receipt-item-price">{formatVND(it.total_price, " đ")}</span>
                     </div>
                   ))}
                 </div>
@@ -343,52 +637,63 @@ export default function OrderList() {
 
               {/* Notes */}
               {selectedOrder.notes && (
-                <div style={{ background: "#fef9ee", border: "1px solid #fef3c7", borderRadius: "12px", padding: "10px 14px", marginBottom: "16px", fontSize: "12px", color: "#b45309" }}>
+                <div className="order-note-box">
                   <strong>Ghi chú đơn hàng:</strong> {selectedOrder.notes}
                 </div>
               )}
 
               {Number(selectedOrder.discount_amount) > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#64748b", marginBottom: "8px" }}>
-                  <span>Giảm giá:</span>
-                  <span style={{ fontWeight: "700", color: "#10b981" }}>-{formatVND(selectedOrder.discount_amount, " đ")}</span>
+                <div className="order-receipt-row order-receipt-discount-row">
+                  <div className="order-receipt-discount-label">
+                    <span>Giảm giá:</span>
+                    {(selectedOrder.promotion_code || selectedOrder.promotion_name) && (
+                      <span
+                        className="order-voucher-badge"
+                        title={selectedOrder.promotion_name || selectedOrder.promotion_code}
+                      >
+                        <ion-icon name="ticket-outline"></ion-icon>
+                        {selectedOrder.promotion_code && (
+                          <strong className="order-voucher-code">[{selectedOrder.promotion_code}]</strong>
+                        )}
+                        {selectedOrder.promotion_name && (
+                          <span className="order-voucher-name">{selectedOrder.promotion_name}</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <span className="order-receipt-discount">-{formatVND(selectedOrder.discount_amount, " đ")}</span>
                 </div>
               )}
 
               {/* Total & Action */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "12px", borderTop: "2px dashed #e2e8f0", marginBottom: "20px" }}>
-                <span style={{ fontSize: "14px", fontWeight: "700", color: "#64748b" }}>Tổng Thanh Toán:</span>
-                <span style={{ fontSize: "20px", fontWeight: "800", color: "#de5d7c" }}>{formatVND(selectedOrder.final_cost, " đ")}</span>
+              <div className="order-receipt-total">
+                <span>Tổng Thanh Toán:</span>
+                <span className="order-receipt-total-amount">{formatVND(selectedOrder.final_cost, " đ")}</span>
               </div>
 
               {/* Timeline lịch sử trạng thái */}
               {selectedOrder.status_logs?.length > 0 && (
-                <div style={{ marginBottom: "18px" }}>
-                  <span style={{ fontSize: "11.5px", fontWeight: "800", color: "#8c9ba5", textTransform: "uppercase" }}>Lịch Sử Xử Lý</span>
-                  <div style={{ marginTop: "10px" }}>
-                    {selectedOrder.status_logs.map((log, idx) => {
-                      const isLast = idx === selectedOrder.status_logs.length - 1;
+                <div className="order-timeline-section">
+                  <span className="order-section-label">Lịch Sử Xử Lý</span>
+                  <div className="order-timeline">
+                    {selectedOrder.status_logs.map((log) => {
                       // Log thanh toán giữ nguyên trạng thái đơn (old_status === new_status)
                       const isPaymentLog = log.old_status === log.new_status;
-                      const color = log.new_status === "Cancelled" ? "#ef4444" : isPaymentLog ? "#10b981" : "#de5d7c";
+                      const variant = log.new_status === "Cancelled" ? "is-cancelled" : isPaymentLog ? "is-payment" : "";
                       return (
-                        <div key={log.log_id} style={{ display: "flex", gap: "12px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                            <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: color, marginTop: "4px", flexShrink: 0 }}></span>
-                            {!isLast && <span style={{ width: "2px", flex: 1, background: "#f1f2f4", margin: "2px 0" }}></span>}
+                        <div key={log.log_id} className={`order-timeline-item ${variant}`}>
+                          <div className="order-timeline-rail">
+                            <span className="order-timeline-dot"></span>
+                            <span className="order-timeline-line"></span>
                           </div>
-                          <div style={{ paddingBottom: isLast ? 0 : "12px", fontSize: "12.5px" }}>
-                            <div style={{ fontWeight: "700", color: "#1e293b" }}>
+                          <div className="order-timeline-body">
+                            <div className="order-timeline-title">
                               {isPaymentLog ? "Xác nhận thanh toán" : ORDER_STATUS[log.new_status]?.label || log.new_status}
                             </div>
-                            <div style={{ fontSize: "11.5px", color: "#8c9ba5" }}>
+                            <div className="order-timeline-meta">
                               {formatDateTime(log.changed_at)}{log.changed_by ? ` · ${log.changed_by}` : ""}
                             </div>
-                            {log.note && (
-                              <div style={{ fontSize: "12px", color: log.new_status === "Cancelled" ? "#b91c1c" : "#475569", marginTop: "2px" }}>
-                                {log.note}
-                              </div>
-                            )}
+                            {log.note && <div className="order-timeline-note">{log.note}</div>}
                           </div>
                         </div>
                       );
@@ -397,20 +702,92 @@ export default function OrderList() {
                 </div>
               )}
 
-              {/* Chuyển trạng thái */}
-              {selectedOrder.next_statuses?.length > 0 && (
-                <div style={{ background: "#f8fafc", borderRadius: "14px", padding: "12px", marginBottom: "16px" }}>
-                  {!cancelMode ? (
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {selectedOrder.next_statuses.filter((s) => NEXT_STEP[s]).map((s) => {
+              {/* Cảnh báo thanh toán online nếu chưa thanh toán trước khi hoàn tất */}
+              {!cancelMode && needsPaymentFirst(selectedOrder) && selectedOrder.next_statuses?.includes("Completed") && (
+                <div className="order-actions-hint" role="note">
+                  <ion-icon name="alert-circle-outline"></ion-icon>
+                  <span>Đơn thanh toán online cần được xác nhận đã thanh toán trước khi hoàn tất.</span>
+                </div>
+              )}
+
+              {/* Hộp nhập lý do hủy đơn khi ở chế độ cancelMode */}
+              {cancelMode && (
+                <div className="order-cancel-box">
+                  <label htmlFor="order-cancel-reason" className="order-cancel-label">
+                    Lý do hủy đơn (bắt buộc) — tồn kho sẽ được hoàn lại
+                  </label>
+                  <textarea
+                    id="order-cancel-reason"
+                    className="order-cancel-textarea"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    rows={2}
+                    autoFocus
+                    placeholder="VD: Khách không đến nhận, hết nguyên liệu..."
+                  />
+                  <div className="order-cancel-actions">
+                    <button
+                      type="button"
+                      className="order-btn-secondary"
+                      disabled={actionLoading}
+                      onClick={() => { setCancelMode(false); setCancelReason(""); }}
+                    >
+                      <span>Quay Lại</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="order-btn-danger-solid"
+                      disabled={actionLoading || !cancelReason.trim()}
+                      onClick={handleCancelOrder}
+                    >
+                      <ion-icon name="close-circle"></ion-icon>
+                      <span>Xác Nhận Hủy Đơn</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Hàng nút nghiệp vụ ở đáy Modal (1 hàng ngang thống nhất) */}
+              {!cancelMode && (
+                <div className="order-modal-footer">
+                  {/* Destructive Action: Hủy Đơn (đẩy sang góc trái, cách xa nút chính để tránh bấm nhầm) */}
+                  {selectedOrder.next_statuses?.includes("Cancelled") ? (
+                    <button
+                      type="button"
+                      className="order-btn-cancel"
+                      disabled={actionLoading}
+                      onClick={() => setCancelMode(true)}
+                      title="Hủy đơn hàng và hoàn lại tồn kho"
+                    >
+                      <ion-icon name="close-circle-outline"></ion-icon>
+                      <span>Hủy Đơn</span>
+                    </button>
+                  ) : (
+                    <div className="order-modal-footer-spacer"></div>
+                  )}
+
+                  {/* Cụm nút xử lý bên phải: In Phiếu Thu (Secondary) + Bước Tiếp Theo (Primary) */}
+                  <div className="order-modal-footer-actions">
+                    <button
+                      type="button"
+                      className="order-btn-secondary"
+                      onClick={() => window.print()}
+                      title="In phiếu thu bán lẻ"
+                    >
+                      <ion-icon name="print-outline"></ion-icon>
+                      <span>In Phiếu Thu</span>
+                    </button>
+
+                    {selectedOrder.next_statuses
+                      ?.filter((s) => NEXT_STEP[s])
+                      .map((s) => {
                         const blocked = s === "Completed" && needsPaymentFirst(selectedOrder);
                         const codUnpaid = s === "Completed" && selectedOrder.payment_status !== "Paid" && !blocked;
                         return (
                           <button
                             key={s}
                             type="button"
-                            className="btn-pill-primary"
-                            style={{ flex: 1, justifyContent: "center", opacity: blocked ? 0.5 : 1 }}
+                            className="btn-pill-primary order-btn-primary"
                             disabled={actionLoading || blocked}
                             title={blocked ? "Cần xác nhận thanh toán trước khi hoàn tất" : undefined}
                             onClick={() => handleChangeStatus(s)}
@@ -420,85 +797,9 @@ export default function OrderList() {
                           </button>
                         );
                       })}
-                      {selectedOrder.next_statuses.includes("Cancelled") && (
-                        <button
-                          type="button"
-                          className="btn-pill-outline"
-                          style={{ justifyContent: "center", color: "#ef4444" }}
-                          disabled={actionLoading}
-                          onClick={() => { setCancelMode(true); setModalError(""); }}
-                        >
-                          <ion-icon name="close-circle-outline"></ion-icon>
-                          <span>Hủy Đơn</span>
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      <label style={{ fontSize: "12px", fontWeight: "700", color: "#b91c1c" }}>
-                        Lý do hủy đơn (bắt buộc) — tồn kho sẽ được hoàn lại
-                      </label>
-                      <textarea
-                        value={cancelReason}
-                        onChange={(e) => setCancelReason(e.target.value)}
-                        rows={2}
-                        autoFocus
-                        placeholder="VD: Khách không đến nhận, hết nguyên liệu..."
-                        style={{ width: "100%", marginTop: "6px", padding: "8px 12px", borderRadius: "10px", border: "1px solid #fecaca", fontFamily: "inherit", fontSize: "13px", resize: "vertical", boxSizing: "border-box" }}
-                      />
-                      <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                        <button
-                          type="button"
-                          className="btn-pill-outline"
-                          style={{ flex: 1, justifyContent: "center" }}
-                          disabled={actionLoading}
-                          onClick={() => { setCancelMode(false); setCancelReason(""); setModalError(""); }}
-                        >
-                          <span>Quay Lại</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-pill-primary"
-                          style={{ flex: 1, justifyContent: "center", background: "#ef4444" }}
-                          disabled={actionLoading || !cancelReason.trim()}
-                          onClick={handleCancelOrder}
-                        >
-                          <span>Xác Nhận Hủy Đơn</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {!cancelMode && needsPaymentFirst(selectedOrder) && selectedOrder.next_statuses.includes("Completed") && (
-                    <div style={{ fontSize: "11.5px", color: "#d97706", marginTop: "8px" }}>
-                      Đơn thanh toán online cần được xác nhận đã thanh toán trước khi hoàn tất.
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
-
-              {modalError && (
-                <div style={{ color: "#b91c1c", fontWeight: "600", fontSize: "12.5px", marginBottom: "12px" }}>{modalError}</div>
-              )}
-
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                  type="button"
-                  className="btn-pill-outline"
-                  style={{ flex: 1, justifyContent: "center" }}
-                  onClick={() => window.print()}
-                >
-                  <ion-icon name="print-outline"></ion-icon>
-                  <span>In Phiếu Thu</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-pill-primary"
-                  style={{ flex: 1, justifyContent: "center" }}
-                  onClick={() => setSelectedOrder(null)}
-                >
-                  <span>Đóng Lại</span>
-                </button>
-              </div>
             </div>
           </div>
         )}

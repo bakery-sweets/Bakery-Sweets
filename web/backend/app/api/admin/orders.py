@@ -40,6 +40,10 @@ def _to_order_out(o) -> AdminOrderOut:
         )
         for log in sorted(o.status_logs, key=lambda log: log.log_id)
     ]
+    promo = o.promotion
+    if not promo and o.applied_promotions:
+        promo = o.applied_promotions[0].promotion if o.applied_promotions[0] else None
+
     return AdminOrderOut(
         order_id=o.order_id,
         order_code=o.order_code,
@@ -48,6 +52,9 @@ def _to_order_out(o) -> AdminOrderOut:
         recipient_phone=o.recipient_phone,
         pickup_time=o.pickup_time,
         notes=o.notes,
+        promotion_id=o.promotion_id,
+        promotion_code=promo.promotion_code if promo else None,
+        promotion_name=promo.promotion_name if promo else None,
         total_quantity=o.total_quantity,
         total_cost=o.total_cost,
         discount_amount=o.discount_amount or 0,
