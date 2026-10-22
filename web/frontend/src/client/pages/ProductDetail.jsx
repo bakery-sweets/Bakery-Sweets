@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useCartStore from '../../store/cartStore';
 import { clientProductsApi } from '../../api/client';
-import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
+import { formatVND, formatStock, imageUrl, apiErrorMessage } from '../../utils/format';
+import popup from '../../utils/popup';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
@@ -48,9 +49,9 @@ export default function ProductDetail() {
         currentSizeObj,
         quantity
       );
-      alert('Đã thêm sản phẩm vào giỏ hàng thành công!');
+      popup.success(`Đã thêm ${quantity}x "${product.product_name}" vào giỏ hàng!`);
     } catch (err) {
-      alert(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
+      popup.error(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
     }
   };
 
@@ -160,6 +161,9 @@ export default function ProductDetail() {
 
           <h1 className="product-detail-title">{product.product_name}</h1>
           <p className="product-detail-price">{formatVND(currentSizeObj?.price ?? product.min_price)}</p>
+          <p className="product-detail-stock-text">
+            Số lượng: <span className="product-detail-stock-num">{formatStock(currentSizeObj?.stock_quantity ?? product.stock_quantity ?? sizes.reduce((sum, s) => sum + (s.stock_quantity || 0), 0))}</span>
+          </p>
 
           {/* CHỌN KÍCH CỠ */}
           {sizes.length > 0 && (
@@ -183,7 +187,12 @@ export default function ProductDetail() {
 
           {/* CHỌN SỐ LƯỢNG */}
           <div className="product-detail-qty-section">
-            <label className="product-detail-label">Số lượng:</label>
+            <label className="product-detail-label">
+              Số lượng:
+              <span className="product-detail-stock-hint">
+                (Kho: {formatStock(currentSizeObj?.stock_quantity ?? product.stock_quantity ?? sizes.reduce((sum, s) => sum + (s.stock_quantity || 0), 0))})
+              </span>
+            </label>
             <div className="product-detail-qty-control">
               <button
                 type="button"
@@ -270,6 +279,9 @@ export default function ProductDetail() {
                   </div>
                   <div className="related-product-info">
                     <h3 className="related-product-title">{item.product_name}</h3>
+                    <p className="related-product-stock" style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 4px', fontWeight: 500 }}>
+                      Số lượng: {item.stock_display || formatStock(item.stock_quantity ?? item.sizes?.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0))}
+                    </p>
                     <div className="related-card-bottom">
                       <p className="related-product-price">{formatVND(item.price)}</p>
                       <button

@@ -60,7 +60,50 @@
   font-size: 24px;
   font-weight: 700;
   color: #d4845a;
+  margin: 0 0 6px;
+}
+
+.product-detail-stock-text {
+  font-size: 13.5px;
+  color: #94a3b8;
   margin: 0 0 16px;
+  font-weight: 500;
+}
+
+.product-detail-stock-num {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.product-detail-stock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.product-detail-stock-badge ion-icon {
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+.product-detail-stock-badge strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.product-detail-stock-hint {
+  font-size: 12.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-left: 8px;
 }
 
 .product-detail-desc {

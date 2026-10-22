@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
 import { adminUsersApi } from "../../api/admin";
 import { formatDate, apiErrorMessage } from "../../utils/format";
+import popup from "../../utils/popup";
 
 const fullName = (u) => [u.first_name, u.last_name].filter(Boolean).join(" ");
 
@@ -36,18 +37,39 @@ export default function UserList() {
     loadUsers();
   }, [loadUsers]);
 
-  const handleToggleLock = async (phone) => {
+  const handleToggleLock = async (u) => {
+    const isLocking = u.status === "active";
+    const name = fullName(u) || u.phone;
+    const confirmed = await popup.confirm({
+      title: isLocking ? "Khóa tài khoản?" : "Mở khóa tài khoản?",
+      message: isLocking
+        ? `Bạn có chắc muốn tạm khóa tài khoản của "${name}"?`
+        : `Mở khóa cho tài khoản "${name}"?`,
+      subtitle: isLocking
+        ? "Người dùng này sẽ không thể đăng nhập hoặc đặt hàng cho đến khi được quản trị viên mở khóa."
+        : "Người dùng có thể đăng nhập và tiếp tục mua sắm bình thường.",
+      confirmText: isLocking ? "Khóa tài khoản" : "Mở khóa",
+      cancelText: "Hủy bỏ",
+      type: isLocking ? "danger" : "success",
+      icon: isLocking ? "lock" : "unlock",
+    });
+
+    if (!confirmed) return;
+
     try {
-      await adminUsersApi.toggleStatus(phone);
+      await adminUsersApi.toggleStatus(u.phone);
+      popup.success(isLocking ? `Đã tạm khóa tài khoản "${name}" thành công!` : `Đã mở khóa tài khoản "${name}" thành công!`);
       await loadUsers();
     } catch (err) {
-      alert(apiErrorMessage(err, "Không đổi được trạng thái tài khoản"));
+      popup.error(apiErrorMessage(err, "Không đổi được trạng thái tài khoản"));
     }
   };
 
   const handleCreate = (e) => {
     e.preventDefault();
-    alert("Backend chưa hỗ trợ cấp tài khoản mới.");
+    popup.info("Tính năng cấp tài khoản trực tiếp đang được kết nối trong phiên bản tiếp theo.", {
+      title: "Thông báo hệ thống",
+    });
     setShowModal(false);
     setNewUser({ username: "", email: "", password: "", role: "staff" });
   };
@@ -173,7 +195,7 @@ export default function UserList() {
                       {u.role !== "admin" ? (
                         <button
                           type="button"
-                          onClick={() => handleToggleLock(u.phone)}
+                          onClick={() => handleToggleLock(u)}
                           className="btn-pill-outline"
                           style={{
                             padding: "5px 12px",
@@ -233,7 +255,7 @@ export default function UserList() {
                   onClick={() => setShowModal(false)}
                   style={{ background: "#f8fafc", border: "none", width: "32px", height: "32px", borderRadius: "50%", cursor: "pointer", fontSize: "18px" }}
                 >
-                  ✕
+                  <ion-icon name="close-outline"></ion-icon>
                 </button>
               </div>
 

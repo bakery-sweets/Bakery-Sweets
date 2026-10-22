@@ -21,10 +21,13 @@ def _to_client_product_out(p) -> ClientProductOut:
             size_name=s.size.size_name if s.size else "",
             price=s.price,
             stock_quantity=s.stock_quantity,
+            stock_display="20+" if s.stock_quantity > 20 else str(s.stock_quantity),
         )
         for s in sorted(p.sizes, key=lambda x: x.price)
     ]
     min_price = sizes_out[0].price if sizes_out else Decimal("0.00")
+    total_stock = sum(s.stock_quantity for s in p.sizes) if p.sizes else 0
+    stock_display = "20+" if total_stock > 20 else str(total_stock)
 
     return ClientProductOut(
         product_id=p.product_id,
@@ -37,6 +40,8 @@ def _to_client_product_out(p) -> ClientProductOut:
         storage_instructions=p.storage_instructions,
         image=p.image,
         min_price=min_price,
+        stock_quantity=total_stock,
+        stock_display=stock_display,
         sizes=sizes_out,
     )
 

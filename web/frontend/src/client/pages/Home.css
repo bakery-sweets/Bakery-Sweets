@@ -570,6 +570,14 @@
   color: #1e293b;
 }
 
+.home-product-stock {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 3px 0 6px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
 .product-card-bottom {
   display: flex;
   justify-content: space-between;

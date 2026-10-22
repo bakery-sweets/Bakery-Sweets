@@ -1,5 +1,7 @@
+import os
+import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_admin
 from app.models.user import User
@@ -43,6 +45,46 @@ def list_products(
     products = AdminProductService.get_all(db, category_id=category_id, search=search)
     return ResponseBase(data=[_to_product_out(p) for p in products])
 
+@router.post("/upload-image", response_model=ResponseBase[dict], summary="Tải ảnh sản phẩm lên máy chủ")
+async def upload_product_image(
+    file: UploadFile = File(...),
+    admin: User = Depends(get_current_admin),
+):
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"}
+    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
+    if ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Định dạng tệp không hợp lệ. Vui lòng chọn ảnh JPG, PNG, WEBP, GIF, SVG.",
+        )
+
+    # Đảm bảo thư mục uploads tồn tại
+    backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    upload_dir = os.path.join(backend_root, "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    safe_name = f"cake_{uuid.uuid4().hex[:10]}{ext}"
+    file_path = os.path.join(upload_dir, safe_name)
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kích thước tệp quá lớn. Tối đa 10MB.",
+        )
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    return ResponseBase(
+        message="Tải ảnh thành công",
+        data={
+            "url": f"/uploads/{safe_name}",
+            "filename": safe_name,
+            "original_name": file.filename,
+        },
+    )
+
 @router.get("/{product_id}", response_model=ResponseBase[AdminProductOut], summary="Xem chi tiết sản phẩm")
 def get_product(
     product_id: int,
@@ -75,7 +117,7 @@ def update_product(
         raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm để cập nhật")
     return ResponseBase(message="Cập nhật sản phẩm thành công", data=_to_product_out(product))
 
-@router.delete("/{product_id}", response_model=ResponseBase, summary="Xóa sản phẩm")
+@router.delete("/{product_id}", response_model=ResponseBase, summary="Ngừng kinh doanh sản phẩm (xóa mềm)")
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
@@ -84,4 +126,4 @@ def delete_product(
     success = AdminProductService.delete(db, product_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm để xóa")
-    return ResponseBase(message="Xóa sản phẩm thành công")
+    return ResponseBase(message="Đã chuyển sản phẩm sang ngừng kinh doanh")

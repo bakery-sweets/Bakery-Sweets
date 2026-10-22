@@ -1,105 +1,246 @@
+/* ==========================================================================
+   TRANG LỊCH SỬ HÓA ĐƠN - BỐ CỤC CHIA ĐÔI (SPLIT MASTER-DETAIL LAYOUT)
+   ========================================================================== */
+
 .receipt-page-wrapper {
   width: 100%;
-  min-height: 75vh;
+  min-height: 80vh;
   display: flex;
   justify-content: center;
-  padding: 40px 30px 60px;
+  padding: 36px 24px 60px;
   box-sizing: border-box;
-  background: #ffffff;
+  background: #fbfbfe;
 }
 
 .receipt-container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1280px;
+}
+
+/* HEADER TRANG */
+.receipt-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .receipt-title {
   font-size: 26px;
-  font-weight: 700;
+  font-weight: 800;
   color: #1e293b;
-  margin: 0 0 25px;
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
 }
 
-.receipt-not-login {
+.receipt-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.receipt-total-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+/* TRẠNG THÁI CHƯA ĐĂNG NHẬP / TRỐNG / LỖI */
+.receipt-not-login,
+.receipt-empty-box,
+.receipt-error-box,
+.receipt-loading-box {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
   text-align: center;
-  padding: 60px 20px;
+  padding: 60px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
-.receipt-login-btn {
+.receipt-not-login h2,
+.receipt-empty-box h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.receipt-not-login p,
+.receipt-empty-box p,
+.receipt-loading-box p {
+  color: #64748b;
+  font-size: 14px;
+  max-width: 450px;
+  margin: 0;
+}
+
+.receipt-login-btn,
+.receipt-shop-btn {
   display: inline-block;
-  margin-top: 10px;
+  margin-top: 12px;
   padding: 12px 28px;
   background: #1a2639;
-  color: #fff;
-  border-radius: 8px;
+  color: #ffffff;
+  border-radius: 10px;
   text-decoration: none;
   font-weight: 600;
-}
-
-.receipt-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-}
-
-.receipt-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 600px;
-  text-align: left;
-}
-
-.receipt-table th {
-  background: #f8fafc;
-  padding: 14px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #475569;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.receipt-table td {
-  padding: 14px 18px;
   font-size: 14px;
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: middle;
+  transition: all 0.2s;
 }
 
-.receipt-product-list {
+.receipt-login-btn:hover,
+.receipt-shop-btn:hover {
+  background: #2b3d5b;
+}
+
+.receipt-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #d4845a;
+  border-radius: 50%;
+  animation: receiptSpin 0.7s linear infinite;
+}
+
+@keyframes receiptSpin {
+  to { transform: rotate(360deg); }
+}
+
+.receipt-error-box {
+  color: #dc2626;
+  font-size: 14px;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+/* ==========================================================================
+   BỐ CỤC CHIA ĐÔI (SPLIT LAYOUT)
+   ========================================================================== */
+.receipt-split-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* --------------------------------------------------------------------------
+   CỘT TRÁI: DANH SÁCH HÓA ĐƠN (MASTER)
+   -------------------------------------------------------------------------- */
+.receipt-master-column {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  max-width: 280px;
+  gap: 12px;
 }
 
-.receipt-product-item {
-  font-weight: 500;
-  font-size: 13.5px;
-  color: #1e293b;
-  line-height: 1.35;
+.receipt-column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-left: 2px;
 }
 
-.receipt-product-item-more {
-  color: #94a3b8;
+.receipt-column-header ion-icon {
+  font-size: 18px;
+  color: #d4845a;
+}
+
+.receipt-order-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom scrollbar mỏng đẹp */
+.receipt-order-cards-list::-webkit-scrollbar {
+  width: 6px;
+}
+.receipt-order-cards-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+.receipt-order-cards-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* CARD ĐƠN HÀNG */
+.receipt-order-card {
+  position: relative;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  outline: none;
+}
+
+.receipt-order-card:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -4px rgba(0, 0, 0, 0.06);
+}
+
+.receipt-order-card.active {
+  border-color: #d4845a;
+  background: #fffdfb;
+  box-shadow: 0 10px 24px -5px rgba(212, 132, 90, 0.16);
+}
+
+.order-card-active-indicator {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 4.5px;
+  background: #d4845a;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Hàng 1: Mã đơn & Trạng thái */
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.order-card-code {
+  font-family: monospace;
   font-weight: 700;
   font-size: 14px;
-  line-height: 1;
-  letter-spacing: 2px;
-  margin-top: -1px;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 
 .receipt-badge {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 3px 9px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 
@@ -113,89 +254,121 @@
   color: #854d0e;
 }
 
-.receipt-detail-btn {
-  padding: 6px 14px;
-  background: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #1a2639;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.receipt-detail-btn:hover {
-  background: #cadbfb;
-  border-color: #8bb4f7;
-}
-
-/* ==========================================================================
-   POPUP MODAL CHI TIẾT HÓA ĐƠN
-   ========================================================================== */
-.receipt-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(5px);
+/* Hàng 2: Ngày đặt */
+.order-card-date {
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 16px;
-  animation: receiptFadeIn 0.2s ease-out;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 10px;
 }
 
-@keyframes receiptFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.order-card-date ion-icon {
+  font-size: 14px;
+  color: #94a3b8;
 }
 
-.receipt-modal-window {
-  background: #ffffff;
-  width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+/* Hàng 3: Danh sách sản phẩm của thẻ đơn hàng */
+.order-card-products {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.order-card-product-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.order-card-product-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.35;
+  white-space: nowrap;
   overflow: hidden;
-  animation: receiptScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-overflow: ellipsis;
 }
 
-@keyframes receiptScaleUp {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+/* SỐ LƯỢNG NGAY DƯỚI TÊN SẢN PHẨM MÀU XÁM NHẠT */
+.order-card-product-qty {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8; /* MÀU XÁM NHẠT */
+  line-height: 1.2;
 }
 
-.receipt-modal-header {
+.order-card-products-more {
+  font-size: 11.5px;
+  font-style: italic;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Hàng 4: Footer thẻ */
+.order-card-footer {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 10px;
+}
+
+.order-card-total-qty {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.order-card-total-qty ion-icon {
+  font-size: 15px;
+  color: #64748b;
+}
+
+.order-card-final-cost {
+  font-size: 15px;
+  font-weight: 800;
+  color: #d4845a;
+}
+
+/* --------------------------------------------------------------------------
+   CỘT PHẢI: CHI TIẾT HÓA ĐƠN (DETAIL VIEW - KHÔNG POPUP)
+   -------------------------------------------------------------------------- */
+.receipt-detail-column {
+  position: sticky;
+  top: 85px;
+}
+
+.receipt-detail-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.receipt-detail-head {
   padding: 20px 24px 16px;
   border-bottom: 1px solid #f1f5f9;
 }
 
-.receipt-modal-header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.receipt-modal-badge-row {
+.receipt-detail-badge-row {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-bottom: 6px;
 }
 
-.receipt-modal-code {
+.receipt-detail-code {
   font-family: monospace;
   font-size: 14px;
   font-weight: 700;
@@ -205,35 +378,15 @@
   border-radius: 6px;
 }
 
-.receipt-modal-title {
-  font-size: 20px;
-  font-weight: 700;
+.receipt-detail-title {
+  font-size: 22px;
+  font-weight: 800;
   color: #1e293b;
   margin: 0;
 }
 
-.receipt-modal-close-btn {
-  background: #f1f5f9;
-  border: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  color: #64748b;
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.receipt-modal-close-btn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
 /* THÔNG TIN KHÁCH HÀNG & ĐƠN HÀNG */
-.receipt-modal-info-grid {
+.receipt-detail-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px 16px;
@@ -242,24 +395,24 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
-.receipt-info-item {
+.receipt-detail-info-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   font-size: 13px;
 }
 
-.receipt-info-item.full-width {
+.receipt-detail-info-item.full-width {
   grid-column: 1 / -1;
 }
 
-.receipt-info-label {
+.info-label {
   color: #64748b;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
 }
 
-.receipt-info-val {
+.info-val {
   color: #1e293b;
   font-weight: 600;
 }
@@ -282,7 +435,7 @@
   color: #991b1b;
 }
 
-.notes-val {
+.info-notes {
   background: #ffffff;
   padding: 6px 10px;
   border-radius: 6px;
@@ -292,14 +445,28 @@
 }
 
 /* PHẦN THÂN: BẢNG SẢN PHẨM */
-.receipt-modal-body {
-  padding: 16px 24px;
-  overflow-y: auto;
-  flex: 1;
+.receipt-detail-body {
+  padding: 18px 24px;
   max-height: 380px;
+  overflow-y: auto;
 }
 
-.receipt-modal-table-wrap {
+.receipt-section-subtitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.receipt-section-subtitle ion-icon {
+  color: #d4845a;
+  font-size: 16px;
+}
+
+.receipt-detail-table-wrap {
   width: 100%;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -315,7 +482,7 @@
 .receipt-detail-table th {
   background: #f8fafc;
   padding: 10px 14px;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
@@ -349,24 +516,33 @@
   font-size: 13.5px;
 }
 
+.receipt-product-sub-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.receipt-product-subqty {
+  font-size: 11.5px;
+  color: #94a3b8; /* MÀU XÁM NHẠT DƯỚI TÊN */
+  font-weight: 500;
+}
+
 .receipt-product-size {
   display: inline-block;
-  font-size: 11.5px;
+  font-size: 11px;
   color: #64748b;
   background: #f1f5f9;
   padding: 1px 6px;
   border-radius: 4px;
-  margin-top: 3px;
 }
 
-/* FOOTER MODAL */
-.receipt-modal-footer {
+/* FOOTER TỔNG KẾT HÓA ĐƠN */
+.receipt-detail-footer {
   padding: 16px 24px 20px;
   background: #ffffff;
   border-top: 1px solid #f1f5f9;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
 
 .receipt-footer-summary-box {
@@ -418,62 +594,65 @@
   color: #d4845a;
 }
 
-.receipt-modal-footer-actions {
+.receipt-detail-empty {
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 18px;
+  padding: 60px 24px;
+  text-align: center;
+  color: #94a3b8;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.receipt-modal-btn-close {
-  padding: 10px 24px;
-  background: #1a2639;
-  color: #ffffff;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.receipt-modal-btn-close:hover {
-  background: #2a3c56;
+.receipt-detail-empty ion-icon {
+  font-size: 48px;
+  color: #cbd5e1;
 }
 
 /* ==========================================================================
-   RESPONSIVE: ƯU TIÊN ĐIỆN THOẠI (MOBILE), IPAD, DESKTOP TỰ KÉO RA
+   RESPONSIVE DESIGN (TABLET & MOBILE)
    ========================================================================== */
-@media (max-width: 767px) {
-  .receipt-page-wrapper {
-    padding: 16px 14px 40px;
-  }
-  .receipt-title {
-    font-size: 20px;
-    margin-bottom: 16px;
-  }
-
-  .receipt-modal-info-grid {
+@media (max-width: 991px) {
+  .receipt-split-layout {
     grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 12px 16px;
+    gap: 20px;
   }
 
-  .receipt-modal-header,
-  .receipt-modal-body,
-  .receipt-modal-footer {
+  .receipt-detail-column {
+    position: static;
+  }
+
+  .receipt-order-cards-list {
+    max-height: 420px;
+  }
+
+  .receipt-detail-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .receipt-page-wrapper {
+    padding: 20px 14px 40px;
+  }
+
+  .receipt-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .receipt-title {
+    font-size: 22px;
+  }
+
+  .receipt-detail-head,
+  .receipt-detail-body,
+  .receipt-detail-footer {
     padding-left: 16px;
     padding-right: 16px;
   }
 }
-
-@media (min-width: 768px) and (max-width: 1024px) {
-  .receipt-page-wrapper {
-    padding: 28px 24px;
-  }
-}
-
-@media (min-width: 1025px) {
-  .receipt-container {
-    max-width: 1200px;
-  }
-}
-

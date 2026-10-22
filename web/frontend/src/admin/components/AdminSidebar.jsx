@@ -16,7 +16,7 @@ export default function AdminSidebar() {
 
   const navItems = [
     { to: "/admin", label: "Tổng Quan", icon: "grid-outline", end: true },
-    { to: "/admin/products", label: "Danh Mục Bánh", icon: "book-outline", badge: "48+" },
+    { to: "/admin/products", label: "Danh Mục Bánh", icon: "book-outline" },
     { to: "/admin/orders", label: "Quản Lý Đơn Hàng", icon: "receipt-outline" },
     { to: "/admin/statistical", label: "Báo Cáo Doanh Thu", icon: "bar-chart-outline" },
     { to: "/admin/users", label: "Tài Khoản & Quyền", icon: "shield-checkmark-outline" },
@@ -34,7 +34,6 @@ export default function AdminSidebar() {
         <NavLink to="/admin" className="brand-logo-wrap" title="The Sweets Admin">
           <img src="/assets/Img/Sweets1.png" alt="The Sweets" className="admin-brand-logo-img" />
         </NavLink>
-        <span className="brand-subtitle">HAUTE PÂTISSERIE</span>
       </div>
 
       {/* Navigation */}

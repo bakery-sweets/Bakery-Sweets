@@ -33,7 +33,6 @@ export default function Footer() {
             <ul className="footer-links">
               <li><a href="/search?category=MOUSSE">Mouse</a></li>
               <li><a href="/search?category=CROISSANT">Croissant</a></li>
-              <li><a href="/search?category=DRINK">Drink</a></li>
             </ul>
           </div>
 

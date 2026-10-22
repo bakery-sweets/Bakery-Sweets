@@ -16,7 +16,7 @@ export default function About() {
         </div>
         <div className="about-section">
           <h2>Our Products</h2>
-          <p>From delicate Mousse cakes to buttery Croissants and refreshing Drinks — we offer a range of premium baked goods for every occasion.</p>
+          <p>From delicate Mousse cakes to buttery Croissants — we offer a range of premium baked goods for every occasion.</p>
         </div>
         <div className="about-section">
           <h2>Our Promise</h2>

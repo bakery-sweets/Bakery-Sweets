@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAuthApi } from '../../api/client';
 import { apiErrorMessage } from '../../utils/format';
+import popup from '../../utils/popup';
 
 export default function Register() {
   const [phone, setPhone] = useState('');
@@ -50,11 +51,11 @@ export default function Register() {
   const handleRegister = async (e) => {
     if (e) e.preventDefault();
     if (password !== confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      popup.warning("Mật khẩu xác nhận không khớp!", { title: "Xác nhận mật khẩu" });
       return;
     }
     if (!agree) {
-      alert("Vui lòng đồng ý với các điều khoản và điều kiện.");
+      popup.warning("Vui lòng đồng ý với các điều khoản và điều kiện.", { title: "Điều khoản dịch vụ" });
       return;
     }
     setSubmitting(true);
@@ -66,10 +67,10 @@ export default function Register() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
       });
-      alert("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
+      popup.success("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
       navigate('/login');
     } catch (err) {
-      alert(apiErrorMessage(err, "Đăng ký thất bại, vui lòng thử lại."));
+      popup.error(apiErrorMessage(err, "Đăng ký thất bại, vui lòng thử lại."));
     } finally {
       setSubmitting(false);
     }

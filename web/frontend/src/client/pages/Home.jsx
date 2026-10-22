@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import { clientProductsApi } from '../../api/client';
-import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
+import { formatVND, formatStock, imageUrl, apiErrorMessage } from '../../utils/format';
+import popup from '../../utils/popup';
 import './Home.css';
 
 const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
@@ -33,7 +34,14 @@ export default function Home() {
         setProducts(
           productRes.data
             .filter((p) => p.sizes.length > 0)
-            .map((p) => ({ ...p, price: Number(p.min_price) }))
+            .map((p) => {
+              const total = p.stock_quantity ?? p.sizes?.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0) ?? 0;
+              return {
+                ...p,
+                price: Number(p.min_price),
+                stock: p.stock_display || formatStock(total),
+              };
+            })
         );
         setCategories([
           { id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' },
@@ -64,8 +72,9 @@ export default function Home() {
       );
       setAddedId(product.product_id);
       setTimeout(() => setAddedId(null), 1200);
+      popup.success(`Đã thêm "${product.product_name}" vào giỏ hàng!`);
     } catch (err) {
-      alert(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
+      popup.error(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
     }
   };
 
@@ -448,6 +457,9 @@ export default function Home() {
                       </div>
                       <div className="home-product-info">
                         <h3 className="home-product-title">{product.product_name}</h3>
+                        <p className="home-product-stock">
+                          Số lượng: {product.stock || formatStock(product.stock_quantity ?? product.sizes?.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0))}
+                        </p>
                         <div className="product-card-bottom">
                           <p className="home-product-price">{formatVND(product.price)}</p>
                           <button

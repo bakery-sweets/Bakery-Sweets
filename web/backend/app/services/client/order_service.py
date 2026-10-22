@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional
 from decimal import Decimal
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.order import Order, OrderDetail, Cart, OrderStatusLog
@@ -9,9 +10,27 @@ from app.models.promotion import OrderPromotion
 from app.schemas.client.order import CheckoutRequest
 from app.services.client.promotion_service import ClientPromotionService
 
+# Giờ hẹn lấy bánh do client gửi là giờ địa phương (Việt Nam, UTC+7, không có giờ mùa hè)
+VN_TZ = timezone(timedelta(hours=7))
+PICKUP_CLOCK_SKEW = timedelta(minutes=5)
+PICKUP_MAX_AHEAD = timedelta(days=30)
+
+def _validate_pickup_time(pickup_time: Optional[datetime]) -> Optional[datetime]:
+    if pickup_time is None:
+        return None
+    if pickup_time.tzinfo is not None:
+        pickup_time = pickup_time.astimezone(VN_TZ).replace(tzinfo=None)
+    now = datetime.now(VN_TZ).replace(tzinfo=None)
+    if pickup_time < now - PICKUP_CLOCK_SKEW:
+        raise HTTPException(status_code=400, detail="Giờ lấy bánh phải ở thời điểm sau hiện tại")
+    if pickup_time > now + PICKUP_MAX_AHEAD:
+        raise HTTPException(status_code=400, detail="Chỉ nhận đặt bánh trước tối đa 30 ngày")
+    return pickup_time
+
 class ClientOrderService:
     @staticmethod
     def create_order(db: Session, customer_id: int, data: CheckoutRequest) -> Order:
+        pickup_time = _validate_pickup_time(data.pickup_time)
         order_code = f"DH{uuid.uuid4().hex[:6].upper()}"
 
         if data.items:
@@ -32,14 +51,22 @@ class ClientOrderService:
         total_cost = Decimal("0.00")
         details_to_create = []
 
-        # Kiểm tra sự tồn tại của sản phẩm và số lượng tồn kho
-        for (product_id, size_id), quantity in merged.items():
+        # Kiểm tra sự tồn tại của sản phẩm và số lượng tồn kho.
+        # Khóa dòng tồn kho (SELECT ... FOR UPDATE) tới khi commit để 2 đơn đồng thời không cùng trừ một lượng tồn;
+        # duyệt theo thứ tự khóa cố định để tránh deadlock giữa các giao dịch
+        for (product_id, size_id), quantity in sorted(merged.items()):
             ps = db.query(ProductSize).filter(
                 ProductSize.product_id == product_id,
                 ProductSize.size_id == size_id
-            ).first()
+            ).with_for_update().first()
             if not ps:
                 raise HTTPException(status_code=400, detail=f"Sản phẩm #{product_id} không có kích cỡ #{size_id}")
+
+            if ps.product and ps.product.status != "Available":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Sản phẩm '{ps.product.product_name}' hiện không còn kinh doanh, vui lòng xóa khỏi giỏ hàng",
+                )
 
             if ps.stock_quantity < quantity:
                 p_name = ps.product.product_name if ps.product else f"#{product_id}"
@@ -77,7 +104,7 @@ class ClientOrderService:
             customer_id=customer_id,
             recipient_name=data.recipient_name,
             recipient_phone=data.recipient_phone,
-            pickup_time=data.pickup_time,
+            pickup_time=pickup_time,
             notes=data.notes,
             promotion_id=applied_promo.promotion_id if applied_promo else None,
             discount_amount=discount_amount,
@@ -147,7 +174,9 @@ class ClientOrderService:
 
     @staticmethod
     def cancel_order(db: Session, customer_id: int, order_id: int, note: Optional[str] = None) -> Order:
-        order = db.query(Order).filter(Order.order_id == order_id, Order.customer_id == customer_id).first()
+        order = db.query(Order).filter(
+            Order.order_id == order_id, Order.customer_id == customer_id
+        ).with_for_update().first()
         if not order:
             raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng này")
 
@@ -165,7 +194,7 @@ class ClientOrderService:
             ps = db.query(ProductSize).filter(
                 ProductSize.product_id == detail.product_id,
                 ProductSize.size_id == detail.size_id
-            ).first()
+            ).with_for_update().first()
             if ps:
                 ps.stock_quantity += detail.quantity
 

@@ -159,7 +159,7 @@ export default function Statistical() {
           <div className="dashboard-hero-card" style={{ minHeight: "160px" }}>
             <div className="kpi-card-header">
               <span className="kpi-label">DOANH THU {periodLabel.toUpperCase()}</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
+              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : formatVND(report.revenue, " đ")}</div>
@@ -172,7 +172,7 @@ export default function Statistical() {
           <div className="kpi-card-white" style={{ minHeight: "160px" }}>
             <div className="kpi-card-header">
               <span className="kpi-label">TỔNG BÁNH BÁN RA</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
+              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : report.itemsSold.toLocaleString("vi-VN")} <span style={{ fontSize: "18px", color: "#64748b" }}>bánh</span></div>
@@ -185,7 +185,7 @@ export default function Statistical() {
           <div className="kpi-card-white" style={{ minHeight: "160px" }}>
             <div className="kpi-card-header">
               <span className="kpi-label">LỢI NHUẬN GỘP ƯỚC TÍNH</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết">↗</button>
+              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
             </div>
             <div>
               <div className="kpi-big-value" style={{ color: "#10b981" }}>—</div>
@@ -265,7 +265,7 @@ export default function Statistical() {
             </div>
 
             <div style={{ background: "#fff0f4", borderRadius: "14px", padding: "12px", marginTop: "16px", fontSize: "12px", color: "#de5d7c", fontWeight: "600" }}>
-              💡 {report.categoryShare.length
+              <ion-icon name="bulb-outline" style={{ verticalAlign: "-2px", marginRight: "4px" }}></ion-icon>{report.categoryShare.length
                 ? `${report.categoryShare[0].name} đang đóng góp doanh thu lớn nhất trong kỳ này.`
                 : "Chưa có đơn hoàn tất nào trong kỳ này."}
             </div>

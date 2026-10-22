@@ -1,12 +1,15 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
 from app.models.product import Product, ProductSize, Category
 
 class ClientProductService:
     @staticmethod
     def get_products(db: Session, category_name: Optional[str] = None, search: Optional[str] = None) -> List[Product]:
-        query = db.query(Product).filter(Product.status == "Available")
+        query = (
+            db.query(Product)
+            .options(joinedload(Product.sizes).joinedload(ProductSize.size), joinedload(Product.category))
+            .filter(Product.status == "Available")
+        )
         if category_name and str(category_name).strip().upper() != "ALL":
             cat_str = str(category_name).strip()
             if cat_str.isdigit():
@@ -19,7 +22,12 @@ class ClientProductService:
 
     @staticmethod
     def get_by_id(db: Session, product_id: int) -> Optional[Product]:
-        return db.query(Product).filter(Product.product_id == product_id, Product.status == "Available").first()
+        return (
+            db.query(Product)
+            .options(joinedload(Product.sizes).joinedload(ProductSize.size), joinedload(Product.category))
+            .filter(Product.product_id == product_id, Product.status == "Available")
+            .first()
+        )
 
     @staticmethod
     def get_categories(db: Session) -> List[Category]:

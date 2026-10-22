@@ -133,10 +133,10 @@ export default function Header() {
             <Link to="/">HOME</Link>
             <Link to="/about">ABOUT</Link>
             <Link to="/receipt">RECEIPT</Link>
-            <Link to="/vouchers" className="nav-voucher-link">
+            {/* <Link to="/vouchers" className="nav-voucher-link">
               VOUCHERS
               <span className="nav-voucher-tag">HOT</span>
-            </Link>
+            </Link> */}
             <div className="cart-wrapper">
               <button className="sp-cart" onClick={toggleCart} title="Giỏ hàng">
                 <ion-icon name="cart-outline"></ion-icon>

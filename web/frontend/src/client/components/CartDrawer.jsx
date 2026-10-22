@@ -1,7 +1,8 @@
-﻿import useCartStore from "../../store/cartStore";
+import useCartStore from "../../store/cartStore";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
 import { formatVND, apiErrorMessage } from "../../utils/format";
+import popup from "../../utils/popup";
 import "./CartDrawer.css";
 
 export default function CartDrawer() {
@@ -15,7 +16,7 @@ export default function CartDrawer() {
     navigate("/pay");
   };
 
-  const run = (action) => action().catch((err) => alert(apiErrorMessage(err, "Không cập nhật được giỏ hàng.")));
+  const run = (action) => action().catch((err) => popup.error(apiErrorMessage(err, "Không cập nhật được giỏ hàng.")));
 
   if (!isOpen) return null;
 

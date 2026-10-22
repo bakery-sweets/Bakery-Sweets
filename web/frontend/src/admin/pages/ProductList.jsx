@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { adminProductsApi } from "../../api/admin";
 import { clientProductsApi } from "../../api/client";
 import { formatVND, imageUrl, apiErrorMessage, PRODUCT_STATUS } from "../../utils/format";
+import popup from "../../utils/popup";
 
 const PAGE_SIZE = 10;
 
@@ -52,13 +53,36 @@ export default function ProductList() {
   const page = Math.min(currentPage, totalPages);
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleDelete = async (p) => {
-    if (!window.confirm(`Xóa món "${p.product_name}"? Thao tác này không thể hoàn tác.`)) return;
+  const handleToggleStatus = async (p) => {
+    const isDiscontinued = p.status === "Discontinued";
+    const nextStatus = isDiscontinued ? "Available" : "Discontinued";
+
+    const confirmed = await popup.confirm({
+      title: isDiscontinued ? "Mở bán lại bánh?" : "Ngừng kinh doanh bánh?",
+      message: isDiscontinued
+        ? `Mở bán lại món bánh "${p.product_name}"?`
+        : `Ngừng bán món bánh "${p.product_name}"?`,
+      subtitle: isDiscontinued
+        ? "Món sẽ hiển thị lại trên menu trực tuyến để khách hàng có thể đặt mua bình thường."
+        : "Món sẽ chuyển sang trạng thái \"Ngừng kinh doanh\", không hiển thị cho khách nhưng bảo lưu toàn bộ lịch sử đơn hàng.",
+      confirmText: isDiscontinued ? "Mở bán lại" : "Ngừng kinh doanh",
+      cancelText: "Hủy bỏ",
+      type: isDiscontinued ? "success" : "danger",
+      icon: isDiscontinued ? "play" : "pause",
+    });
+
+    if (!confirmed) return;
+
     try {
-      await adminProductsApi.delete(p.product_id);
+      await adminProductsApi.update(p.product_id, { status: nextStatus });
+      popup.success(
+        isDiscontinued
+          ? `Đã mở bán lại món "${p.product_name}" thành công!`
+          : `Đã chuyển "${p.product_name}" sang trạng thái ngừng kinh doanh.`
+      );
       await loadData();
     } catch (err) {
-      alert(apiErrorMessage(err, "Xóa sản phẩm thất bại"));
+      popup.error(apiErrorMessage(err, "Không thể cập nhật trạng thái sản phẩm"));
     }
   };
 
@@ -70,7 +94,7 @@ export default function ProductList() {
         {/* Header Row */}
         <div className="admin-page-header-row">
           <div className="admin-page-title-group">
-            <h1>Danh Mục Bánh &amp; Thức Uống</h1>
+            <h1>Danh Mục Bánh</h1>
             <p>Quản lý danh mục bánh nhập khẩu &amp; bảng giá theo kích cỡ</p>
           </div>
 
@@ -192,7 +216,11 @@ export default function ProductList() {
                     <td>
                       {p.status === "Available" ? (
                         <span className="badge-pill mint" style={{ fontSize: "11.5px" }}>
-                          <span className="dot-status green"></span> {PRODUCT_STATUS[p.status]}
+                          <span className="dot-status green"></span> {PRODUCT_STATUS[p.status] || "Đang bán"}
+                        </span>
+                      ) : p.status === "Discontinued" ? (
+                        <span className="badge-pill" style={{ fontSize: "11.5px", background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0" }}>
+                          <span className="dot-status" style={{ background: "#94a3b8" }}></span> {PRODUCT_STATUS[p.status] || "Ngừng kinh doanh"}
                         </span>
                       ) : (
                         <span className="badge-pill amber" style={{ fontSize: "11.5px" }}>
@@ -201,7 +229,7 @@ export default function ProductList() {
                       )}
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", gap: "6px" }}>
+                      <div style={{ display: "inline-flex", gap: "6px", alignItems: "center" }}>
                         <Link
                           to={`/admin/products/edit/${p.product_id}`}
                           className="btn-pill-outline"
@@ -209,14 +237,47 @@ export default function ProductList() {
                         >
                           Sửa
                         </Link>
-                        <button
-                          type="button"
-                          className="btn-pill-outline"
-                          style={{ padding: "5px 10px", fontSize: "12px", color: "#ef4444" }}
-                          onClick={() => handleDelete(p)}
-                        >
-                          <ion-icon name="trash-outline"></ion-icon>
-                        </button>
+                        {p.status === "Discontinued" ? (
+                          <button
+                            type="button"
+                            className="btn-pill-outline"
+                            style={{
+                              padding: "5px 10px",
+                              fontSize: "12px",
+                              color: "#059669",
+                              borderColor: "#a7f3d0",
+                              background: "#ecfdf5",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                            title="Mở bán lại"
+                            onClick={() => handleToggleStatus(p)}
+                          >
+                            <ion-icon name="play-circle-outline"></ion-icon>
+                            <span>Mở bán</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-pill-outline"
+                            style={{
+                              padding: "5px 10px",
+                              fontSize: "12px",
+                              color: "#e11d48",
+                              borderColor: "#fecdd3",
+                              background: "#fff1f2",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                            title="Ngừng bán món này"
+                            onClick={() => handleToggleStatus(p)}
+                          >
+                            <ion-icon name="pause-circle-outline"></ion-icon>
+                            <span>Ngừng bán</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
