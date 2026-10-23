@@ -41,3 +41,17 @@ export const adminUsersApi = {
 export const adminStatisticalApi = {
   getOverview: () => axiosClient.get("/admin/statistical/overview"),
 };
+
+export const adminImportReceiptsApi = {
+  getAll: (params) => axiosClient.get("/admin/import-receipts", { params }),
+  getSuppliers: () => axiosClient.get("/admin/import-receipts/suppliers"),
+  create: (data) => axiosClient.post("/admin/import-receipts", data),
+  updateStatus: (id, status) => axiosClient.patch(`/admin/import-receipts/${id}/status`, { status }),
+};
+
+export const adminPromotionsApi = {
+  getAll: () => axiosClient.get("/admin/promotions"),
+  create: (data) => axiosClient.post("/admin/promotions", data),
+  update: (id, data) => axiosClient.put(`/admin/promotions/${id}`, data),
+  updateStatus: (id, status) => axiosClient.patch(`/admin/promotions/${id}/status`, { status }),
+};

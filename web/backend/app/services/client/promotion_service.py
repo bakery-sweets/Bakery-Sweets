@@ -18,9 +18,18 @@ class ClientPromotionService:
             .options(joinedload(Promotion.invoice_promotions))
             .filter(
                 Promotion.status == "Active",
+                Promotion.start_date <= now,
                 Promotion.end_date >= now,
             )
             .order_by(Promotion.created_at.desc())
+            .all()
+        )
+
+        # Tổng lượt dùng toàn hệ thống, cùng cách đếm với calculate_discount
+        total_usage_counts = dict(
+            db.query(Order.promotion_id, func.count(Order.order_id))
+            .filter(Order.promotion_id.isnot(None), Order.status != "Cancelled")
+            .group_by(Order.promotion_id)
             .all()
         )
 
@@ -63,6 +72,11 @@ class ClientPromotionService:
             limit_per_user = p.usage_limit_per_user if p.usage_limit_per_user is not None else 1
             is_used = used_times >= limit_per_user
             can_use = not is_used
+
+            # Chỉ trả về mã khách còn dùng được: bỏ mã khách đã dùng hết lượt và mã đã hết lượt toàn hệ thống
+            sold_out = p.total_usage_limit is not None and total_usage_counts.get(p.promotion_id, 0) >= p.total_usage_limit
+            if is_used or sold_out:
+                continue
 
             result.append(PromotionOut(
                 promotion_id=p.promotion_id,

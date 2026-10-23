@@ -18,6 +18,8 @@ export default function AdminSidebar() {
     { to: "/admin", label: "Tổng Quan", icon: "grid-outline", end: true },
     { to: "/admin/products", label: "Danh Mục Bánh", icon: "book-outline" },
     { to: "/admin/orders", label: "Quản Lý Đơn Hàng", icon: "receipt-outline" },
+    { to: "/admin/imports", label: "Phiếu Nhập Hàng", icon: "cube-outline" },
+    { to: "/admin/vouchers", label: "Quản Lý Voucher", icon: "pricetags-outline" },
     { to: "/admin/statistical", label: "Báo Cáo Doanh Thu", icon: "bar-chart-outline" },
     { to: "/admin/users", label: "Tài Khoản & Quyền", icon: "shield-checkmark-outline" },
   ];

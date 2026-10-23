@@ -8,7 +8,6 @@ import ProductDetail from "./client/pages/ProductDetail";
 import Receipt from "./client/pages/Receipt";
 import Pay from "./client/pages/Pay";
 import About from "./client/pages/About";
-import Vouchers from "./client/pages/Vouchers";
 
 // Admin Imports
 import AdminLogin from "./admin/pages/AdminLogin";
@@ -20,6 +19,8 @@ import ProductForm from "./admin/pages/ProductForm";
 import OrderList from "./admin/pages/OrderList";
 import UserList from "./admin/pages/UserList";
 import Statistical from "./admin/pages/Statistical";
+import ImportReceiptList from "./admin/pages/ImportReceiptList";
+import PromotionList from "./admin/pages/PromotionList";
 
 import GlobalPopup from "./components/common/GlobalPopup";
 
@@ -36,7 +37,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/receipt" element={<Receipt />} />
-          <Route path="/vouchers" element={<Vouchers />} />
+          <Route path="/vouchers" element={<Navigate to="/" replace />} />
           <Route path="/pay" element={<Pay />} />
           <Route path="/search" element={<Navigate to="/" replace />} />
         </Route>
@@ -52,6 +53,8 @@ function App() {
             <Route path="products/add" element={<ProductForm />} />
             <Route path="products/edit/:id" element={<ProductForm />} />
             <Route path="orders" element={<OrderList />} />
+            <Route path="imports" element={<ImportReceiptList />} />
+            <Route path="vouchers" element={<PromotionList />} />
             <Route path="users" element={<UserList />} />
             <Route path="statistical" element={<Statistical />} />
           </Route>

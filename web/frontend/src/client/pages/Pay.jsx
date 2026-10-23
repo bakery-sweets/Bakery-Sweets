@@ -1,47 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import useAuthStore from '../../store/authStore';
-import { clientOrdersApi } from '../../api/client';
+import { clientOrdersApi, clientPromotionsApi } from '../../api/client';
 import { formatVND, apiErrorMessage, toLocalDateInput } from '../../utils/format';
 import popup from '../../utils/popup';
+import { voucherDescription, voucherMinOrder, calcVoucherDiscount } from '../../utils/voucher';
 import './Pay.css';
 
-// Danh sách các chương trình khuyến mãi & Voucher trong hệ thống (khớp với Database)
-const AVAILABLE_VOUCHERS = [
-  {
-    code: 'SWEET10',
-    name: 'Voucher Chào Bạn Mới',
-    desc: 'Giảm 10% tối đa 20.000₫ cho đơn hàng từ 80.000₫',
-    minOrder: 80000,
-    calculateDiscount: (total) => total >= 80000 ? Math.min(20000, Math.round(total * 0.1)) : 0
-  },
-  {
-    code: 'BANHNGOT',
-    name: 'Tuần Lễ Bánh Ngọt',
-    desc: 'Giảm 15% tối đa 35.000₫ cho đơn hàng từ 150.000₫',
-    minOrder: 150000,
-    calculateDiscount: (total) => total >= 150000 ? Math.min(35000, Math.round(total * 0.15)) : 0
-  },
-  {
-    code: 'CTKM01',
-    name: 'Ưu đãi Khách Hàng Thân Thiết',
-    desc: 'Giảm 10% từ 200.000₫, giảm 15% (tối đa 80.000₫) từ 500.000₫',
-    minOrder: 200000,
-    calculateDiscount: (total) => {
-      if (total >= 500000) return Math.min(80000, Math.round(total * 0.15));
-      if (total >= 200000) return Math.min(30000, Math.round(total * 0.10));
-      return 0;
-    }
-  },
-  {
-    code: 'CTKM02',
-    name: 'Tri ân Mùa Lễ Hội',
-    desc: 'Giảm 12% tối đa 50.000₫ cho đơn hàng từ 300.000₫',
-    minOrder: 300000,
-    calculateDiscount: (total) => total >= 300000 ? Math.min(50000, Math.round(total * 0.12)) : 0
-  }
-];
+// Đổi voucher từ API /client/promotions sang dạng dùng trong trang thanh toán
+const toVoucher = (p) => ({
+  code: p.promotion_code,
+  name: p.promotion_name,
+  desc: voucherDescription(p),
+  minOrder: voucherMinOrder(p),
+  calculateDiscount: (total) => calcVoucherDiscount(p, total),
+});
 
 export default function Pay() {
   const items = useCartStore(state => state.items);
@@ -79,9 +53,18 @@ export default function Pay() {
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [customVoucherCode, setCustomVoucherCode] = useState('');
+  // Chỉ gồm mã khách còn dùng được (server đã lọc mã hết hạn, tạm dừng, đã dùng hết lượt)
+  const [vouchers, setVouchers] = useState([]);
   const [copiedStk, setCopiedStk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderSuccessModal, setOrderSuccessModal] = useState(null);
+
+  useEffect(() => {
+    clientPromotionsApi
+      .getAll()
+      .then((res) => setVouchers((res.data || []).map(toVoucher)))
+      .catch(() => setVouchers([]));
+  }, [user?.phone]);
 
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
@@ -122,16 +105,22 @@ export default function Pay() {
     popup.success(`Đã áp dụng mã voucher "${voucher.code}"!`);
   };
 
-  const handleApplyCustomCode = (e) => {
+  const handleApplyCustomCode = async (e) => {
     e.preventDefault();
     const code = customVoucherCode.trim().toUpperCase();
     if (!code) return;
-    const found = AVAILABLE_VOUCHERS.find(v => v.code === code);
-    if (!found) {
-      popup.warning("Mã voucher không tồn tại hoặc đã hết hạn!", { title: "Voucher không hợp lệ" });
+    const found = vouchers.find(v => v.code === code);
+    if (found) {
+      handleSelectVoucher(found);
       return;
     }
-    handleSelectVoucher(found);
+    // Mã không có trong danh sách: hỏi server để báo đúng lý do (hết hạn, đã dùng, hết lượt...)
+    try {
+      await clientPromotionsApi.apply({ promotion_code: code, order_amount: total });
+      popup.warning("Mã voucher hiện không áp dụng được cho tài khoản của bạn.", { title: "Voucher không hợp lệ" });
+    } catch (err) {
+      popup.warning(apiErrorMessage(err, "Mã voucher không tồn tại hoặc đã hết hạn!"), { title: "Voucher không hợp lệ" });
+    }
   };
 
   // Xác định họ tên & SĐT người nhận bánh cuối cùng
@@ -198,7 +187,7 @@ export default function Pay() {
   const transferContent = `${currentRecipientPhone ? currentRecipientPhone : 'SDT'} - Dat banh Sweets`;
   const qrUrl = `https://img.vietqr.io/image/970436-012345678999-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent(transferContent)}&accountName=TIEM%20BANH%20THE%20SWEETS`;
 
-  const eligibleVouchersCount = AVAILABLE_VOUCHERS.filter(v => total >= v.minOrder).length;
+  const eligibleVouchersCount = vouchers.filter(v => total >= v.minOrder).length;
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -677,7 +666,10 @@ export default function Pay() {
 
               {/* Danh sách các voucher */}
               <div className="voucher-cards-list">
-                {AVAILABLE_VOUCHERS.map(v => {
+                {vouchers.length === 0 && (
+                  <p className="modal-sub" style={{ textAlign: 'center', padding: '16px 0' }}>Hiện chưa có voucher nào dành cho bạn.</p>
+                )}
+                {vouchers.map(v => {
                   const isEligible = total >= v.minOrder;
                   const isCurrent = selectedVoucher?.code === v.code;
                   const discount = v.calculateDiscount(total);
