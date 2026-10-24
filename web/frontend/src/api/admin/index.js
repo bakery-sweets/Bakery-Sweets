@@ -35,9 +35,25 @@ export const adminOrdersApi = {
 
 export const adminUsersApi = {
   getAll: (params) => axiosClient.get("/admin/users", { params }),
-  toggleStatus: (phone) => axiosClient.patch(`/admin/users/${phone}/status`),
+  create: (data) => axiosClient.post("/admin/users", data),
+  update: (phone, data) => axiosClient.patch(`/admin/users/${phone}`, data),
+  toggleStatus: (phone, data) => axiosClient.patch(`/admin/users/${phone}/status`, data),
 };
 
 export const adminStatisticalApi = {
   getOverview: () => axiosClient.get("/admin/statistical/overview"),
+};
+
+export const adminImportReceiptsApi = {
+  getAll: (params) => axiosClient.get("/admin/import-receipts", { params }),
+  getSuppliers: () => axiosClient.get("/admin/import-receipts/suppliers"),
+  create: (data) => axiosClient.post("/admin/import-receipts", data),
+  updateStatus: (id, status) => axiosClient.patch(`/admin/import-receipts/${id}/status`, { status }),
+};
+
+export const adminPromotionsApi = {
+  getAll: () => axiosClient.get("/admin/promotions"),
+  create: (data) => axiosClient.post("/admin/promotions", data),
+  update: (id, data) => axiosClient.put(`/admin/promotions/${id}`, data),
+  updateStatus: (id, status) => axiosClient.patch(`/admin/promotions/${id}/status`, { status }),
 };

@@ -57,6 +57,7 @@ services:
       - DB_PASSWORD=123
       - SECRET_KEY=thesweets_web_jwt_secret_key_2026_super_secure
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - TZ=Asia/Ho_Chi_Minh
     depends_on:
       db:
         condition: service_healthy

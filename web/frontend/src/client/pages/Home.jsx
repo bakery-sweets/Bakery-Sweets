@@ -178,7 +178,7 @@ export default function Home() {
 
   return (
     <div className="home-page-wrapper">
-      {/* BANNER SLIDER */}
+      {/* BANNER SLIDER FULL KHUNG HÌNH */}
       <div className="home-banner-container">
         {BANNERS.map((banner, idx) => (
           <img
@@ -188,6 +188,32 @@ export default function Home() {
             className={`home-banner-img ${currentBanner === idx ? 'active' : ''}`}
           />
         ))}
+
+        {/* Các chấm điều hướng banner */}
+        <div className="home-banner-dots">
+          {BANNERS.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`home-banner-dot ${currentBanner === idx ? 'active' : ''}`}
+              onClick={() => setCurrentBanner(idx)}
+              aria-label={`Chuyển tới banner ${idx + 1}`}
+            />
+          ))}
+        </div>
+
+        {/* Nút gợi ý cuộn xuống khám phá thực đơn bánh */}
+        <div
+          className="home-banner-scroll-hint"
+          onClick={() => {
+            const content = document.querySelector('.home-content-container');
+            if (content) content.scrollIntoView({ behavior: 'smooth' });
+          }}
+          title="Cuộn xuống khám phá thực đơn bánh"
+        >
+          <span className="scroll-hint-text">Khám phá thực đơn</span>
+          <ion-icon name="chevron-down-outline"></ion-icon>
+        </div>
       </div>
 
       {/* KHUNG NỘI DUNG CHÍNH (SIDEBAR TRÁI + LIST SẢN PHẨM PHẢI) */}

@@ -33,3 +33,8 @@ export const clientPromotionsApi = {
   getAll: () => axiosClient.get("/client/promotions"),
   apply: (data) => axiosClient.post("/client/promotions/apply", data),
 };
+
+export const clientNotificationsApi = {
+  getRecent: (limit = 5) => axiosClient.get("/client/notifications", { params: { limit } }),
+  markAllRead: () => axiosClient.put("/client/notifications/read-all"),
+};

@@ -9,8 +9,9 @@ class User(Base):
     phone = Column(String(20), primary_key=True)
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    role = Column(SQLEnum("customer", "admin", name="user_roles"), default="customer")
+    role = Column(SQLEnum("customer", "admin", "staff", name="user_roles"), default="customer")
     status = Column(SQLEnum("active", "locked", name="user_status"), default="active")
+    lock_reason = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

@@ -90,3 +90,16 @@ export const PRODUCT_STATUS = {
   Discontinued: "Ngừng kinh doanh",
   Hidden: "Đang ẩn",
 };
+
+export const IMPORT_STATUS = {
+  Pending: { label: "Chờ nhập kho", badge: "amber", dot: "orange" },
+  Completed: { label: "Đã nhập kho", badge: "mint", dot: "green" },
+  Cancelled: { label: "Đã hủy", badge: "gray", dot: "orange" },
+};
+
+export const PROMO_STATUS = {
+  Draft: { label: "Bản nháp", badge: "gray" },
+  Active: { label: "Đang chạy", badge: "mint" },
+  Paused: { label: "Tạm dừng", badge: "amber" },
+  Expired: { label: "Hết hạn", badge: "gray" },
+};

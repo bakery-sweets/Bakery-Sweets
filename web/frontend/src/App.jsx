@@ -8,7 +8,6 @@ import ProductDetail from "./client/pages/ProductDetail";
 import Receipt from "./client/pages/Receipt";
 import Pay from "./client/pages/Pay";
 import About from "./client/pages/About";
-import Vouchers from "./client/pages/Vouchers";
 
 // Admin Imports
 import AdminLogin from "./admin/pages/AdminLogin";
@@ -20,6 +19,9 @@ import ProductForm from "./admin/pages/ProductForm";
 import OrderList from "./admin/pages/OrderList";
 import UserList from "./admin/pages/UserList";
 import Statistical from "./admin/pages/Statistical";
+import ImportReceiptList from "./admin/pages/ImportReceiptList";
+import PromotionList from "./admin/pages/PromotionList";
+import { ADMIN_ONLY } from "./admin/access";
 
 import GlobalPopup from "./components/common/GlobalPopup";
 
@@ -36,7 +38,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/receipt" element={<Receipt />} />
-          <Route path="/vouchers" element={<Vouchers />} />
+          <Route path="/vouchers" element={<Navigate to="/" replace />} />
           <Route path="/pay" element={<Pay />} />
           <Route path="/search" element={<Navigate to="/" replace />} />
         </Route>
@@ -44,16 +46,22 @@ function App() {
         {/* Trang Đăng nhập Quản trị */}
         <Route path="/admin/login" element={<AdminLogin />} />
 
-        {/* Nhóm trang Quản trị (Protected) */}
+        {/* Nhóm trang Quản trị (Protected): admin và nhân viên (staff) */}
         <Route path="/admin" element={<AdminRoute />}>
           <Route element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="products" element={<ProductList />} />
-            <Route path="products/add" element={<ProductForm />} />
-            <Route path="products/edit/:id" element={<ProductForm />} />
             <Route path="orders" element={<OrderList />} />
-            <Route path="users" element={<UserList />} />
-            <Route path="statistical" element={<Statistical />} />
+
+            {/* Chỉ admin; nhân viên mở các trang này sẽ bị chuyển về Quản lý đơn hàng */}
+            <Route element={<AdminRoute roles={ADMIN_ONLY} />}>
+              <Route index element={<Dashboard />} />
+              <Route path="products" element={<ProductList />} />
+              <Route path="products/add" element={<ProductForm />} />
+              <Route path="products/edit/:id" element={<ProductForm />} />
+              <Route path="imports" element={<ImportReceiptList />} />
+              <Route path="vouchers" element={<PromotionList />} />
+              <Route path="users" element={<UserList />} />
+              <Route path="statistical" element={<Statistical />} />
+            </Route>
           </Route>
         </Route>
       </Routes>
