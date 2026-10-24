@@ -69,11 +69,24 @@ def get_current_admin(
         )
     return current_user
 
+BACKOFFICE_ROLES = ("admin", "staff")
+
+def get_current_staff(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Cho phép 'admin' và nhân viên 'staff' (staff chỉ được dùng các chức năng quản lý đơn hàng)."""
+    if current_user.role not in BACKOFFICE_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền truy cập chức năng này",
+        )
+    return current_user
+
 def get_current_customer(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """Xác thực khách hàng."""
-    if current_user.role != "customer" and current_user.role != "admin":
+    if current_user.role not in ("customer", *BACKOFFICE_ROLES):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Chức năng dành cho khách hàng",

@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import useAdminAuthStore from "../../store/adminAuthStore";
 import { adminAuthApi } from "../../api/admin";
 import { apiErrorMessage } from "../../utils/format";
+import { homePathFor } from "../access";
 import "./AdminLogin.css";
 
 export default function AdminLogin() {
@@ -25,7 +26,7 @@ export default function AdminLogin() {
     try {
       const res = await adminAuthApi.login({ username: username.trim(), password });
       setUser({ phone: res.phone, email: res.email, role: res.role }, res.access_token);
-      navigate("/admin");
+      navigate(homePathFor(res.role));
     } catch (err) {
       setError(apiErrorMessage(err, "Đăng nhập thất bại"));
     } finally {

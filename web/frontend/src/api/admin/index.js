@@ -35,7 +35,9 @@ export const adminOrdersApi = {
 
 export const adminUsersApi = {
   getAll: (params) => axiosClient.get("/admin/users", { params }),
-  toggleStatus: (phone) => axiosClient.patch(`/admin/users/${phone}/status`),
+  create: (data) => axiosClient.post("/admin/users", data),
+  update: (phone, data) => axiosClient.patch(`/admin/users/${phone}`, data),
+  toggleStatus: (phone, data) => axiosClient.patch(`/admin/users/${phone}/status`, data),
 };
 
 export const adminStatisticalApi = {

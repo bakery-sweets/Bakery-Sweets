@@ -1,10 +1,11 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import useAdminAuthStore from "../../store/adminAuthStore";
 import useAdminUIStore from "../../store/adminUIStore";
+import { NAV_ITEMS, homePathFor } from "../access";
 import "./AdminSidebar.css";
 
 export default function AdminSidebar() {
-  const { logout } = useAdminAuthStore();
+  const { user, logout } = useAdminAuthStore();
   const { sidebarOpen, closeSidebar } = useAdminUIStore();
   const navigate = useNavigate();
 
@@ -14,15 +15,8 @@ export default function AdminSidebar() {
     navigate("/admin/login");
   };
 
-  const navItems = [
-    { to: "/admin", label: "Tổng Quan", icon: "grid-outline", end: true },
-    { to: "/admin/products", label: "Danh Mục Bánh", icon: "book-outline" },
-    { to: "/admin/orders", label: "Quản Lý Đơn Hàng", icon: "receipt-outline" },
-    { to: "/admin/imports", label: "Phiếu Nhập Hàng", icon: "cube-outline" },
-    { to: "/admin/vouchers", label: "Quản Lý Voucher", icon: "pricetags-outline" },
-    { to: "/admin/statistical", label: "Báo Cáo Doanh Thu", icon: "bar-chart-outline" },
-    { to: "/admin/users", label: "Tài Khoản & Quyền", icon: "shield-checkmark-outline" },
-  ];
+  // Ẩn các mục không thuộc quyền của tài khoản đang đăng nhập
+  const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user?.role));
 
   return (
     <aside className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}>
@@ -33,7 +27,7 @@ export default function AdminSidebar() {
 
       {/* Brand Header with Original Web Logo */}
       <div className="admin-sidebar-brand">
-        <NavLink to="/admin" className="brand-logo-wrap" title="Quản trị The Sweets">
+        <NavLink to={homePathFor(user?.role)} className="brand-logo-wrap" title="The Sweets Admin">
           <img src="/assets/Img/Sweets1.png" alt="The Sweets" className="admin-brand-logo-img" />
         </NavLink>
       </div>

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_admin
+from app.api.deps import get_db, get_current_staff, BACKOFFICE_ROLES
 from app.core.security import verify_password, create_access_token
 from app.models.user import User
 from app.schemas.admin.auth import AdminLoginRequest, AdminTokenResponse, AdminProfileOut
@@ -18,7 +18,7 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
             detail="Tài khoản hoặc mật khẩu quản trị không chính xác",
         )
 
-    if user.role != "admin":
+    if user.role not in BACKOFFICE_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tài khoản không có quyền truy cập hệ thống Quản trị",
@@ -39,7 +39,7 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
     )
 
 @router.get("/me", response_model=ResponseBase[AdminProfileOut], summary="Lấy hồ sơ Admin đang đăng nhập")
-def get_admin_profile(current_admin: User = Depends(get_current_admin)):
+def get_admin_profile(current_admin: User = Depends(get_current_staff)):
     profile = AdminProfileOut(
         phone=current_admin.phone,
         email=current_admin.email,
