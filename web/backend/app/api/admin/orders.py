@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_admin
+from app.api.deps import get_db, get_current_staff
 from app.models.user import User
 from app.services.admin.order_service import AdminOrderService, ALLOWED_TRANSITIONS
 from app.schemas.admin.order import (
@@ -72,7 +72,7 @@ def _to_order_out(o) -> AdminOrderOut:
 def list_orders(
     status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    staff: User = Depends(get_current_staff),
 ):
     orders = AdminOrderService.get_all(db, status=status)
     return ResponseBase(data=[_to_order_out(o) for o in orders])
@@ -81,7 +81,7 @@ def list_orders(
 def get_order(
     order_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    staff: User = Depends(get_current_staff),
 ):
     order = AdminOrderService.get_by_id(db, order_id)
     if not order:
@@ -93,9 +93,9 @@ def update_order_status(
     order_id: int,
     data: AdminOrderStatusUpdate,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    staff: User = Depends(get_current_staff),
 ):
-    order = AdminOrderService.update_status(db, order_id, data.status, admin.phone, data.note)
+    order = AdminOrderService.update_status(db, order_id, data.status, staff.phone, data.note)
     if not order:
         raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
     return ResponseBase(message="Cập nhật trạng thái đơn hàng thành công", data=_to_order_out(order))
@@ -105,9 +105,9 @@ def confirm_order_payment(
     order_id: int,
     data: Optional[AdminOrderPaymentConfirm] = None,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    staff: User = Depends(get_current_staff),
 ):
-    order = AdminOrderService.confirm_payment(db, order_id, admin.phone, data.note if data else None)
+    order = AdminOrderService.confirm_payment(db, order_id, staff.phone, data.note if data else None)
     if not order:
         raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
     return ResponseBase(message="Xác nhận thanh toán thành công", data=_to_order_out(order))

@@ -1,5 +1,6 @@
 import useAdminAuthStore from "../../store/adminAuthStore";
 import useAdminUIStore from "../../store/adminUIStore";
+import { ROLE_LABELS } from "../access";
 import "./AdminHeader.css";
 
 export default function AdminHeader() {
@@ -27,7 +28,7 @@ export default function AdminHeader() {
         <div className="admin-profile-pill">
           <div className="admin-profile-meta">
             <span className="admin-profile-name">{displayName}</span>
-            <span className="admin-profile-role">Quản lý vận hành</span>
+            <span className="admin-profile-role">{ROLE_LABELS[user?.role] || ROLE_LABELS.admin}</span>
           </div>
           <div className="admin-avatar-initials">
             {initials}
