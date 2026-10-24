@@ -35,6 +35,7 @@ class ClientCartService:
                 unit_price=price,
                 quantity=ci.quantity,
                 item_total=item_total,
+                stock_quantity=ps.stock_quantity if ps else 0,
             ))
 
         return CartSummaryOut(

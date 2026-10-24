@@ -8,7 +8,21 @@ import {
 } from '../../utils/format';
 import './Receipt.css';
 
-const STATUS_CLASS = { Completed: 'success', Ready: 'success', Pending: 'warning', Processing: 'warning' };
+const STATUS_CLASS = { Completed: 'success', Ready: 'success', Pending: 'warning', Processing: 'warning', Cancelled: 'gray' };
+
+const STATUS_STEPS = [
+  { key: 'Pending', label: 'Chờ tiếp nhận', subtitle: 'Tiệm đã nhận đơn', icon: 'receipt-outline' },
+  { key: 'Processing', label: 'Đang chuẩn bị', subtitle: 'Bếp đang làm bánh', icon: 'restaurant-outline' },
+  { key: 'Ready', label: 'Sẵn sàng tại quầy', subtitle: 'Bánh sẵn sàng lấy', icon: 'storefront-outline' },
+  { key: 'Completed', label: 'Hoàn tất', subtitle: 'Đã nhận bánh', icon: 'checkmark-done-outline' },
+];
+
+const STEP_INDEX_MAP = {
+  Pending: 0,
+  Processing: 1,
+  Ready: 2,
+  Completed: 3,
+};
 
 export default function Receipt() {
   const user = useAuthStore(state => state.user);
@@ -35,7 +49,7 @@ export default function Receipt() {
     return (
       <div className="receipt-page-wrapper">
         <div className="receipt-not-login">
-          <ion-icon name="receipt-outline" style={{ fontSize: '48px', color: '#d4845a' }}></ion-icon>
+          <ion-icon name="receipt-outline" style={{ fontSize: '48px', color: 'var(--color-pink)' }}></ion-icon>
           <h2>Lịch sử hóa đơn đơn hàng</h2>
           <p>Vui lòng đăng nhập để xem lại các hóa đơn và trạng thái đơn hàng của bạn.</p>
           <Link to="/login" className="receipt-login-btn">Đăng nhập tài khoản</Link>
@@ -80,7 +94,7 @@ export default function Receipt() {
             <ion-icon name="receipt-outline"></ion-icon>
             <h3>Bạn chưa có hóa đơn nào</h3>
             <p>Hãy dạo quanh tiệm bánh và chọn cho mình những món tráng miệng thơm ngon nhé!</p>
-            <Link to="/" className="receipt-shop-btn">Khám phá thực đơn</Link>
+            <Link to="/products" className="receipt-shop-btn">Khám phá thực đơn</Link>
           </div>
         ) : (
           /* BỐ CỤC CHIA ĐÔI: BÊN TRÁI LÀ LIST HÓA ĐƠN, BÊN PHẢI LÀ CHI TIẾT ĐƠN ĐÓ */
@@ -164,7 +178,87 @@ export default function Receipt() {
                 ========================================================================= */}
             <div className="receipt-detail-column">
               {selectedOrder ? (
-                <div className="receipt-detail-card" id="receipt-detail-panel">
+                <>
+                  {/* KHỐI TRẠNG THÁI ĐƠN HÀNG (CÁC DIV NHỎ NỐI LINE, ACTIVE TRẠNG THÁI HIỆN TẠI) */}
+                  <div className="receipt-status-tracker-card">
+                    <div className="status-tracker-header">
+                      <div className="status-tracker-title">
+                        <ion-icon name="git-network-outline"></ion-icon>
+                        <span>Trạng thái đơn hàng</span>
+                      </div>
+                      <span className={`receipt-badge ${STATUS_CLASS[selectedOrder.status] || ''}`}>
+                        {ORDER_STATUS[selectedOrder.status]?.label || selectedOrder.status}
+                      </span>
+                    </div>
+
+                    <div className="status-stepper-wrap">
+                      {selectedOrder.status === 'Cancelled' ? (
+                        <div className="status-stepper-cancelled-wrap">
+                          <div className="stepper-connecting-line-bg cancelled">
+                            <div className="stepper-connecting-line-fill cancelled" style={{ width: '100%' }}></div>
+                          </div>
+                          <div className="stepper-steps-list">
+                            <div className="stepper-step-item completed">
+                              <div className="step-node-box">
+                                <ion-icon name="checkmark-outline"></ion-icon>
+                              </div>
+                              <div className="step-text-wrap">
+                                <span className="step-title">Đã đặt hàng</span>
+                                <span className="step-subtitle">Đã gửi đơn</span>
+                              </div>
+                            </div>
+                            <div className="stepper-step-item active cancelled">
+                              <div className="step-node-box">
+                                <ion-icon name="close-outline"></ion-icon>
+                              </div>
+                              <div className="step-text-wrap">
+                                <span className="step-title">Đã hủy đơn</span>
+                                <span className="step-subtitle">Đơn hàng đã hủy</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="status-stepper-track">
+                          {/* ĐƯỜNG NỐI LIỀN GIỮA CÁC TRẠNG THÁI */}
+                          <div className="stepper-connecting-line-bg">
+                            <div
+                              className="stepper-connecting-line-fill"
+                              style={{
+                                width: `${(Math.max(0, STEP_INDEX_MAP[selectedOrder.status] ?? 0) / (STATUS_STEPS.length - 1)) * 100}%`,
+                              }}
+                            ></div>
+                          </div>
+
+                          {/* CÁC DIV NHỎ LÀ CÁC TRẠNG THÁI */}
+                          <div className="stepper-steps-list">
+                            {STATUS_STEPS.map((step, idx) => {
+                              const currentIdx = STEP_INDEX_MAP[selectedOrder.status] ?? 0;
+                              const isCompleted = idx < currentIdx;
+                              const isActive = idx === currentIdx;
+                              return (
+                                <div
+                                  key={step.key}
+                                  className={`stepper-step-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+                                >
+                                  <div className="step-node-box">
+                                    <ion-icon name={isCompleted ? 'checkmark-outline' : step.icon}></ion-icon>
+                                  </div>
+                                  <div className="step-text-wrap">
+                                    <span className="step-title">{step.label}</span>
+                                    <span className="step-subtitle">{step.subtitle}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* KHỐI CHI TIẾT HÓA ĐƠN */}
+                  <div className="receipt-detail-card" id="receipt-detail-panel">
                   
                   {/* TIÊU ĐỀ CHI TIẾT & TRẠNG THÁI */}
                   <div className="receipt-detail-head">
@@ -302,9 +396,9 @@ export default function Receipt() {
                       </div>
                     </div>
                   </div>
-
                 </div>
-              ) : (
+              </>
+            ) : (
                 <div className="receipt-detail-empty">
                   <ion-icon name="document-text-outline"></ion-icon>
                   <p>Vui lòng chọn một hóa đơn bên trái để xem chi tiết.</p>

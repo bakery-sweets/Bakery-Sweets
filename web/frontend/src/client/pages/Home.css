@@ -1,0 +1,685 @@
+.home-page-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #fbfbfd;
+}
+
+/* ==========================================================================
+   BANNER FULL KHUNG HÌNH (FULL VIEWPORT 100VH)
+   ========================================================================== */
+.home-banner-container {
+  width: 100%;
+  height: 620px;
+  min-height: 540px;
+  max-height: 85vh;
+  overflow: hidden;
+  position: relative;
+  background: #1a1a2e;
+}
+
+.home-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  filter: brightness(0.68);
+  transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 6s ease-out;
+  transform: scale(1.03);
+}
+
+.home-banner-img.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* BANNER DOTS CHUYỂN SLIDE */
+.home-banner-dots {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.home-banner-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.home-banner-dot:hover {
+  background: #ffffff;
+}
+
+.home-banner-dot.active {
+  width: 26px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+/* ==========================================================================
+   HERO BANNER CONTENT OVERLAY (SLOGAN NỔI BẬT TRÊN NỀN ẢNH TỐI)
+   ========================================================================== */
+.home-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  text-align: center;
+  padding: 60px 24px 30px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.32) 45%, rgba(15, 23, 42, 0.62) 100%);
+  pointer-events: none;
+}
+
+.home-hero-content {
+  pointer-events: auto;
+  max-width: 920px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+  animation: heroFadeIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heroFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* BADGE TRÊN SLOGAN */
+.hero-craft-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  border-radius: 9999px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.hero-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f1b0be;
+  box-shadow: 0 0 8px #f1b0be;
+}
+
+/* CỤM SLOGAN PHÓNG TO */
+.home-hero-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0 0 16px 0;
+  line-height: 1.15;
+}
+
+.hero-title-main {
+  font-family: var(--font-heading);
+  font-size: clamp(38px, 5.8vw, 76px);
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.5px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.85);
+}
+
+.hero-title-sub {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: clamp(44px, 6.8vw, 88px);
+  font-weight: 500;
+  color: #f1b0be;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 32px rgba(241, 176, 190, 0.45), 0 4px 22px rgba(0, 0, 0, 0.9);
+}
+
+.home-hero-desc {
+  font-family: var(--font-body);
+  font-size: clamp(14.5px, 1.4vw, 17px);
+  font-weight: 400;
+  line-height: 1.75;
+  color: #FFFAFA;
+  max-width: 720px;
+  margin: 0 auto 30px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+  opacity: 0.95;
+}
+
+.home-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #1A2639;
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 13px 30px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.hero-btn-primary:hover {
+  background: var(--color-navy-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.hero-btn-primary ion-icon {
+  font-size: 17px;
+  transition: transform 0.2s ease;
+}
+
+.hero-btn-primary:hover ion-icon {
+  transform: translateX(4px);
+}
+
+.hero-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #FFFAFA;
+  color: #1A2639;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 13px 30px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.hero-btn-secondary:hover {
+  background: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  color: #ED8A9F;
+}
+
+.hero-btn-secondary ion-icon {
+  font-size: 17px;
+}
+
+/* ==========================================================================
+   BĂNG THỐNG KÊ CAM KẾT (DƯỚI HERO BANNER)
+   ========================================================================== */
+.home-stats-strip {
+  width: 100%;
+  background: #FFFFFF;
+  box-shadow: 0 4px 20px rgba(26, 38, 57, 0.06);
+  border-bottom: 1px solid #F1F5F9;
+  position: relative;
+  z-index: 10;
+}
+
+.home-stats-container {
+  max-width: 1060px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  padding: 24px 24px;
+}
+
+.home-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.stat-number {
+  font-family: var(--font-heading);
+  font-size: 27px;
+  font-weight: 700;
+  color: #1A2639;
+}
+
+.stat-number.stat-highlight {
+  color: #a8324a;
+}
+
+.stat-slash {
+  font-size: 18px;
+  color: #94a3b8;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.stat-label {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 38px;
+  background: #E2E8F0;
+}
+
+/* RESPONSIVE HERO BANNER & STATS */
+@media (max-width: 820px) {
+  .home-stats-container {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 20px 16px;
+  }
+  .stat-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .home-banner-container {
+    height: 540px;
+  }
+  .home-hero-overlay {
+    padding: 70px 16px 20px;
+  }
+  .home-hero-desc {
+    margin-bottom: 22px;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  .home-hero-actions {
+    gap: 12px;
+  }
+  .hero-btn-primary,
+  .hero-btn-secondary {
+    padding: 11px 22px;
+    font-size: 14px;
+    width: 100%;
+    max-width: 260px;
+  }
+  .stat-number {
+    font-size: 22px;
+  }
+  .stat-label {
+    font-size: 12.5px;
+  }
+}
+
+@keyframes bounceHint {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(8px);
+  }
+}
+
+/* ==========================================================================
+   CÁC KHỐI NỘI DUNG TRANG CHỦ
+   ========================================================================== */
+.home-section {
+  width: 100%;
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 56px 32px 0;
+  box-sizing: border-box;
+}
+
+.home-section:last-child {
+  padding-bottom: 72px;
+}
+
+.home-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.home-section-head-center {
+  justify-content: center;
+  text-align: center;
+}
+
+.home-section-eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--color-pink);
+}
+
+.home-section-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a2639;
+}
+
+.home-favorite-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: clamp(28px, 3.2vw, 38px);
+  font-weight: 600;
+  color: #1a2639;
+  letter-spacing: 0.3px;
+  line-height: 1.25;
+}
+
+.home-bestsellers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .home-bestsellers-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (max-width: 580px) {
+  .home-bestsellers-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.home-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a2639;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s, gap 0.2s;
+}
+
+.home-section-link:hover {
+  color: #ed8a9f;
+  gap: 10px;
+}
+
+.home-section-status {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* DANH MỤC BÁNH */
+.home-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.home-category-card {
+  position: relative;
+  display: block;
+  height: 260px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f1f5f9;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+  text-decoration: none;
+}
+
+.home-category-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.home-category-card:hover .home-category-img {
+  transform: scale(1.07);
+}
+
+.home-category-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 40px 18px 16px;
+  background: linear-gradient(to top, rgba(26, 38, 57, 0.85), rgba(26, 38, 57, 0));
+  color: #ffffff;
+}
+
+.home-category-overlay h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.home-category-overlay span {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   CÁCH ĐẶT BÁNH 3 BƯỚC (QUY TRÌNH NỐI ĐƯỜNG LINE VỚI SỐ TRÒN BÊN NGOÀI)
+   ========================================================================== */
+.home-steps-process {
+  position: relative;
+  width: 100%;
+  margin-top: 32px;
+}
+
+.process-connecting-line {
+  position: absolute;
+  top: 24px;
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  height: 2px;
+  background: #e2e8f0;
+  z-index: 1;
+}
+
+.home-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  position: relative;
+  z-index: 2;
+}
+
+.home-step-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.home-step-circle-badge {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px;
+  max-height: 48px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #1a2639;
+  border: 2px solid #1a2639;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(26, 38, 57, 0.08);
+  margin-bottom: 22px;
+  transition: all 0.3s ease;
+  z-index: 3;
+}
+
+.home-step-circle-badge span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.home-step-col:hover .home-step-circle-badge {
+  background: #1a2639;
+  color: #ffffff;
+  border-color: #1a2639;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(26, 38, 57, 0.22);
+}
+
+.home-step-card {
+  width: 100%;
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  padding: 32px 24px 28px;
+  text-align: center;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.home-step-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+  border-color: rgba(237, 138, 159, 0.3);
+}
+
+/* Icon filled không nền tròn */
+.home-step-icon {
+  width: auto;
+  height: auto;
+  background: transparent !important;
+  color: #ed8a9f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  margin: 0 auto 16px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.home-step-card h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-body);
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #1a2639;
+}
+
+.home-step-card p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 860px) {
+  .process-connecting-line {
+    display: none;
+  }
+
+  .home-steps-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 767px) {
+  .home-section {
+    padding: 36px 16px 0;
+  }
+
+  .home-section:last-child {
+    padding-bottom: 56px;
+  }
+
+  .home-section-title {
+    font-size: 22px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .home-section {
+    padding: 44px 24px 0;
+  }
+}

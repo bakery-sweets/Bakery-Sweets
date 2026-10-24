@@ -1,5 +1,21 @@
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 
+/* BẢNG MÀU CHỦ ĐẠO: XANH NAVY & HỒNG */
+:root {
+  --color-navy: #1a2639;
+  --color-navy-hover: #2a3c56;
+  --color-pink: #ed8a9f;
+  --color-pink-hover: #e0728b;
+  --color-pink-soft: #fdeef1;
+  --color-pink-soft-hover: #fbdde4;
+  --color-blue-soft: #cadbfb;
+  --color-blue-border: #8bb4f7;
+
+  /* Font: tiêu đề có chân (giống trang chủ), nội dung không chân */
+  --font-heading: "Playfair Display", Georgia, serif;
+  --font-body: "Plus Jakarta Sans", "Montserrat", system-ui, -apple-system, sans-serif;
+}
+
 /* ẨN THANH CUỘN (SCROLLBAR) TOÀN BỘ TRANG WEB NHƯNG VẪN CUỘN MƯỢT */
 html, body {
   scrollbar-width: none !important; /* Firefox */
@@ -18,7 +34,7 @@ body::-webkit-scrollbar,
   margin: 0; 
   padding: 0; 
   box-sizing: border-box; 
-  font-family: "Plus Jakarta Sans", "Montserrat", system-ui, -apple-system, sans-serif; 
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -27,72 +43,9 @@ body { width: 100%; min-height: 100vh; overflow-x: clip; background-color: #ffff
 #root { display: flex; flex-direction: column; min-height: 100vh; }
 .Home_main { flex: 1; padding-bottom: 60px; }
 
-/* BANNER */
-.bg-screen { position: relative; }
-.slide-banner-img { width: 100%; height: 430px; object-fit: cover; }
-
-/* PRODUCTS GRID */
-.pg-12 { padding: 20px 0; width: 100%; }
-.nav-container .nav-links { display: flex; list-style: none; gap: 0; padding: 20px 0; flex-wrap: wrap; }
-.nav-item { padding: 6px 16px; cursor: pointer; font-weight: 500; transition: color 0.2s; }
-.nav-item.active, .nav-item:hover { color: #d4845a; border-bottom: 2px solid #d7845a; }
-.tab_content { display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-start; padding: 10px 0; }
-.movie-item { display: flex; flex-direction: column; align-items: center; width: 220px; }
-.movie-item a { display: block; }
-.poster-img { object-fit: cover; border-radius: 10px; transition: transform 0.3s; }
-.poster-img:hover { transform: scale(1.04); }
-.title { font-size: 0.95rem; font-weight: 500; margin: 8px 0 4px; text-align: center; }
-.butn { width: 100%; padding: 8px; border: none; border-radius: 8px; background: #d7845a; cursor: pointer; }
-.butn:hover { background: #b5623a; }
-.butn.disabled-btn { background: #ccc; cursor: not-allowed; }
-.text-color { color: #fff; font-size: 0.85rem; font-weight: 500; }
-.add-to-cart { background: #d4845a; }
-
-/* PAGINATION */
-.pagination { display: flex; gap: 8px; justify-content: center; padding: 20px 0; }
-.page-link { padding: 8px 14px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; }
-.page-link.active { background: #d4845a; color: #fff; border-color: #d4845a; }
-
-/* FOOTER */
-.footer { background: #1a1a2e; color: #fff; height: auto; }
-.Footer_footer_contain { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px; padding-bottom: 30px; }
-.Footer_footer_title { font-size: 1rem; margin-bottom: 12px; color: #d4845a; }
-.footer_section ul { list-style: none; }
-.footer_section ul li { margin-bottom: 8px; }
-.Foot_footer_list { background: none; border: none; color: #ccc; cursor: pointer; font-size: 0.9rem; transition: color 0.2s; padding: 0; }
-.Foot_footer_list:hover { color: #d4845a; }
-.footer_logo img { width: 160px; }
-.Footer_connect_icon { display: flex; gap: 12px; list-style: none; margin-top: 12px; justify-content: center; }
-.Footer_connect_icon { color: #ccc; font-size: 1.4rem; transition: color 0.2s; }
-.Footer_connect_icon:hover { color: #d4845a; }
-.footer-bottom-line { height: 1px; background: #444; }
-.copy-right { text-align: center; padding: 16px 0; color: #888; font-size: 0.85rem; }
-
-/* AUTH FORMS */
-.wrapper { display: flex; justify-content: center; padding: 60px 20px; }
-.form-box { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
-.form-box h2 { text-align: center; margin-bottom: 24px; font-size: 1.8rem; color: #333; }
-.input-infor { display: flex; gap: 30px; flex-wrap: wrap; }
-.left-input, .right-input { flex: 1; min-width: 28ppx; }
-.input-box { position: relative; margin-bottom: 20px; }
-.input-box input { width: 100%; padding: 14px 14px 14px 44px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
-.input-box input:focus { border-color: #d4845a; }
-.input-box .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #888; font-size: 1.1rem; }
-.input-box label { position: absolute; left: 44px; top: 50%; transform: translateY(-50%); color: #aaa; transition: all 0.2s; pointer-events: none; font-size: 0.9rem; }
-.input-box input:focus ~ label,
-.input-box input:not(:placeholder-shown) ~ label { top: -10px; font-size: 0.75rem; color: #d7845a; background: #fff; padding: 0 4px; }
-.btn { width: 100%; padding: 14px; background: #d4845a; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 10px; }
-.btn:hover { background: #b5623a; }
-.login-register { text-align: center; margin-top: 14px; font-size: 0.9rem; }
-.login-register a { color: #d7845a; font-weight: 600; text-decoration: none; }
-
-/* NOTIFICATION */
-.notificate { display: none; }
-
-/* MOBILE */
-@media (max-width: 900px) {
-  .pg-12 { padding: 10px 20px; }
-  .tab_content { justify-content: center; }
-  .movie-item { width: 160px; }
-  .footer { padding: 30px 20px 0; }
+/* Tiêu đề h1, h2 phía khách hàng (trang, giỏ hàng, footer, popup) dùng font có chân */
+:where(.Home_main, .shopping-cart) :is(h1, h2),
+.footer-title,
+.modal-title {
+  font-family: var(--font-heading);
 }

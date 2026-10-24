@@ -5,7 +5,7 @@
 .about-banner {
   position: relative;
   width: 100%;
-  height: 480px;
+  height: 520px;
   overflow: hidden;
   background: #1a1a2e;
 }
@@ -19,7 +19,7 @@
 
 .about-overlay {
   position: absolute;
-  top: 54%;
+  top: 56%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
@@ -30,7 +30,7 @@
 
 .about-overlay h1 {
   font-size: 3rem;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 12px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
@@ -54,7 +54,7 @@
 
 .about-section h2 {
   font-size: 1.6rem;
-  color: #d4845a;
+  color: var(--color-pink);
   margin-bottom: 12px;
   font-weight: 700;
 }
@@ -68,7 +68,10 @@
 /* RESPONSIVE */
 @media (max-width: 767px) {
   .about-banner {
-    height: 220px;
+    height: 280px;
+  }
+  .about-overlay {
+    top: 58%;
   }
   .about-overlay h1 {
     font-size: 1.8rem;

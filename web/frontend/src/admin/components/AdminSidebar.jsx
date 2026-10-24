@@ -33,7 +33,7 @@ export default function AdminSidebar() {
 
       {/* Brand Header with Original Web Logo */}
       <div className="admin-sidebar-brand">
-        <NavLink to="/admin" className="brand-logo-wrap" title="The Sweets Admin">
+        <NavLink to="/admin" className="brand-logo-wrap" title="Quản trị The Sweets">
           <img src="/assets/Img/Sweets1.png" alt="The Sweets" className="admin-brand-logo-img" />
         </NavLink>
       </div>

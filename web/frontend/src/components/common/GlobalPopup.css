@@ -43,7 +43,7 @@
   align-items: center;
   box-sizing: border-box;
   animation: sweetsPopupCardPop 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
 }
 
 @keyframes sweetsPopupCardPop {
@@ -302,7 +302,7 @@
   animation: sweetsToastSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   position: relative;
   overflow: hidden;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
 }
 
 @keyframes sweetsToastSlideIn {

@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from app.models.order import Order
 from app.models.promotion import Promotion, InvoicePromotion
 from app.schemas.admin.promotion import PromotionInput
-from app.services.client.notification_service import ClientNotificationService
 
 # Voucher không có chức năng xóa: voucher gắn với hóa đơn (orders.promotion_id, order_promotions),
 # muốn ngừng áp dụng thì chuyển sang Tạm dừng / Hết hạn
@@ -71,9 +70,6 @@ class AdminPromotionService:
         promo = Promotion()
         AdminPromotionService._apply(promo, data, code)
         db.add(promo)
-        db.flush()
-        # Thuộc tính tạm (không lưu DB) để API báo admin số khách đã nhận thông báo
-        promo.notified_count = ClientNotificationService.notify_promotion(db, promo, is_new=True)
         db.commit()
         db.refresh(promo)
         return promo
@@ -88,8 +84,6 @@ class AdminPromotionService:
         promo.invoice_promotions = []
         db.flush()
         AdminPromotionService._apply(promo, data, code)
-        db.flush()
-        promo.notified_count = ClientNotificationService.notify_promotion(db, promo, is_new=False)
         db.commit()
         db.refresh(promo)
         return promo
@@ -99,12 +93,7 @@ class AdminPromotionService:
         promo = AdminPromotionService.get_by_id(db, promotion_id)
         if not promo:
             return None
-        was_active = promo.status == "Active"
         promo.status = status
-        # Kích hoạt lại voucher cũng báo cho khách; tạm dừng thì không
-        promo.notified_count = 0
-        if status == "Active" and not was_active:
-            promo.notified_count = ClientNotificationService.notify_promotion(db, promo, is_new=False)
         db.commit()
         db.refresh(promo)
         return promo

@@ -42,6 +42,7 @@ def _to_client_product_out(p) -> ClientProductOut:
         min_price=min_price,
         stock_quantity=total_stock,
         stock_display=stock_display,
+        created_at=p.created_at,
         sizes=sizes_out,
     )
 
@@ -66,6 +67,11 @@ def list_categories(db: Session = Depends(get_db)):
         for c in cats
     ]
     return ResponseBase(data=out)
+
+@router.get("/best-sellers", response_model=ResponseBase[List[ClientProductOut]], summary="Top bánh bán chạy nhất")
+def list_best_sellers(limit: int = 4, db: Session = Depends(get_db)):
+    products = ClientProductService.get_best_sellers(db, limit=limit)
+    return ResponseBase(data=[_to_client_product_out(p) for p in products])
 
 @router.get("/{product_id}", response_model=ResponseBase[ClientProductOut], summary="Xem chi tiết một món bánh")
 def get_product(product_id: int, db: Session = Depends(get_db)):

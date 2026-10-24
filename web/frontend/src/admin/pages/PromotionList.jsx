@@ -131,9 +131,8 @@ export default function PromotionList() {
     if (!confirmed) return;
 
     try {
-      const res = await adminPromotionsApi.updateStatus(p.promotion_id, pausing ? "Paused" : "Active");
-      // Kích hoạt lại sẽ gửi thông báo cho khách, server báo kèm số khách đã nhận
-      popup.success(pausing ? `Đã tạm dừng voucher ${p.promotion_code}` : res.message);
+      await adminPromotionsApi.updateStatus(p.promotion_id, pausing ? "Paused" : "Active");
+      popup.success(pausing ? `Đã tạm dừng voucher ${p.promotion_code}` : `Đã kích hoạt voucher ${p.promotion_code}`);
       await loadData();
     } catch (err) {
       popup.error(apiErrorMessage(err, "Không thể cập nhật trạng thái voucher"));

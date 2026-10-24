@@ -39,7 +39,7 @@ export default function AdminLogin() {
         
         <div className="admin-login-header">
           <img src="/assets/Img/Sweets1.png" alt="The Sweets" className="admin-login-logo" />
-          <h2>The Sweets Portal</h2>
+          <h2>Quản trị The Sweets</h2>
           <p>Đăng nhập hệ thống quản trị cửa hàng</p>
         </div>
 

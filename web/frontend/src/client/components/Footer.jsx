@@ -16,9 +16,9 @@ export default function Footer() {
         {/* LƯỚI FOOTER: 4 CỘT TRÊN DESKTOP, 2 CỘT TRÊN ĐIỆN THOẠI */}
         <div className="footer-grid">
           
-          {/* CỘT 1: INTRODUCE */}
+          {/* CỘT 1: GIỚI THIỆU */}
           <div className="footer-col">
-            <h3 className="footer-title">INTRODUCE</h3>
+            <h3 className="footer-title">GIỚI THIỆU</h3>
             <ul className="footer-links">
               <li><a href="/about">Về Chúng Tôi</a></li>
               <li><a href="#terms">Thoả Thuận Sử Dụng</a></li>
@@ -27,22 +27,22 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* CỘT 2: CORNER FOOD */}
+          {/* CỘT 2: THỰC ĐƠN */}
           <div className="footer-col">
-            <h3 className="footer-title">CORNER FOOD</h3>
+            <h3 className="footer-title">THỰC ĐƠN</h3>
             <ul className="footer-links">
-              <li><a href="/search?category=MOUSSE">Mouse</a></li>
-              <li><a href="/search?category=CROISSANT">Croissant</a></li>
+              <li><a href="/products">Bánh Mousse</a></li>
+              <li><a href="/products">Bánh Croissant</a></li>
             </ul>
           </div>
 
-          {/* CỘT 3: SUPPORT */}
+          {/* CỘT 3: HỖ TRỢ */}
           <div className="footer-col">
-            <h3 className="footer-title">SUPPORT</h3>
+            <h3 className="footer-title">HỖ TRỢ</h3>
             <ul className="footer-links">
               <li><a href="#feedback">Góp Ý</a></li>
               <li><a href="#careers">Tuyển Dụng</a></li>
-              <li><a href="#faq">FAQ</a></li>
+              <li><a href="#faq">Câu Hỏi Thường Gặp</a></li>
             </ul>
           </div>
 
@@ -69,7 +69,7 @@ export default function Footer() {
         {/* BẢN QUYỀN COPYRIGHT CĂN GIỮA CHUẨN XÁC THEO HÌNH DESKTOP */}
         <div className="footer-bottom-info">
           <p className="footer-copyright">
-            &copy; copyright 2024 by The MBM Group | Công ty TNHH The Sweets | Design by The MESince
+            &copy; Bản quyền 2024 thuộc The MBM Group | Công ty TNHH The Sweets | Thiết kế bởi The MESince
           </p>
         </div>
 

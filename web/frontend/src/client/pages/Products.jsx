@@ -1,26 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import useCartStore from '../../store/cartStore';
+import { useSearchParams } from 'react-router-dom';
 import { clientProductsApi } from '../../api/client';
-import { formatVND, formatStock, imageUrl, apiErrorMessage } from '../../utils/format';
-import popup from '../../utils/popup';
-import './Home.css';
+import ProductCard from '../components/ProductCard';
+import { formatVND, apiErrorMessage } from '../../utils/format';
+import './Products.css';
 
 const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
 
-const BANNERS = ['/assets/Img/banner1.jpg', '/assets/Img/banner2.jpg'];
-
-// Size rẻ nhất của món, dùng cho nút "Thêm vào giỏ" nhanh ở trang chủ
-const cheapestSize = (product) =>
-  product.sizes.reduce((min, s) => (!min || Number(s.price) < Number(min.price) ? s : min), null);
-
-export default function Home() {
+export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
-
-  // Cart store & added notification
-  const { addItem } = useCartStore();
-  const [addedId, setAddedId] = useState(null);
+  // Danh mục lấy từ URL (?category=id) để trang chủ có thể dẫn thẳng tới một danh mục
+  const category = searchParams.get('category') ? Number(searchParams.get('category')) : 'ALL';
 
   // Dữ liệu sản phẩm & danh mục từ API
   const [products, setProducts] = useState([]);
@@ -34,14 +25,7 @@ export default function Home() {
         setProducts(
           productRes.data
             .filter((p) => p.sizes.length > 0)
-            .map((p) => {
-              const total = p.stock_quantity ?? p.sizes?.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0) ?? 0;
-              return {
-                ...p,
-                price: Number(p.min_price),
-                stock: p.stock_display || formatStock(total),
-              };
-            })
+            .map((p) => ({ ...p, price: Number(p.min_price) }))
         );
         setCategories([
           { id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' },
@@ -56,54 +40,22 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleAddToCart = async (e, product) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const size = cheapestSize(product);
-    try {
-      await addItem(
-        {
-          product_id: product.product_id,
-          product_name: product.product_name,
-          image: imageUrl(product.image),
-        },
-        size,
-        1
-      );
-      setAddedId(product.product_id);
-      setTimeout(() => setAddedId(null), 1200);
-      popup.success(`Đã thêm "${product.product_name}" vào giỏ hàng!`);
-    } catch (err) {
-      popup.error(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
-    }
-  };
-
   // Filter states
   const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [searchInput, setSearchInput] = useState(urlSearch);
-  const [category, setCategory] = useState('ALL');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  // Pagination & Banner
   const [page, setPage] = useState(1);
-  const [currentBanner, setCurrentBanner] = useState(0);
+  const ITEMS_PER_PAGE = 8; // 4 sản phẩm / hàng x 2 hàng = 8 sản phẩm mỗi trang
 
   // Sync search input if URL search param changes
   useEffect(() => {
     setSearchTerm(urlSearch);
     setSearchInput(urlSearch);
   }, [urlSearch]);
-
-  // Banner slideshow
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % BANNERS.length);
-    }, 3500);
-    return () => clearInterval(timer);
-  }, []);
 
   // Filter & Sort Products
   const filteredProducts = useMemo(() => {
@@ -123,7 +75,46 @@ export default function Home() {
       });
   }, [products, searchTerm, category, minPrice, maxPrice, sortBy]);
 
+  // Phân trang
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
+  const validPage = Math.min(Math.max(1, page), totalPages);
+
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
+    return filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredProducts, validPage]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || newPage === validPage) return;
+    setPage(newPage);
+    const target = document.querySelector('.products-header-bar') || document.querySelector('.products-page-wrapper');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const getPageNumbers = () => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (validPage <= 3) {
+      return [1, 2, 3, 4, '...', totalPages];
+    }
+    if (validPage >= totalPages - 2) {
+      return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, '...', validPage - 1, validPage, validPage + 1, '...', totalPages];
+  };
+
   const categoryName = (id) => categories.find((c) => c.id === id)?.name || id;
+
+  const setCategory = (id) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id === 'ALL') next.delete('category');
+      else next.set('category', id);
+      return next;
+    });
 
   // Xử lý tìm kiếm khi ấn Enter hoặc bấm kính lúp
   const handleSearchSubmit = (e) => {
@@ -162,7 +153,6 @@ export default function Home() {
   const handleResetFilters = () => {
     setSearchInput('');
     setSearchTerm('');
-    setCategory('ALL');
     setMinPrice('');
     setMaxPrice('');
     setSortBy('default');
@@ -177,45 +167,7 @@ export default function Home() {
   };
 
   return (
-    <div className="home-page-wrapper">
-      {/* BANNER SLIDER FULL KHUNG HÌNH */}
-      <div className="home-banner-container">
-        {BANNERS.map((banner, idx) => (
-          <img
-            key={idx}
-            src={banner}
-            alt={`Banner ${idx + 1}`}
-            className={`home-banner-img ${currentBanner === idx ? 'active' : ''}`}
-          />
-        ))}
-
-        {/* Các chấm điều hướng banner */}
-        <div className="home-banner-dots">
-          {BANNERS.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className={`home-banner-dot ${currentBanner === idx ? 'active' : ''}`}
-              onClick={() => setCurrentBanner(idx)}
-              aria-label={`Chuyển tới banner ${idx + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Nút gợi ý cuộn xuống khám phá thực đơn bánh */}
-        <div
-          className="home-banner-scroll-hint"
-          onClick={() => {
-            const content = document.querySelector('.home-content-container');
-            if (content) content.scrollIntoView({ behavior: 'smooth' });
-          }}
-          title="Cuộn xuống khám phá thực đơn bánh"
-        >
-          <span className="scroll-hint-text">Khám phá thực đơn</span>
-          <ion-icon name="chevron-down-outline"></ion-icon>
-        </div>
-      </div>
-
+    <div className="products-page-wrapper">
       {/* KHUNG NỘI DUNG CHÍNH (SIDEBAR TRÁI + LIST SẢN PHẨM PHẢI) */}
       <div className="home-content-container">
         {/* NÚT BẬT BỘ LỌC TRÊN MOBILE */}
@@ -332,7 +284,7 @@ export default function Home() {
                   <input
                     type="number"
                     min="0"
-                    placeholder="Min"
+                    placeholder="Từ"
                     className="filter-input price-input"
                     value={minPrice}
                     onChange={(e) => {
@@ -344,7 +296,7 @@ export default function Home() {
                   <input
                     type="number"
                     min="0"
-                    placeholder="Max"
+                    placeholder="Đến"
                     className="filter-input price-input"
                     value={maxPrice}
                     onChange={(e) => {
@@ -389,7 +341,10 @@ export default function Home() {
                 <select
                   className="filter-select"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    setPage(1);
+                  }}
                 >
                   <option value="default">Mặc định</option>
                   <option value="price-asc">Giá: Thấp đến cao</option>
@@ -427,13 +382,13 @@ export default function Home() {
                   {category !== 'ALL' && (
                     <span className="active-filter-tag">
                       {categoryName(category)}
-                      <button onClick={() => setCategory('ALL')}>×</button>
+                      <button onClick={() => { setCategory('ALL'); setPage(1); }}>×</button>
                     </span>
                   )}
                   {(minPrice || maxPrice) && (
                     <span className="active-filter-tag">
                       Giá: {minPrice ? formatVND(minPrice) : '0₫'} - {maxPrice ? formatVND(maxPrice) : '∞'}
-                      <button onClick={() => { setMinPrice(''); setMaxPrice(''); }}>×</button>
+                      <button onClick={() => { setMinPrice(''); setMaxPrice(''); setPage(1); }}>×</button>
                     </span>
                   )}
                   <button className="clear-all-tags-btn" onClick={handleResetFilters}>
@@ -466,45 +421,61 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <div className="home-product-grid">
-                {filteredProducts.map((product) => (
-                  <div key={product.product_id} className="home-product-card">
-                    <Link to={`/product/${product.product_id}`} className="home-product-link">
-                      <div className="home-product-img-wrap">
-                        <img
-                          src={imageUrl(product.image)}
-                          alt={product.product_name}
-                          className="home-product-img"
-                          onError={(e) => {
-                            e.target.src = '/assets/Img/Sweets1.png';
-                          }}
-                        />
-                        <span className="product-category-tag">{product.category_name}</span>
-                      </div>
-                      <div className="home-product-info">
-                        <h3 className="home-product-title">{product.product_name}</h3>
-                        <p className="home-product-stock">
-                          Số lượng: {product.stock || formatStock(product.stock_quantity ?? product.sizes?.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0))}
-                        </p>
-                        <div className="product-card-bottom">
-                          <p className="home-product-price">{formatVND(product.price)}</p>
+              <>
+                <div className="home-product-grid">
+                  {paginatedProducts.map((product) => (
+                    <ProductCard key={product.product_id} product={product} />
+                  ))}
+                </div>
+
+                {/* THANH PHÂN TRANG */}
+                {totalPages > 1 && (
+                  <div className="products-pagination-wrap">
+                    <button
+                      type="button"
+                      className="pagination-btn pagination-nav-btn"
+                      disabled={validPage === 1}
+                      onClick={() => handlePageChange(validPage - 1)}
+                      title="Trang trước"
+                      aria-label="Trang trước"
+                    >
+                      <ion-icon name="chevron-back-outline"></ion-icon>
+                      <span>Trước</span>
+                    </button>
+
+                    <div className="pagination-numbers-list">
+                      {getPageNumbers().map((p, idx) =>
+                        p === '...' ? (
+                          <span key={`ellipsis-${idx}`} className="pagination-ellipsis">
+                            •••
+                          </span>
+                        ) : (
                           <button
+                            key={p}
                             type="button"
-                            className={`product-expand-cart-btn ${addedId === product.product_id ? 'added' : ''}`}
-                            onClick={(e) => handleAddToCart(e, product)}
-                            title="Thêm vào giỏ hàng"
+                            className={`pagination-number-btn ${p === validPage ? 'active' : ''}`}
+                            onClick={() => handlePageChange(p)}
                           >
-                            <ion-icon name={addedId === product.product_id ? "checkmark-circle" : "bag-add-outline"}></ion-icon>
-                            <span className="cart-btn-text">
-                              {addedId === product.product_id ? "Đã thêm!" : "Thêm vào giỏ"}
-                            </span>
+                            {p}
                           </button>
-                        </div>
-                      </div>
-                    </Link>
+                        )
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="pagination-btn pagination-nav-btn"
+                      disabled={validPage === totalPages}
+                      onClick={() => handlePageChange(validPage + 1)}
+                      title="Trang sau"
+                      aria-label="Trang sau"
+                    >
+                      <span>Sau</span>
+                      <ion-icon name="chevron-forward-outline"></ion-icon>
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </main>
         </div>

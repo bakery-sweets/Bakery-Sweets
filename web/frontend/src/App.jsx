@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 // Client Imports
 import ClientLayout from "./client/layouts/ClientLayout";
 import Home from "./client/pages/Home";
+import Products from "./client/pages/Products";
 import Login from "./client/pages/Login";
 import Register from "./client/pages/Register";
 import ProductDetail from "./client/pages/ProductDetail";
@@ -32,6 +33,7 @@ function App() {
         {/* Nhóm trang Khách hàng (ClientLayout gồm Header & Footer của tiệm bánh) */}
         <Route element={<ClientLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -39,7 +41,7 @@ function App() {
           <Route path="/receipt" element={<Receipt />} />
           <Route path="/vouchers" element={<Navigate to="/" replace />} />
           <Route path="/pay" element={<Pay />} />
-          <Route path="/search" element={<Navigate to="/" replace />} />
+          <Route path="/search" element={<Navigate to="/products" replace />} />
         </Route>
 
         {/* Trang Đăng nhập Quản trị */}

@@ -1,4 +1,5 @@
 from typing import Optional, List
+from datetime import datetime
 from pydantic import BaseModel
 from decimal import Decimal
 
@@ -33,4 +34,5 @@ class ClientProductOut(BaseModel):
     min_price: Optional[Decimal] = None
     stock_quantity: int = 0
     stock_display: str = ""
+    created_at: Optional[datetime] = None
     sizes: List[ClientProductSizeOut] = []
