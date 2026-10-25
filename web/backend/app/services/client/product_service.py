@@ -32,3 +32,23 @@ class ClientProductService:
     @staticmethod
     def get_categories(db: Session) -> List[Category]:
         return db.query(Category).order_by(Category.category_id.asc()).all()
+
+    @staticmethod
+    def get_best_sellers(db: Session, limit: int = 4) -> List[Product]:
+        from app.models.order import OrderDetail
+        from sqlalchemy import func
+
+        sales_subq = (
+            db.query(OrderDetail.product_id, func.sum(OrderDetail.quantity).label("total_sold"))
+            .group_by(OrderDetail.product_id)
+            .subquery()
+        )
+        return (
+            db.query(Product)
+            .options(joinedload(Product.sizes).joinedload(ProductSize.size), joinedload(Product.category))
+            .outerjoin(sales_subq, Product.product_id == sales_subq.c.product_id)
+            .filter(Product.status == "Available")
+            .order_by(func.coalesce(sales_subq.c.total_sold, 0).desc(), Product.product_id.asc())
+            .limit(limit)
+            .all()
+        )

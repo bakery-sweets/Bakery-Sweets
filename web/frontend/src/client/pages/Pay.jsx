@@ -197,7 +197,7 @@ export default function Pay() {
         <div className="pay-container" style={{ textAlign: 'center', padding: '60px 16px' }}>
           <h1 className="pay-main-title">Giỏ hàng đang trống</h1>
           <p className="pay-subtitle">Hãy chọn vài món bánh trước khi đặt hàng nhé.</p>
-          <Link to="/" className="pay-continue-shop-link">← Tiếp tục chọn bánh</Link>
+          <Link to="/products" className="pay-continue-shop-link">← Tiếp tục chọn bánh</Link>
         </div>
       </div>
     );
@@ -213,7 +213,7 @@ export default function Pay() {
             <h1 className="pay-main-title">Xác nhận đơn & Lấy bánh tại tiệm</h1>
             <p className="pay-subtitle">Mô hình nhận bánh trực tiếp tại quầy The Sweets (Pick-up)</p>
           </div>
-          <Link to="/" className="pay-continue-shop-link">
+          <Link to="/products" className="pay-continue-shop-link">
             ← Tiếp tục chọn bánh
           </Link>
         </div>

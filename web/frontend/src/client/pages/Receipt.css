@@ -29,7 +29,7 @@
 
 .receipt-title {
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 700;
   color: #1e293b;
   margin: 0 0 6px;
   letter-spacing: -0.3px;
@@ -103,14 +103,14 @@
 
 .receipt-login-btn:hover,
 .receipt-shop-btn:hover {
-  background: #2b3d5b;
+  background: var(--color-navy-hover);
 }
 
 .receipt-spinner {
   width: 36px;
   height: 36px;
   border: 3px solid #e2e8f0;
-  border-top-color: #d4845a;
+  border-top-color: var(--color-pink);
   border-radius: 50%;
   animation: receiptSpin 0.7s linear infinite;
 }
@@ -159,7 +159,7 @@
 
 .receipt-column-header ion-icon {
   font-size: 18px;
-  color: #d4845a;
+  color: var(--color-pink);
 }
 
 .receipt-order-cards-list {
@@ -203,19 +203,18 @@
 }
 
 .receipt-order-card.active {
-  border-color: #d4845a;
-  background: #fffdfb;
-  box-shadow: 0 10px 24px -5px rgba(212, 132, 90, 0.16);
+  border-color: var(--color-pink);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(237, 138, 159, 0.12);
+}
+
+.receipt-order-card.active:hover {
+  border-color: var(--color-pink);
+  background: #ffffff;
 }
 
 .order-card-active-indicator {
-  position: absolute;
-  left: 0;
-  top: 14px;
-  bottom: 14px;
-  width: 4.5px;
-  background: #d4845a;
-  border-radius: 0 4px 4px 0;
+  display: none;
 }
 
 /* Hàng 1: Mã đơn & Trạng thái */
@@ -230,8 +229,8 @@
   font-family: monospace;
   font-weight: 700;
   font-size: 14px;
-  color: #0284c7;
-  background: #e0f2fe;
+  color: var(--color-navy);
+  background: var(--color-blue-soft);
   padding: 3px 8px;
   border-radius: 6px;
 }
@@ -337,7 +336,7 @@
 .order-card-final-cost {
   font-size: 15px;
   font-weight: 800;
-  color: #d4845a;
+  color: var(--color-pink);
 }
 
 /* --------------------------------------------------------------------------
@@ -346,6 +345,203 @@
 .receipt-detail-column {
   position: sticky;
   top: 85px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ==========================================================================
+   KHỐI TRẠNG THÁI ĐƠN HÀNG (STATUS TRACKER STEPPER VỚI LINE NỐI)
+   ========================================================================== */
+.receipt-status-tracker-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 18px 24px 20px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+}
+
+.status-tracker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.status-tracker-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.status-tracker-title ion-icon {
+  font-size: 18px;
+  color: var(--color-pink);
+}
+
+/* THANH TRACKER & CÁC DIV NHỎ TRẠNG THÁI NỐI LINE */
+.status-stepper-wrap {
+  width: 100%;
+}
+
+.status-stepper-track {
+  position: relative;
+  padding: 8px 0 4px;
+  width: 100%;
+}
+
+.stepper-connecting-line-bg {
+  position: absolute;
+  top: 27px; /* Căn giữa tâm của icon box (38px / 2 + padding-top 8px = 27px) */
+  left: 12.5%;
+  right: 12.5%;
+  height: 3px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  z-index: 1;
+}
+
+.stepper-connecting-line-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-navy) 0%, var(--color-pink) 100%);
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stepper-steps-list {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.stepper-step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+/* CÁC DIV NHỎ LÀ CÁC TRẠNG THÁI */
+.step-node-box {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  aspect-ratio: 1 / 1;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #94a3b8;
+  font-size: 17px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+/* TRẠNG THÁI ĐÃ HOÀN THÀNH (COMPLETED) */
+.stepper-step-item.completed .step-node-box {
+  background: var(--color-navy);
+  border-color: var(--color-navy);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(26, 38, 57, 0.18);
+}
+
+/* TRẠNG THÁI ĐANG ACTIVE (NỔI BẬT LÊN) */
+.stepper-step-item.active .step-node-box {
+  background: var(--color-pink);
+  border-color: var(--color-pink);
+  color: #ffffff;
+  transform: scale(1.12);
+  box-shadow: 0 4px 16px rgba(237, 138, 159, 0.4);
+  animation: stepNodePulse 2.2s infinite;
+}
+
+@keyframes stepNodePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(237, 138, 159, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(237, 138, 159, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(237, 138, 159, 0);
+  }
+}
+
+/* NHÃN VĂN BẢN TRẠNG THÁI */
+.step-text-wrap {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+
+.step-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.stepper-step-item.active .step-title {
+  color: var(--color-pink);
+  font-weight: 700;
+}
+
+.stepper-step-item.completed .step-title {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.step-subtitle {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.stepper-step-item.active .step-subtitle {
+  color: #475569;
+  font-weight: 500;
+}
+
+/* TRƯỜNG HỢP HỦY ĐƠN (CANCELLED) */
+.status-stepper-cancelled-wrap {
+  position: relative;
+  padding: 8px 0 4px;
+  width: 100%;
+}
+
+.stepper-connecting-line-bg.cancelled {
+  left: 25%;
+  right: 25%;
+}
+
+.stepper-connecting-line-fill.cancelled {
+  background: #ef4444;
+}
+
+.stepper-step-item.active.cancelled .step-node-box {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  animation: none;
+}
+
+.stepper-step-item.active.cancelled .step-title {
+  color: #ef4444;
+  font-weight: 700;
 }
 
 .receipt-detail-card {
@@ -372,15 +568,15 @@
   font-family: monospace;
   font-size: 14px;
   font-weight: 700;
-  color: #0284c7;
-  background: #e0f2fe;
+  color: var(--color-navy);
+  background: var(--color-blue-soft);
   padding: 3px 8px;
   border-radius: 6px;
 }
 
 .receipt-detail-title {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: #1e293b;
   margin: 0;
 }
@@ -462,7 +658,7 @@
 }
 
 .receipt-section-subtitle ion-icon {
-  color: #d4845a;
+  color: var(--color-pink);
   font-size: 16px;
 }
 
@@ -591,7 +787,7 @@
 .receipt-summary-line.total-line .total-cost {
   font-size: 18px;
   font-weight: 800;
-  color: #d4845a;
+  color: var(--color-pink);
 }
 
 .receipt-detail-empty {
@@ -647,6 +843,31 @@
 
   .receipt-title {
     font-size: 22px;
+  }
+
+  .receipt-status-tracker-card {
+    padding: 14px 12px 16px;
+  }
+
+  .step-node-box {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 14px;
+    border-radius: 9px;
+  }
+
+  .stepper-connecting-line-bg {
+    top: 24px;
+  }
+
+  .step-title {
+    font-size: 11px;
+  }
+
+  .step-subtitle {
+    display: none;
   }
 
   .receipt-detail-head,

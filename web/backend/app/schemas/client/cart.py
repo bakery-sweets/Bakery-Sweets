@@ -20,6 +20,7 @@ class CartItemOut(BaseModel):
     unit_price: Decimal
     quantity: int
     item_total: Decimal
+    stock_quantity: int = 0  # Tồn kho của size, để giỏ hàng chặn tăng quá số lượng
 
 class CartSummaryOut(BaseModel):
     items: List[CartItemOut]

@@ -25,21 +25,38 @@ export default function CartDrawer() {
       <div className="blur-overlay" onClick={closeCart}></div>
       <div className="shopping-cart open">
         <div className="cart-header">
-          <h2>Shopping Cart</h2>
+          <h2>Giỏ hàng</h2>
           <button onClick={closeCart}><ion-icon name="close-outline"></ion-icon></button>
         </div>
         <div className="cart-items">
           {items.length === 0 ? (
-            <p className="empty-cart">Your cart is empty</p>
+            <p className="empty-cart">Giỏ hàng của bạn đang trống</p>
           ) : items.map((item) => (
             <div className="cart-item" key={`${item.product_id}-${item.size_id}`}>
               <img src={item.image} alt={item.product_name} width={60} height={75} />
               <div className="cart-item-details">
                 <p>{item.product_name} - {item.size_name}</p>
                 <div className="qty-controls">
-                  <button onClick={() => run(() => updateQty(item.product_id, item.size_id, item.quantity - 1))}>-</button>
-                  <span>{item.quantity}</span>
-                  <button onClick={() => run(() => updateQty(item.product_id, item.size_id, item.quantity + 1))}>+</button>
+                  <button
+                    type="button"
+                    className="qty-btn"
+                    onClick={() => run(() => updateQty(item.product_id, item.size_id, Math.max(1, item.quantity - 1)))}
+                    disabled={item.quantity <= 1}
+                    aria-label="Giảm số lượng"
+                  >
+                    <ion-icon name="remove-outline"></ion-icon>
+                  </button>
+                  <span className="qty-val">{item.quantity}</span>
+                  <button
+                    type="button"
+                    className="qty-btn"
+                    onClick={() => run(() => updateQty(item.product_id, item.size_id, item.quantity + 1))}
+                    disabled={item.stock_quantity != null && item.quantity >= item.stock_quantity}
+                    title={item.stock_quantity != null && item.quantity >= item.stock_quantity ? "Đã đạt số bánh còn lại" : undefined}
+                    aria-label="Tăng số lượng"
+                  >
+                    <ion-icon name="add-outline"></ion-icon>
+                  </button>
                 </div>
                 <p>{formatVND(item.price * item.quantity)}</p>
               </div>
@@ -52,10 +69,10 @@ export default function CartDrawer() {
         {items.length > 0 && (
           <div className="cart-footer">
             <div className="cart-total">
-              <span>Total:</span>
+              <span>Tổng cộng:</span>
               <strong>{formatVND(totalCost())}</strong>
             </div>
-            <button className="checkout-btn" onClick={handleCheckout}>Checkout</button>
+            <button className="checkout-btn" onClick={handleCheckout}>Thanh toán</button>
           </div>
         )}
       </div>

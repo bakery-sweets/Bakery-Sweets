@@ -1,10 +1,10 @@
 .site-footer {
-  background-color: #212121; /* Nền xám đen đúng chuẩn như hình desktop người dùng gửi */
+  background-color: var(--color-navy); /* Nền xám đen đúng chuẩn như hình desktop người dùng gửi */
   color: #ffffff;
   padding: 50px 30px 25px;
   width: 100%;
   box-sizing: border-box;
-  font-family: "Plus Jakarta Sans", "Montserrat", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   position: relative;
 }
 
@@ -31,7 +31,7 @@
 /* TIÊU ĐỀ CỘT: CHỮ IN HOA MÀU TRẮNG ĐẬM */
 .footer-title {
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   color: #ffffff;
   margin: 0 0 18px;
   letter-spacing: 0.5px;
@@ -99,7 +99,7 @@
 .social-icon-btn {
   width: 38px;
   height: 38px;
-  background-color: #f5d7d7; /* Nền hồng phấn */
+  background-color: var(--color-pink-soft); /* Nền hồng phấn */
   color: #1a1a1a !important; /* Icon đen đậm */
   border-radius: 9px;
   display: flex;
@@ -114,7 +114,7 @@
 .social-icon-btn:hover {
   background-color: #ffffff;
   transform: translateY(-3px) scale(1.1);
-  box-shadow: 0 5px 14px rgba(245, 215, 215, 0.45);
+  box-shadow: 0 5px 14px rgba(237, 138, 159, 0.45);
 }
 
 /* ẨN THANH ĐƯỜNG KẺ / SCROLL TRACK TRONG FOOTER */
@@ -131,7 +131,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background-color: #5d6f8a;
+  background-color: var(--color-pink);
   color: #ffffff;
   border: none;
   cursor: pointer;
@@ -145,7 +145,7 @@
 }
 
 .footer-scroll-top-btn:hover {
-  background-color: #7287a5;
+  background-color: var(--color-pink-hover);
   transform: translateY(-3px) scale(1.08);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }

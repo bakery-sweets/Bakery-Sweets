@@ -1,0 +1,656 @@
+.products-page-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #fbfbfd;
+}
+
+/* ==========================================================================
+   MAIN CONTENT CONTAINER — KÉO RỘNG SÁT RÌA
+   ========================================================================== */
+.home-content-container {
+  width: 100%;
+  max-width: 100%; /* Kéo rộng toàn màn hình sát hai bên mép */
+  padding: 28px 24px 70px;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+/* MOBILE FILTER TOGGLE BAR */
+.mobile-filter-bar {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  background: #ffffff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+}
+
+.mobile-filter-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1a2639;
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mobile-filter-toggle-btn ion-icon {
+  font-size: 16px;
+}
+
+.mobile-results-count {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   LAYOUT ROW: BỘ LỌC SÁT RÌA TRÁI + LIST SẢN PHẨM 6 CỘT PHẢI
+   ========================================================================== */
+.home-layout-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* ==========================================================================
+   CỘT BÊN TRÁI: BỘ LỌC TÌM KIẾM NÂNG CAO (NẰM SÁT RÌA TRÁI)
+   ========================================================================== */
+.home-filter-sidebar {
+  width: 290px; /* Mở rộng khối tìm kiếm nâng cao theo yêu cầu */
+  flex-shrink: 0;
+  position: sticky;
+  top: 88px; /* Nằm dưới thanh header đang sticky */
+  z-index: 20;
+}
+
+.filter-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px 16px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.filter-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 8px;
+}
+
+.filter-card-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1a2639;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap; /* Chữ "TÌM KIẾM NÂNG CAO" luôn nằm trọn trên 1 hàng */
+}
+
+.filter-card-title ion-icon {
+  font-size: 18px;
+  color: var(--color-pink);
+}
+
+.filter-reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.filter-reset-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.filter-reset-btn ion-icon {
+  font-size: 14px;
+}
+
+/* FILTER GROUPS */
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.filter-label ion-icon {
+  font-size: 15px;
+  color: #64748b;
+}
+
+/* INPUT TÌM KIẾM TÊN */
+.filter-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 8px 60px 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  background: #f8fafc;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.filter-input:focus {
+  background: #ffffff;
+  border-color: #8bb4f7;
+  box-shadow: 0 0 0 2px rgba(202, 219, 251, 0.5);
+}
+
+.filter-clear-input {
+  position: absolute;
+  right: 32px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  transition: color 0.15s;
+}
+
+.filter-clear-input:hover {
+  color: #ef4444;
+}
+
+.filter-search-btn {
+  position: absolute;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  background: var(--color-pink);
+  border: none;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.filter-search-btn:hover {
+  background: var(--color-pink-hover);
+  transform: scale(1.05);
+}
+
+/* DANH MỤC CATEGORY LIST */
+.filter-category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filter-category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.filter-category-item .cat-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-category-item .cat-name ion-icon {
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+.filter-category-item .cat-count {
+  font-size: 11px;
+  background: #e2e8f0;
+  color: #64748b;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.filter-category-item:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.filter-category-item.active {
+  background: #cadbfb;
+  color: #1a2639;
+  border-color: #8bb4f7;
+}
+
+.filter-category-item.active .cat-name ion-icon {
+  color: #1a2639;
+}
+
+.filter-category-item.active .cat-count {
+  background: #1a2639;
+  color: #ffffff;
+}
+
+/* KHOẢNG GIÁ PRICE INPUTS */
+.price-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-input {
+  flex: 1;
+  text-align: center;
+  padding: 8px 6px;
+}
+
+.price-separator {
+  color: #94a3b8;
+  font-weight: bold;
+}
+
+.price-preset-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.price-chip {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.price-chip:hover {
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.price-chip.active {
+  background: #cadbfb;
+  color: #1a2639;
+  border-color: #8bb4f7;
+  font-weight: 700;
+}
+
+/* SẮP XẾP SELECT */
+.filter-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.filter-select:focus {
+  border-color: #8bb4f7;
+  box-shadow: 0 0 0 2px rgba(202, 219, 251, 0.5);
+}
+
+/* ==========================================================================
+   CỘT BÊN PHẢI: KHU VỰC DANH SÁCH SẢN PHẨM (HIỂN THỊ 6 SẢN PHẨM / DÒNG)
+   ========================================================================== */
+.home-main-products {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* HEADER THANH KẾT QUẢ */
+.products-header-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.products-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.products-header-title {
+  font-family: var(--font-playfair, 'Playfair Display', Georgia, serif);
+  font-size: 28px; /* Làm chữ "Tất cả bánh tươi hôm nay" bự ra, nổi bật và sang trọng */
+  font-weight: 700;
+  color: var(--color-navy);
+  margin: 0;
+  letter-spacing: -0.3px;
+  line-height: 1.25;
+}
+
+.products-count-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-navy);
+  background: var(--color-blue-soft);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+}
+
+/* ACTIVE FILTER TAGS */
+.active-filters-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.active-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a2639;
+  background: #cadbfb;
+  border: 1px solid #8bb4f7;
+  padding: 3px 8px;
+  border-radius: 16px;
+}
+
+.active-filter-tag button {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: bold;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+}
+
+.active-filter-tag button:hover {
+  color: #ef4444;
+}
+
+.clear-all-tags-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 2px 4px;
+}
+
+/* NO PRODUCTS FOUND */
+.home-no-products {
+  text-align: center;
+  padding: 60px 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.no-result-icon {
+  font-size: 42px;
+  color: #94a3b8;
+}
+
+.home-no-products h3 {
+  font-size: 16px;
+  color: #1e293b;
+  margin: 0;
+  font-weight: 700;
+}
+
+.home-no-products p {
+  color: #64748b;
+  margin: 0;
+  font-size: 13px;
+}
+
+.reset-search-btn {
+  margin-top: 6px;
+  padding: 8px 18px;
+  background: #1a2639;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.reset-search-btn:hover {
+  background: var(--color-pink);
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (MOBILE, TABLET, DESKTOP)
+   ========================================================================== */
+
+/* 1. MÀN HÌNH ĐIỆN THOẠI (<= 767px) */
+@media (max-width: 767px) {
+  .home-content-container {
+    padding: 16px 12px 40px;
+  }
+
+  .mobile-filter-bar {
+    display: flex;
+  }
+
+  .home-layout-row {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .home-filter-sidebar {
+    width: 100%;
+    position: static;
+    display: none;
+  }
+
+  .home-filter-sidebar.open {
+    display: block;
+    animation: fadeIn 0.25s ease-out;
+  }
+
+  .filter-card {
+    padding: 16px 12px;
+    gap: 14px;
+  }
+}
+
+/* ==========================================================================
+   THANH PHÂN TRANG (PAGINATION)
+   ========================================================================== */
+.products-pagination-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 36px;
+  padding: 16px 0 10px;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #1a2639;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.pagination-btn ion-icon {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--color-pink);
+  color: var(--color-pink);
+  background: #fff8f9;
+  box-shadow: 0 4px 12px rgba(237, 138, 159, 0.15);
+}
+
+.pagination-btn:hover:not(:disabled) ion-icon[name="chevron-back-outline"] {
+  transform: translateX(-3px);
+}
+
+.pagination-btn:hover:not(:disabled) ion-icon[name="chevron-forward-outline"] {
+  transform: translateX(3px);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: #f1f5f9;
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.pagination-numbers-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-number-btn {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.pagination-number-btn:hover:not(.active) {
+  border-color: var(--color-pink);
+  color: var(--color-pink);
+  background: #fff8f9;
+  transform: translateY(-1px);
+}
+
+.pagination-number-btn.active {
+  background: var(--color-navy);
+  color: #ffffff;
+  border-color: var(--color-navy);
+  box-shadow: 0 4px 14px rgba(26, 38, 57, 0.25);
+  cursor: default;
+}
+
+.pagination-ellipsis {
+  padding: 0 4px;
+  color: #94a3b8;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+/* 2. MÀN HÌNH TABLET (768px - 991px) */
+@media (min-width: 768px) and (max-width: 991px) {
+  .home-content-container {
+    padding: 24px 18px 50px;
+  }
+
+  .home-filter-sidebar {
+    width: 250px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

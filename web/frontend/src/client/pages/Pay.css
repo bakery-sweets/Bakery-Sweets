@@ -6,7 +6,7 @@
   padding: 32px 24px 60px;
   box-sizing: border-box;
   background: #f8fafc;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
 }
 
 .pay-container {
@@ -51,8 +51,8 @@
 
 .pay-main-title {
   font-size: 26px;
-  font-weight: 800;
-  color: #0f172a;
+  font-weight: 700;
+  color: var(--color-navy);
   margin: 0 0 4px;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .pay-continue-shop-link {
-  color: #d4845a;
+  color: var(--color-pink);
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
@@ -71,7 +71,7 @@
 }
 
 .pay-continue-shop-link:hover {
-  color: #b5623a;
+  color: var(--color-pink-hover);
   text-decoration: underline;
 }
 
@@ -104,7 +104,7 @@
 .pay-section-title {
   font-size: 16.5px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-navy);
   margin: 0;
   margin-bottom: 10px;
   display: flex;
@@ -128,7 +128,7 @@
 .store-badge {
   font-size: 12px;
   font-weight: 600;
-  color: #d4845a;
+  color: var(--color-pink);
   background: #fff4ed;
   padding: 4px 10px;
   border-radius: 20px;
@@ -149,7 +149,7 @@
 }
 
 .store-location-notice svg {
-  color: #d4845a;
+  color: var(--color-pink);
   flex-shrink: 0;
 }
 
@@ -183,8 +183,8 @@
 
 .time-chip-btn {
   background: #ffffff;
-  border: 1px solid #d4845a;
-  color: #d4845a;
+  border: 1px solid var(--color-pink);
+  color: var(--color-pink);
   font-size: 11.5px;
   font-weight: 600;
   padding: 4px 10px;
@@ -194,7 +194,7 @@
 }
 
 .time-chip-btn:hover {
-  background: #d4845a;
+  background: var(--color-pink);
   color: #ffffff;
 }
 
@@ -258,7 +258,7 @@
 .tab-btn-content strong {
   display: block;
   font-size: 13.5px;
-  color: #0f172a;
+  color: var(--color-navy);
   margin-bottom: 2px;
 }
 
@@ -307,12 +307,12 @@
 .user-name {
   font-size: 14.5px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-navy);
 }
 
 .account-tag {
-  background: #e0f2fe;
-  color: #0284c7;
+  background: var(--color-blue-soft);
+  color: var(--color-navy);
   font-size: 11px;
   font-weight: 700;
   padding: 2px 7px;
@@ -325,7 +325,7 @@
 }
 
 .user-phone strong {
-  color: #0f172a;
+  color: var(--color-navy);
 }
 
 .btn-edit-self {
@@ -411,7 +411,7 @@
   font-size: 13.5px;
   box-sizing: border-box;
   font-family: inherit;
-  color: #0f172a;
+  color: var(--color-navy);
   background: #ffffff;
   transition: all 0.2s;
 }
@@ -458,7 +458,7 @@
 .method-info strong {
   display: block;
   font-size: 13.5px;
-  color: #0f172a;
+  color: var(--color-navy);
   margin-bottom: 2px;
 }
 
@@ -530,7 +530,7 @@
 }
 
 .info-val {
-  color: #0f172a;
+  color: var(--color-navy);
   font-weight: 600;
 }
 
@@ -542,7 +542,7 @@
 .info-val.amount {
   font-size: 14px;
   font-weight: 800;
-  color: #d4845a;
+  color: var(--color-pink);
 }
 
 .stk-copy-box {
@@ -575,8 +575,8 @@
 }
 
 .transfer-syntax {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--color-blue-soft);
+  color: var(--color-navy);
   padding: 2px 8px;
   border-radius: 5px;
   font-weight: 700;
@@ -656,7 +656,7 @@
   margin: 0 0 2px;
   font-size: 13.5px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-navy);
 }
 
 .pay-item-size, .pay-item-qty {
@@ -669,7 +669,7 @@
 .pay-item-total {
   font-size: 13.5px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-navy);
   white-space: nowrap;
 }
 
@@ -693,13 +693,13 @@
 }
 
 .voucher-selector-card:hover {
-  border-color: #d4845a;
+  border-color: var(--color-pink);
   background: #fffaf5;
 }
 
 .voucher-selector-card.has-voucher {
-  border-color: #d4845a;
-  background: #fdf5f0;
+  border-color: var(--color-pink);
+  background: var(--color-pink-soft);
 }
 
 .voucher-card-left {
@@ -720,7 +720,7 @@
 }
 
 .voucher-pill {
-  background: #d4845a;
+  background: var(--color-pink);
   color: #fff;
   font-weight: 800;
   font-size: 10.5px;
@@ -755,13 +755,13 @@
 .btn-open-vouchers {
   font-size: 12.5px;
   font-weight: 700;
-  color: #d4845a;
+  color: var(--color-pink);
 }
 
 .btn-change-voucher {
   background: #ffffff;
-  border: 1px solid #d4845a;
-  color: #d4845a;
+  border: 1px solid var(--color-pink);
+  color: var(--color-pink);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 11.5px;
@@ -840,8 +840,8 @@
 .modal-title {
   margin: 0 0 4px;
   font-size: 18px;
-  font-weight: 800;
-  color: #0f172a;
+  font-weight: 700;
+  color: var(--color-navy);
 }
 
 .modal-sub {
@@ -867,7 +867,7 @@
 
 .modal-close-btn:hover {
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--color-navy);
 }
 
 /* VOUCHER CARDS LIST */
@@ -893,14 +893,14 @@
 }
 
 .voucher-item-card:hover {
-  border-color: #d4845a;
+  border-color: var(--color-pink);
   background: #fffcf9;
 }
 
 .voucher-item-card.active {
-  border-color: #d4845a;
+  border-color: var(--color-pink);
   background: #fff7ed;
-  box-shadow: 0 2px 8px rgba(212, 132, 90, 0.15);
+  box-shadow: 0 2px 8px rgba(237, 138, 159, 0.15);
 }
 
 .voucher-item-card.ineligible {
@@ -930,7 +930,7 @@
 }
 
 .voucher-item-card.active .voucher-code-badge {
-  background: #d4845a;
+  background: var(--color-pink);
 }
 
 .voucher-item-texts {
@@ -941,7 +941,7 @@
   margin: 0 0 2px;
   font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-navy);
 }
 
 .voucher-item-desc {
@@ -972,7 +972,7 @@
 }
 
 .voucher-applied-pill {
-  background: #d4845a;
+  background: var(--color-pink);
   color: #fff;
   font-size: 11.5px;
   font-weight: 700;
@@ -993,7 +993,7 @@
 }
 
 .voucher-select-btn:hover {
-  background: #d4845a;
+  background: var(--color-pink);
 }
 
 .voucher-disabled-btn {
@@ -1110,14 +1110,14 @@
 .cost-line.grand-total {
   font-size: 15.5px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-navy);
   border-top: 1.5px dashed #cbd5e1;
   padding-top: 12px;
   margin-top: 12px;
 }
 
 .total-amount {
-  color: #d4845a;
+  color: var(--color-pink);
   font-size: 21px;
   font-weight: 800;
 }
@@ -1137,7 +1137,7 @@
 }
 
 .pay-submit-btn:hover {
-  background: #2a3c56;
+  background: var(--color-navy-hover);
   transform: translateY(-1px);
 }
 
@@ -1235,7 +1235,7 @@
 
 .order-success-title {
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   color: #1a2639;
   margin: 0 0 8px;
   text-align: center;
@@ -1284,8 +1284,8 @@
 }
 
 .order-success-code-badge {
-  background: #e0f2fe;
-  color: #0284c7;
+  background: var(--color-blue-soft);
+  color: var(--color-navy);
   padding: 3px 10px;
   border-radius: 6px;
   font-weight: 700;
@@ -1302,7 +1302,7 @@
 .order-success-total-price {
   font-size: 18px;
   font-weight: 800;
-  color: #d4845a;
+  color: var(--color-pink);
 }
 
 .order-success-actions {
@@ -1321,7 +1321,7 @@
   background: #f1f5f9;
   color: #334155;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -1331,7 +1331,7 @@
 
 .order-success-btn-home:hover {
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--color-navy);
 }
 
 .order-success-btn-home ion-icon {
@@ -1345,22 +1345,22 @@
   justify-content: center;
   gap: 8px;
   padding: 13px 16px;
-  background: #d4845a;
+  background: var(--color-navy);
   color: #ffffff;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(212, 132, 90, 0.35);
+  box-shadow: 0 4px 14px rgba(26, 38, 57, 0.2);
 }
 
 .order-success-btn-receipt:hover {
-  background: #b5623a;
+  background: var(--color-navy-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(212, 132, 90, 0.45);
+  box-shadow: 0 6px 18px rgba(26, 38, 57, 0.3);
 }
 
 .order-success-btn-receipt ion-icon {

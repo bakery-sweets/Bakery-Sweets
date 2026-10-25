@@ -12,6 +12,7 @@ export const clientProductsApi = {
   getAll: (params) => axiosClient.get("/client/products", { params }),
   getById: (id) => axiosClient.get(`/client/products/${id}`),
   getCategories: () => axiosClient.get("/client/products/categories"),
+  getBestSellers: (limit = 4) => axiosClient.get("/client/products/best-sellers", { params: { limit } }),
 };
 
 export const clientCartApi = {
@@ -34,7 +35,3 @@ export const clientPromotionsApi = {
   apply: (data) => axiosClient.post("/client/promotions/apply", data),
 };
 
-export const clientNotificationsApi = {
-  getRecent: (limit = 5) => axiosClient.get("/client/notifications", { params: { limit } }),
-  markAllRead: () => axiosClient.put("/client/notifications/read-all"),
-};

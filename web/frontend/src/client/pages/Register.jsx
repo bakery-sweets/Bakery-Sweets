@@ -25,7 +25,7 @@ export default function Register() {
 
   const navigate = useNavigate();
 
-  // Nhấn Enter chuyển focus sang ô tiếp theo theo chiều ngang (Phone -> Email -> First Name -> Last Name -> Password -> Confirm Password)
+  // Nhấn Enter chuyển focus sang ô tiếp theo theo chiều ngang (SĐT -> Email -> Họ -> Tên -> Mật khẩu -> Xác nhận mật khẩu)
   const handleKeyDown = (e, nextRef) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -105,7 +105,7 @@ export default function Register() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 20px', backgroundColor: '#fff', minHeight: '80vh' }}>
       <div style={{ width: '100%', maxWidth: '800px' }}>
-        <h1 style={{ textAlign: 'center', color: '#1a2639', marginBottom: '50px', fontSize: '36px', fontWeight: 'bold' }}>Registration</h1>
+        <h1 style={{ textAlign: 'center', color: '#1a2639', marginBottom: '50px', fontSize: '36px', fontWeight: 'bold' }}>Đăng ký tài khoản</h1>
         
         <form onSubmit={handleRegister}>
           <div className="register-grid">
@@ -115,7 +115,7 @@ export default function Register() {
               <input 
                 ref={phoneRef}
                 type="tel" 
-                placeholder="Phone number*" 
+                placeholder="Số điện thoại*" 
                 value={phone} 
                 onChange={e => setPhone(e.target.value)} 
                 onKeyDown={e => handleKeyDown(e, emailRef)}
@@ -145,7 +145,7 @@ export default function Register() {
               <input 
                 ref={firstNameRef}
                 type="text" 
-                placeholder="First Name" 
+                placeholder="Họ" 
                 value={firstName} 
                 onChange={e => setFirstName(e.target.value)} 
                 onKeyDown={e => handleKeyDown(e, lastNameRef)}
@@ -160,7 +160,7 @@ export default function Register() {
               <input 
                 ref={lastNameRef}
                 type="text" 
-                placeholder="Last Name" 
+                placeholder="Tên" 
                 value={lastName} 
                 onChange={e => setLastName(e.target.value)} 
                 onKeyDown={e => handleKeyDown(e, passwordRef)}
@@ -175,7 +175,7 @@ export default function Register() {
               <input 
                 ref={passwordRef}
                 type="password" 
-                placeholder="Password" 
+                placeholder="Mật khẩu" 
                 value={password} 
                 onChange={e => setPassword(e.target.value)} 
                 onKeyDown={e => handleKeyDown(e, confirmPasswordRef)}
@@ -190,7 +190,7 @@ export default function Register() {
               <input 
                 ref={confirmPasswordRef}
                 type="password" 
-                placeholder="Confirm Password" 
+                placeholder="Xác nhận mật khẩu" 
                 value={confirmPassword} 
                 onChange={e => setConfirmPassword(e.target.value)} 
                 onKeyDown={handleConfirmKeyDown}
@@ -217,7 +217,7 @@ export default function Register() {
               }}
               style={{ width: '18px', height: '18px', cursor: 'pointer' }} 
             />
-            <label htmlFor="agree" style={{ color: '#333', cursor: 'pointer', fontSize: '15px' }}>I agree to the terms & conditions</label>
+            <label htmlFor="agree" style={{ color: '#333', cursor: 'pointer', fontSize: '15px' }}>Tôi đồng ý với các điều khoản &amp; điều kiện</label>
           </div>
 
           <button type="submit" disabled={submitting} style={{ 
@@ -226,17 +226,17 @@ export default function Register() {
             backgroundColor: '#1a2639', 
             color: '#fff', 
             border: 'none', 
-            borderRadius: '6px', 
+            borderRadius: '10px', 
             fontSize: '18px', 
             fontWeight: '600', 
             cursor: 'pointer',
             marginBottom: '20px'
           }}>
-            Register
+            Đăng ký
           </button>
 
           <div style={{ textAlign: 'center', fontSize: '15px', color: '#333' }}>
-            Already have an account? <Link to="/login" style={{ color: '#1a2639', fontWeight: 'bold', textDecoration: 'none' }}>Login</Link>
+            Đã có tài khoản? <Link to="/login" style={{ color: '#1a2639', fontWeight: 'bold', textDecoration: 'none' }}>Đăng nhập</Link>
           </div>
         </form>
       </div>

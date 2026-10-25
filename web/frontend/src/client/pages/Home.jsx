@@ -1,101 +1,58 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import useCartStore from '../../store/cartStore';
+import { Link } from 'react-router-dom';
 import { clientProductsApi } from '../../api/client';
-import { formatVND, formatStock, imageUrl, apiErrorMessage } from '../../utils/format';
-import popup from '../../utils/popup';
+import ProductCard from '../components/ProductCard';
+import { imageUrl, apiErrorMessage } from '../../utils/format';
 import './Home.css';
-
-const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
 
 const BANNERS = ['/assets/Img/banner1.jpg', '/assets/Img/banner2.jpg'];
 
-// Size rẻ nhất của món, dùng cho nút "Thêm vào giỏ" nhanh ở trang chủ
-const cheapestSize = (product) =>
-  product.sizes.reduce((min, s) => (!min || Number(s.price) < Number(min.price) ? s : min), null);
+const NEW_PRODUCTS_COUNT = 5;
+
+const ORDER_STEPS = [
+  {
+    icon: 'storefront',
+    title: 'Chọn bánh yêu thích',
+    desc: 'Xem thực đơn, chọn món và size rồi thêm vào giỏ hàng.',
+  },
+  {
+    icon: 'time',
+    title: 'Hẹn giờ nhận bánh',
+    desc: 'Chọn ngày giờ đến lấy, thanh toán tiền mặt hoặc chuyển khoản.',
+  },
+  {
+    icon: 'bag-check',
+    title: 'Nhận bánh tại tiệm',
+    desc: 'Bánh được chuẩn bị sẵn, bạn chỉ cần ghé tiệm đúng giờ đã hẹn.',
+  },
+];
+
+const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function Home() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const urlSearch = searchParams.get('search') || '';
-
-  // Cart store & added notification
-  const { addItem } = useCartStore();
-  const [addedId, setAddedId] = useState(null);
-
-  // Dữ liệu sản phẩm & danh mục từ API
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([{ id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' }]);
+  const [bestSellers, setBestSellers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [currentBanner, setCurrentBanner] = useState(0);
 
   useEffect(() => {
-    Promise.all([clientProductsApi.getAll(), clientProductsApi.getCategories()])
-      .then(([productRes, categoryRes]) => {
-        setProducts(
-          productRes.data
-            .filter((p) => p.sizes.length > 0)
-            .map((p) => {
-              const total = p.stock_quantity ?? p.sizes?.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0) ?? 0;
-              return {
-                ...p,
-                price: Number(p.min_price),
-                stock: p.stock_display || formatStock(total),
-              };
-            })
-        );
-        setCategories([
-          { id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' },
-          ...categoryRes.data.map((c, idx) => ({
-            id: c.category_id,
-            name: c.category_name,
-            icon: CATEGORY_ICONS[idx % CATEGORY_ICONS.length],
-          })),
-        ]);
+    Promise.all([
+      clientProductsApi.getAll(),
+      clientProductsApi.getBestSellers ? clientProductsApi.getBestSellers(4) : Promise.resolve({ data: [] }),
+    ])
+      .then(([productRes, bestRes]) => {
+        const availableProducts = (productRes.data || []).filter((p) => p.sizes.length > 0);
+        setProducts(availableProducts);
+        if (bestRes?.data?.length > 0) {
+          setBestSellers(bestRes.data.filter((p) => p.sizes.length > 0).slice(0, 4));
+        } else {
+          setBestSellers(availableProducts.slice(0, 4));
+        }
       })
       .catch((err) => setLoadError(apiErrorMessage(err, 'Không tải được danh sách bánh.')))
       .finally(() => setLoading(false));
   }, []);
-
-  const handleAddToCart = async (e, product) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const size = cheapestSize(product);
-    try {
-      await addItem(
-        {
-          product_id: product.product_id,
-          product_name: product.product_name,
-          image: imageUrl(product.image),
-        },
-        size,
-        1
-      );
-      setAddedId(product.product_id);
-      setTimeout(() => setAddedId(null), 1200);
-      popup.success(`Đã thêm "${product.product_name}" vào giỏ hàng!`);
-    } catch (err) {
-      popup.error(apiErrorMessage(err, 'Không thêm được vào giỏ hàng.'));
-    }
-  };
-
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState(urlSearch);
-  const [searchInput, setSearchInput] = useState(urlSearch);
-  const [category, setCategory] = useState('ALL');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-
-  // Pagination & Banner
-  const [page, setPage] = useState(1);
-  const [currentBanner, setCurrentBanner] = useState(0);
-
-  // Sync search input if URL search param changes
-  useEffect(() => {
-    setSearchTerm(urlSearch);
-    setSearchInput(urlSearch);
-  }, [urlSearch]);
 
   // Banner slideshow
   useEffect(() => {
@@ -105,76 +62,22 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter & Sort Products
-  const filteredProducts = useMemo(() => {
+  // Chỉ lấy tối đa 4 món mới nhất ra mắt trong vòng 1 tháng
+  const newProducts = useMemo(() => {
+    const now = Date.now();
     return products
       .filter((p) => {
-        const matchesName = p.product_name.toLowerCase().includes(searchTerm.toLowerCase().trim());
-        const matchesCat = category === 'ALL' || p.category_id === category;
-        const matchesMinPrice = minPrice === '' || p.price >= parseFloat(minPrice);
-        const matchesMaxPrice = maxPrice === '' || p.price <= parseFloat(maxPrice);
-        return matchesName && matchesCat && matchesMinPrice && matchesMaxPrice;
+        if (!p.created_at) return true;
+        const t = new Date(p.created_at).getTime();
+        return !isNaN(t) && now - t <= ONE_MONTH_MS;
       })
       .sort((a, b) => {
-        if (sortBy === 'price-asc') return a.price - b.price;
-        if (sortBy === 'price-desc') return b.price - a.price;
-        if (sortBy === 'name-asc') return a.product_name.localeCompare(b.product_name);
-        return 0;
-      });
-  }, [products, searchTerm, category, minPrice, maxPrice, sortBy]);
-
-  const categoryName = (id) => categories.find((c) => c.id === id)?.name || id;
-
-  // Xử lý tìm kiếm khi ấn Enter hoặc bấm kính lúp
-  const handleSearchSubmit = (e) => {
-    if (e) e.preventDefault();
-    const query = searchInput.trim();
-    setSearchTerm(query);
-    setPage(1);
-    if (query) {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('search', query);
-        return next;
-      });
-    } else {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('search');
-        return next;
-      });
-    }
-  };
-
-  // Xóa từ khóa tìm kiếm
-  const handleClearSearch = () => {
-    setSearchInput('');
-    setSearchTerm('');
-    setPage(1);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete('search');
-      return next;
-    });
-  };
-
-  // Reset all filters
-  const handleResetFilters = () => {
-    setSearchInput('');
-    setSearchTerm('');
-    setCategory('ALL');
-    setMinPrice('');
-    setMaxPrice('');
-    setSortBy('default');
-    setSearchParams({});
-    setPage(1);
-  };
-
-  const handlePricePreset = (min, max) => {
-    setMinPrice(min);
-    setMaxPrice(max);
-    setPage(1);
-  };
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA || b.product_id - a.product_id;
+      })
+      .slice(0, 4);
+  }, [products]);
 
   return (
     <div className="home-page-wrapper">
@@ -189,6 +92,36 @@ export default function Home() {
           />
         ))}
 
+        {/* LỚP PHỦ NỘI DUNG HERO BANNER */}
+        <div className="home-hero-overlay">
+          <div className="home-hero-content">
+            <h1 className="home-hero-title">
+              <span className="hero-title-main">Hương Vị Ngọt Ngào</span>
+              <span className="hero-title-sub">Từ Trái Tim</span>
+            </h1>
+            <p className="home-hero-desc">
+              Từng chiếc bánh cao cấp được tuyển chọn và nhập mới mỗi ngày, gửi gắm trọn vẹn hương vị tinh tế cùng chút ngọt ngào đến bạn.
+            </p>
+            <div className="home-hero-actions">
+              <Link to="/products" className="hero-btn-primary">
+                <span>Đặt Bánh Ngay</span>
+                <ion-icon name="arrow-forward-outline"></ion-icon>
+              </Link>
+              <button
+                type="button"
+                className="hero-btn-secondary"
+                onClick={() => {
+                  const el = document.querySelector('.home-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                <span>Xem Thực Đơn</span>
+                <ion-icon name="restaurant-outline"></ion-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Các chấm điều hướng banner */}
         <div className="home-banner-dots">
           {BANNERS.map((_, idx) => (
@@ -201,314 +134,96 @@ export default function Home() {
             />
           ))}
         </div>
+      </div>
 
-        {/* Nút gợi ý cuộn xuống khám phá thực đơn bánh */}
-        <div
-          className="home-banner-scroll-hint"
-          onClick={() => {
-            const content = document.querySelector('.home-content-container');
-            if (content) content.scrollIntoView({ behavior: 'smooth' });
-          }}
-          title="Cuộn xuống khám phá thực đơn bánh"
-        >
-          <span className="scroll-hint-text">Khám phá thực đơn</span>
-          <ion-icon name="chevron-down-outline"></ion-icon>
+      {/* BĂNG THỐNG KÊ CAM KẾT (DƯỚI HERO BANNER) */}
+      <div className="home-stats-strip">
+        <div className="home-stats-container">
+          <div className="home-stat-item">
+            <div className="stat-number">100%</div>
+            <div className="stat-label">Bánh Tươi Nhập Khẩu</div>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="home-stat-item">
+            <div className="stat-number stat-highlight">08:00</div>
+            <div className="stat-label">Bánh Mới Về Tiệm Mỗi Ngày</div>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="home-stat-item">
+            <div className="stat-number">15 Phút</div>
+            <div className="stat-label">Chuẩn Bị Sẵn Nhận Tại Tiệm</div>
+          </div>
         </div>
       </div>
 
-      {/* KHUNG NỘI DUNG CHÍNH (SIDEBAR TRÁI + LIST SẢN PHẨM PHẢI) */}
-      <div className="home-content-container">
-        {/* NÚT BẬT BỘ LỌC TRÊN MOBILE */}
-        <div className="mobile-filter-bar">
-          <button
-            type="button"
-            className="mobile-filter-toggle-btn"
-            onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-          >
-            <ion-icon name="options-outline"></ion-icon>
-            <span>{mobileFilterOpen ? 'Ẩn bộ lọc' : 'Bộ lọc tìm kiếm nâng cao'}</span>
-          </button>
-          <span className="mobile-results-count">
-            {filteredProducts.length} sản phẩm
-          </span>
+      {/* NHỮNG CHIẾC BÁNH ĐƯỢC YÊU THÍCH NHẤT */}
+      {!loading && !loadError && bestSellers.length > 0 && (
+        <section className="home-section">
+          <div className="home-section-head">
+            <div>
+              <p className="home-section-eyebrow">Tuyển chọn bán chạy</p>
+              <h2 className="home-favorite-title">Bánh được yêu thích nhất</h2>
+            </div>
+            <Link to="/products" className="home-section-link">
+              Xem tất cả <ion-icon name="arrow-forward-outline"></ion-icon>
+            </Link>
+          </div>
+          <div className="home-bestsellers-grid">
+            {bestSellers.map((product) => (
+              <ProductCard key={product.product_id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* MÓN MỚI RA LÒ (TỐI ĐA 4 MÓN TRONG 1 THÁNG) */}
+      {!loading && !loadError && newProducts.length > 0 && (
+        <section className="home-section">
+          <div className="home-section-head">
+            <div>
+              <p className="home-section-eyebrow">Vừa ra lò</p>
+              <h2 className="home-favorite-title">Món mới</h2>
+            </div>
+            <Link to="/products" className="home-section-link">
+              Xem thực đơn <ion-icon name="arrow-forward-outline"></ion-icon>
+            </Link>
+          </div>
+          <div className="home-bestsellers-grid">
+            {newProducts.map((product) => (
+              <ProductCard key={product.product_id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* CÁCH ĐẶT BÁNH 3 BƯỚC */}
+      <section className="home-section">
+        <div className="home-section-head home-section-head-center">
+          <div>
+            <p className="home-section-eyebrow">Đặt trước, đến là có</p>
+            <h2 className="home-section-title">Đặt bánh chỉ với 3 bước</h2>
+          </div>
         </div>
-
-        <div className="home-layout-row">
-          {/* CỘT BÊN TRÁI: BỘ LỌC TÌM KIẾM NÂNG CAO */}
-          <aside className={`home-filter-sidebar ${mobileFilterOpen ? 'open' : ''}`}>
-            <div className="filter-card">
-              <div className="filter-card-header">
-                <div className="filter-card-title">
-                  <ion-icon name="funnel-outline"></ion-icon>
-                  <span>Tìm kiếm nâng cao</span>
+        <div className="home-steps-process">
+          <div className="process-connecting-line"></div>
+          <div className="home-steps-grid">
+            {ORDER_STEPS.map((step, idx) => (
+              <div key={step.title} className="home-step-col">
+                <div className="home-step-circle-badge">
+                  <span>{idx + 1}</span>
                 </div>
-                <button
-                  type="button"
-                  className="filter-reset-btn"
-                  onClick={handleResetFilters}
-                  title="Đặt lại tất cả bộ lọc"
-                >
-                  <ion-icon name="refresh-outline"></ion-icon>
-                  <span>Đặt lại</span>
-                </button>
-              </div>
-
-              {/* 1. TÌM THEO TÊN BÁNH */}
-              <div className="filter-group">
-                <label className="filter-label">
-                  <ion-icon name="search-outline"></ion-icon>
-                  Tên bánh
-                </label>
-                <form onSubmit={handleSearchSubmit} className="filter-input-wrap">
-                  <input
-                    type="text"
-                    className="filter-input"
-                    placeholder="Nhập tên bánh..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                  />
-                  {searchInput && (
-                    <button
-                      type="button"
-                      className="filter-clear-input"
-                      onClick={handleClearSearch}
-                      title="Xóa từ khóa"
-                    >
-                      <ion-icon name="close-circle"></ion-icon>
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    className="filter-search-btn"
-                    title="Tìm kiếm"
-                    aria-label="Tìm kiếm"
-                  >
-                    <ion-icon name="search-outline"></ion-icon>
-                  </button>
-                </form>
-              </div>
-
-              {/* 2. LỌC THEO DANH MỤC */}
-              <div className="filter-group">
-                <label className="filter-label">
-                  <ion-icon name="albums-outline"></ion-icon>
-                  Danh mục sản phẩm
-                </label>
-                <div className="filter-category-list">
-                  {categories.map((cat) => {
-                    const count =
-                      cat.id === 'ALL'
-                        ? products.length
-                        : products.filter((p) => p.category_id === cat.id).length;
-                    const isActive = category === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        className={`filter-category-item ${isActive ? 'active' : ''}`}
-                        onClick={() => {
-                          setCategory(cat.id);
-                          setPage(1);
-                        }}
-                      >
-                        <span className="cat-name">
-                          <ion-icon name={cat.icon}></ion-icon>
-                          {cat.name}
-                        </span>
-                        <span className="cat-count">{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. KHOẢNG GIÁ */}
-              <div className="filter-group">
-                <label className="filter-label">
-                  <ion-icon name="pricetag-outline"></ion-icon>
-                  Khoảng giá (₫)
-                </label>
-                <div className="price-inputs-row">
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Min"
-                    className="filter-input price-input"
-                    value={minPrice}
-                    onChange={(e) => {
-                      setMinPrice(e.target.value);
-                      setPage(1);
-                    }}
-                  />
-                  <span className="price-separator">-</span>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Max"
-                    className="filter-input price-input"
-                    value={maxPrice}
-                    onChange={(e) => {
-                      setMaxPrice(e.target.value);
-                      setPage(1);
-                    }}
-                  />
-                </div>
-
-                {/* Phím tắt giá nhanh */}
-                <div className="price-preset-chips">
-                  <button
-                    type="button"
-                    className={`price-chip ${minPrice === '' && maxPrice === '50000' ? 'active' : ''}`}
-                    onClick={() => handlePricePreset('', '50000')}
-                  >
-                    Dưới 50k
-                  </button>
-                  <button
-                    type="button"
-                    className={`price-chip ${minPrice === '50000' && maxPrice === '150000' ? 'active' : ''}`}
-                    onClick={() => handlePricePreset('50000', '150000')}
-                  >
-                    50k - 150k
-                  </button>
-                  <button
-                    type="button"
-                    className={`price-chip ${minPrice === '150000' && maxPrice === '' ? 'active' : ''}`}
-                    onClick={() => handlePricePreset('150000', '')}
-                  >
-                    Trên 150k
-                  </button>
-                </div>
-              </div>
-
-              {/* 4. SẮP XẾP */}
-              <div className="filter-group">
-                <label className="filter-label">
-                  <ion-icon name="swap-vertical-outline"></ion-icon>
-                  Sắp xếp theo
-                </label>
-                <select
-                  className="filter-select"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="default">Mặc định</option>
-                  <option value="price-asc">Giá: Thấp đến cao</option>
-                  <option value="price-desc">Giá: Cao đến thấp</option>
-                  <option value="name-asc">Tên: A → Z</option>
-                </select>
-              </div>
-            </div>
-          </aside>
-
-          {/* CỘT BÊN PHẢI: DANH SÁCH SẢN PHẨM */}
-          <main className="home-main-products">
-            {/* THANH THỐNG KÊ KẾT QUẢ & TIÊU ĐỀ */}
-            <div className="products-header-bar">
-              <div className="products-header-left">
-                <h2 className="products-header-title">
-                  {category === 'ALL'
-                    ? 'Tất cả bánh tươi hôm nay'
-                    : categoryName(category)}
-                </h2>
-                <span className="products-count-badge">
-                  {filteredProducts.length} món
-                </span>
-              </div>
-
-              {/* Tag lọc đang áp dụng */}
-              {(searchTerm || category !== 'ALL' || minPrice || maxPrice || sortBy !== 'default') && (
-                <div className="active-filters-chips">
-                  {searchTerm && (
-                    <span className="active-filter-tag">
-                      Từ khóa: "{searchTerm}"
-                      <button onClick={handleClearSearch}>×</button>
-                    </span>
-                  )}
-                  {category !== 'ALL' && (
-                    <span className="active-filter-tag">
-                      {categoryName(category)}
-                      <button onClick={() => setCategory('ALL')}>×</button>
-                    </span>
-                  )}
-                  {(minPrice || maxPrice) && (
-                    <span className="active-filter-tag">
-                      Giá: {minPrice ? formatVND(minPrice) : '0₫'} - {maxPrice ? formatVND(maxPrice) : '∞'}
-                      <button onClick={() => { setMinPrice(''); setMaxPrice(''); }}>×</button>
-                    </span>
-                  )}
-                  <button className="clear-all-tags-btn" onClick={handleResetFilters}>
-                    Xóa tất cả
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* LƯỚI SẢN PHẨM */}
-            {loading ? (
-              <div className="home-no-products">
-                <h3>Đang tải danh sách bánh...</h3>
-              </div>
-            ) : loadError ? (
-              <div className="home-no-products">
-                <h3>{loadError}</h3>
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="home-no-products">
-                <ion-icon name="search-outline" className="no-result-icon"></ion-icon>
-                <h3>Không tìm thấy món bánh nào!</h3>
-                <p>Hãy thử tìm với từ khóa hoặc điều chỉnh khoảng giá khác.</p>
-                <button
-                  type="button"
-                  className="reset-search-btn"
-                  onClick={handleResetFilters}
-                >
-                  Xem tất cả bánh
-                </button>
-              </div>
-            ) : (
-              <div className="home-product-grid">
-                {filteredProducts.map((product) => (
-                  <div key={product.product_id} className="home-product-card">
-                    <Link to={`/product/${product.product_id}`} className="home-product-link">
-                      <div className="home-product-img-wrap">
-                        <img
-                          src={imageUrl(product.image)}
-                          alt={product.product_name}
-                          className="home-product-img"
-                          onError={(e) => {
-                            e.target.src = '/assets/Img/Sweets1.png';
-                          }}
-                        />
-                        <span className="product-category-tag">{product.category_name}</span>
-                      </div>
-                      <div className="home-product-info">
-                        <h3 className="home-product-title">{product.product_name}</h3>
-                        <p className="home-product-stock">
-                          Số lượng: {product.stock || formatStock(product.stock_quantity ?? product.sizes?.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0))}
-                        </p>
-                        <div className="product-card-bottom">
-                          <p className="home-product-price">{formatVND(product.price)}</p>
-                          <button
-                            type="button"
-                            className={`product-expand-cart-btn ${addedId === product.product_id ? 'added' : ''}`}
-                            onClick={(e) => handleAddToCart(e, product)}
-                            title="Thêm vào giỏ hàng"
-                          >
-                            <ion-icon name={addedId === product.product_id ? "checkmark-circle" : "bag-add-outline"}></ion-icon>
-                            <span className="cart-btn-text">
-                              {addedId === product.product_id ? "Đã thêm!" : "Thêm vào giỏ"}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    </Link>
+                <div className="home-step-card">
+                  <div className="home-step-icon">
+                    <ion-icon name={step.icon}></ion-icon>
                   </div>
-                ))}
+                  <h3>{step.title}</h3>
+                  <p>{step.desc}</p>
+                </div>
               </div>
-            )}
-          </main>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

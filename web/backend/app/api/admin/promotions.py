@@ -32,10 +32,6 @@ def _to_promotion_out(p, used_count: int) -> AdminPromotionOut:
         created_at=p.created_at,
     )
 
-def _with_notified(message: str, p) -> str:
-    count = getattr(p, "notified_count", 0)
-    return f"{message}, đã gửi thông báo tới {count} khách hàng" if count else message
-
 def _single_out(db: Session, p) -> AdminPromotionOut:
     return _to_promotion_out(p, AdminPromotionService.used_counts(db).get(p.promotion_id, 0))
 
@@ -55,7 +51,7 @@ def create_promotion(
     admin: User = Depends(get_current_admin),
 ):
     promo = AdminPromotionService.create(db, data)
-    return ResponseBase(message=_with_notified("Tạo voucher thành công", promo), data=_single_out(db, promo))
+    return ResponseBase(message="Tạo voucher thành công", data=_single_out(db, promo))
 
 @router.put("/{promotion_id}", response_model=ResponseBase[AdminPromotionOut], summary="Cập nhật voucher")
 def update_promotion(
@@ -67,7 +63,7 @@ def update_promotion(
     promo = AdminPromotionService.update(db, promotion_id, data)
     if not promo:
         raise HTTPException(status_code=404, detail="Không tìm thấy voucher")
-    return ResponseBase(message=_with_notified("Cập nhật voucher thành công", promo), data=_single_out(db, promo))
+    return ResponseBase(message="Cập nhật voucher thành công", data=_single_out(db, promo))
 
 @router.patch("/{promotion_id}/status", response_model=ResponseBase[AdminPromotionOut], summary="Đổi trạng thái voucher")
 def update_promotion_status(
@@ -79,4 +75,4 @@ def update_promotion_status(
     promo = AdminPromotionService.update_status(db, promotion_id, data.status)
     if not promo:
         raise HTTPException(status_code=404, detail="Không tìm thấy voucher")
-    return ResponseBase(message=_with_notified("Cập nhật trạng thái voucher thành công", promo), data=_single_out(db, promo))
+    return ResponseBase(message="Cập nhật trạng thái voucher thành công", data=_single_out(db, promo))

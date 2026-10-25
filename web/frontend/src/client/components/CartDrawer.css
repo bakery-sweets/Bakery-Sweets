@@ -73,19 +73,71 @@
 }
 
 .qty-controls {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
   margin: 6px 0;
+  background: #ffffff;
 }
 
+.qty-controls .qty-btn,
 .qty-controls button {
-  width: 26px;
-  height: 26px;
-  border: 1px solid #cbd5e1;
-  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   background: #f8fafc;
+  border: none;
+  font-size: 15px;
   cursor: pointer;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  transition: background 0.2s, color 0.2s;
+  border-radius: 0;
+}
+
+.qty-controls .qty-btn:hover:not(:disabled),
+.qty-controls button:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: var(--color-navy);
+}
+
+.qty-controls .qty-btn:disabled,
+.qty-controls button:disabled {
+  color: #cbd5e1;
+  background: #f8fafc;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.qty-controls .qty-btn ion-icon,
+.qty-controls button ion-icon {
+  font-size: 15px;
+  pointer-events: none;
+  display: block;
+}
+
+.qty-controls .qty-val,
+.qty-controls span {
+  width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #1e293b;
+  background: #ffffff;
+  user-select: none;
+  box-sizing: border-box;
 }
 
 .remove-btn {
@@ -114,10 +166,10 @@
 .checkout-btn {
   width: 100%;
   padding: 14px;
-  background: #d4845a;
+  background: var(--color-navy);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -125,7 +177,7 @@
 }
 
 .checkout-btn:hover {
-  background: #b5623a;
+  background: var(--color-navy-hover);
 }
 
 .empty-cart {
