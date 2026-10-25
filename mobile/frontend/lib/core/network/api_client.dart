@@ -15,7 +15,10 @@ class ApiClient {
       baseUrl: AppConfig.baseUrl,
       connectTimeout: const Duration(milliseconds: AppConfig.connectTimeout),
       receiveTimeout: const Duration(milliseconds: AppConfig.receiveTimeout),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
     ));
 
     // Interceptor: chuẩn hóa URL & tự động gắn JWT token vào mỗi request

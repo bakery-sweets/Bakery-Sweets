@@ -83,6 +83,9 @@ dist-ssr/
 .pub-cache/
 .pub/
 *.iml
+env.json
+*.local.json
+ngrok.env
 
 # Flutter build artifacts
 mobile/frontend/build/
@@ -185,8 +188,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/

@@ -45,6 +45,9 @@ class AppImage extends StatelessWidget {
     if (isNetwork) {
       image = CachedNetworkImage(
         imageUrl: path,
+        httpHeaders: const {
+          'ngrok-skip-browser-warning': 'true',
+        },
         width: width,
         height: height,
         fit: fit,
