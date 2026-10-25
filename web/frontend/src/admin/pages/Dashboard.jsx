@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [hoveredPoint, setHoveredPoint] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -83,6 +84,104 @@ export default function Dashboard() {
     return { completedCount, activeOrders, paidRate, topProduct, upcoming, latest, lowStock };
   }, [orders, products]);
 
+  // 1. Dữ liệu nhịp độ theo khung giờ từ Backend API
+  const hourlySlots = useMemo(() => {
+    if (overview?.hourly_stats && overview.hourly_stats.length > 0) {
+      return overview.hourly_stats;
+    }
+    return [
+      { label: "09h", order_count: 0, revenue: 0, percentage: 0 },
+      { label: "11h", order_count: 0, revenue: 0, percentage: 0 },
+      { label: "14h-16h", order_count: 0, revenue: 0, percentage: 0 },
+      { label: "17h", order_count: 0, revenue: 0, percentage: 0 },
+      { label: "19h", order_count: 0, revenue: 0, percentage: 0 },
+      { label: "21h", order_count: 0, revenue: 0, percentage: 0 },
+    ];
+  }, [overview]);
+
+  const peakSlot = useMemo(() => {
+    return hourlySlots.reduce((max, cur) => (cur.percentage > max.percentage ? cur : max), hourlySlots[0]);
+  }, [hourlySlots]);
+
+  const chartPoints = useMemo(() => {
+    return hourlySlots.map((item, idx) => {
+      const cx = 30 + idx * 60;
+      const barHeight = Math.max(6, Math.round((item.percentage / 100) * 105));
+      const cy = 125 - barHeight;
+      return {
+        ...item,
+        cx,
+        barX: cx - 12,
+        barY: cy,
+        barHeight,
+        cy,
+        isPeak: peakSlot && peakSlot.percentage > 0 && item.label === peakSlot.label,
+      };
+    });
+  }, [hourlySlots, peakSlot]);
+
+  const { linePath, areaPath } = useMemo(() => {
+    if (!chartPoints.length) return { linePath: "", areaPath: "" };
+    let d = `M ${chartPoints[0].cx} ${chartPoints[0].cy}`;
+    for (let i = 0; i < chartPoints.length - 1; i++) {
+      const p0 = chartPoints[i];
+      const p1 = chartPoints[i + 1];
+      const cpX1 = p0.cx + 25;
+      const cpY1 = p0.cy;
+      const cpX2 = p1.cx - 25;
+      const cpY2 = p1.cy;
+      d += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p1.cx} ${p1.cy}`;
+    }
+    const area = `${d} L ${chartPoints[chartPoints.length - 1].cx} 125 L ${chartPoints[0].cx} 125 Z`;
+    return { linePath: d, areaPath: area };
+  }, [chartPoints]);
+
+  // 2. Dữ liệu tiến độ nhập hàng & tồn tủ mát từ Backend API
+  const kitchen = useMemo(() => {
+    const k = overview?.kitchen_stats || {
+      total_imported: 0,
+      total_sold: 0,
+      total_in_stock: 0,
+      ready_rate: 0,
+    };
+    const rate = Math.min(100, Math.max(0, k.ready_rate || 0));
+    // Tọa độ góc quét cho nửa vòng tròn R=70, tâm (85, 85)
+    const endX = Number((85 - 70 * Math.cos((rate / 100) * Math.PI)).toFixed(1));
+    const endY = Number((85 - 70 * Math.sin((rate / 100) * Math.PI)).toFixed(1));
+    return {
+      ...k,
+      rate,
+      endX,
+      endY,
+    };
+  }, [overview]);
+
+  // Xuất dữ liệu CSV
+  const handleExportData = () => {
+    if (!orders.length) return;
+    const headers = ["Mã đơn", "Khách hàng", "Số điện thoại", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày đặt", "Giờ nhận"];
+    const rows = orders.map((o) => [
+      `"${o.order_code || o.order_id}"`,
+      `"${(o.recipient_name || "").replace(/"/g, '""')}"`,
+      `"${o.recipient_phone || ""}"`,
+      o.final_cost,
+      `"${o.payment_status || ""}"`,
+      `"${o.status || ""}"`,
+      `"${o.order_date || ""}"`,
+      `"${o.pickup_time || ""}"`,
+    ]);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `TheSweets_Bao_Cao_Don_Hang_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <AdminHeader />
@@ -96,7 +195,7 @@ export default function Dashboard() {
           </div>
 
           <div className="admin-page-actions">
-            <button className="btn-pill-outline" type="button">
+            <button className="btn-pill-outline" type="button" onClick={handleExportData} title="Xuất báo cáo danh sách đơn hàng sang file CSV">
               <ion-icon name="cloud-upload-outline"></ion-icon>
               <span>Xuất Dữ Liệu</span>
             </button>
@@ -119,7 +218,9 @@ export default function Dashboard() {
           <div className="dashboard-hero-card">
             <div className="kpi-card-header">
               <span className="kpi-label">TỔNG DOANH THU (ĐƠN HOÀN TẤT)</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
+              <Link to="/admin/statistical" className="kpi-circle-arrow" title="Xem báo cáo chi tiết doanh thu">
+                <ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon>
+              </Link>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : formatVND(overview?.total_revenue, " đ")}</div>
@@ -135,7 +236,9 @@ export default function Dashboard() {
           <div className="kpi-card-white">
             <div className="kpi-card-header">
               <span className="kpi-label">ĐƠN BÁNH HOÀN THÀNH</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
+              <Link to="/admin/orders" className="kpi-circle-arrow" title="Xem danh sách đơn hàng">
+                <ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon>
+              </Link>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : stats.completedCount} <span style={{ fontSize: "18px", fontWeight: "600", color: "#64748b" }}>đơn</span></div>
@@ -150,7 +253,9 @@ export default function Dashboard() {
           <div className="kpi-card-white">
             <div className="kpi-card-header">
               <span className="kpi-label">TỶ LỆ ĐÃ THANH TOÁN</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
+              <Link to="/admin/orders" className="kpi-circle-arrow" title="Xem trạng thái thanh toán đơn hàng">
+                <ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon>
+              </Link>
             </div>
             <div>
               <div className="kpi-big-value">{loading ? "..." : `${stats.paidRate.toFixed(1)}%`}</div>
@@ -165,7 +270,9 @@ export default function Dashboard() {
           <div className="kpi-card-white">
             <div className="kpi-card-header">
               <span className="kpi-label">BÁN CHẠY NHẤT</span>
-              <button className="kpi-circle-arrow" aria-label="Chi tiết"><ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon></button>
+              <Link to="/admin/products" className="kpi-circle-arrow" title="Xem danh sách sản phẩm">
+                <ion-icon name="arrow-forward-outline" style={{ transform: "rotate(-45deg)" }}></ion-icon>
+              </Link>
             </div>
             {stats.topProduct ? (
               <div>
@@ -193,18 +300,27 @@ export default function Dashboard() {
 
         {/* 2. MIDDLE 3 WIDGETS */}
         <div className="admin-grid-3" style={{ marginBottom: "22px" }}>
-          {/* Widget 1: Nhịp độ doanh thu theo khung giờ (Biểu đồ Cột kết hợp Line) */}
+          {/* Widget 1: Nhịp độ doanh thu theo khung giờ (Biểu đồ Cột kết hợp Line động) */}
           <div className="admin-card-box" style={{ margin: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div className="admin-card-box-header" style={{ marginBottom: "12px" }}>
               <div className="card-title-group">
                 <h3>Nhịp Độ Doanh Thu Theo Khung Giờ</h3>
                 <p>Thời điểm khách thưởng thức &amp; nhận bánh</p>
               </div>
+              {peakSlot && peakSlot.order_count > 0 && (
+                <span className="badge-pill pink" title={`Doanh thu: ${formatVND(peakSlot.revenue, " đ")}`}>
+                  Cao điểm: {peakSlot.label} ({peakSlot.order_count} đơn)
+                </span>
+              )}
             </div>
 
-            {/* Biểu đồ Cột kết hợp Đường Line (Combo Bar + Line Chart) */}
+            {/* Biểu đồ Cột kết hợp Đường Line (Combo Bar + Line Chart) tự động theo DB */}
             <div style={{ width: "100%", padding: "6px 4px 10px" }}>
-              <svg viewBox="0 0 360 165" style={{ width: "100%", height: "auto", overflow: "visible" }}>
+              <svg
+                viewBox="0 0 360 165"
+                style={{ width: "100%", height: "auto", overflow: "visible" }}
+                onMouseLeave={() => setHoveredPoint(null)}
+              >
                 <defs>
                   {/* Vùng diện tích mờ phủ dưới đường Line */}
                   <linearGradient id="comboLineAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -218,7 +334,7 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor="#fce4ec" />
                   </linearGradient>
 
-                  {/* Gradient cho cột 14h-16h */}
+                  {/* Gradient cho cột cao điểm */}
                   <linearGradient id="comboBarPeakGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#f06a8c" />
                     <stop offset="100%" stopColor="#fce4ec" />
@@ -230,56 +346,172 @@ export default function Dashboard() {
                 <line x1="15" y1="80" x2="345" y2="80" stroke="#f1f2f4" strokeDasharray="3 3" />
                 <line x1="15" y1="125" x2="345" y2="125" stroke="#f1f2f4" strokeDasharray="3 3" />
 
-                {/* 1. CÁC CỘT (BARS) BO TRÒN TRANG NHÃ */}
-                <rect x="18" y="80" width="24" height="45" rx="8" fill="url(#comboBarGrad)" />
-                <rect x="78" y="50" width="24" height="75" rx="8" fill="url(#comboBarGrad)" />
-                <rect x="138" y="17" width="24" height="108" rx="8" fill="url(#comboBarPeakGrad)" />
-                <rect x="198" y="47" width="24" height="78" rx="8" fill="url(#comboBarGrad)" />
-                <rect x="258" y="65" width="24" height="60" rx="8" fill="url(#comboBarGrad)" />
-                <rect x="318" y="89" width="24" height="36" rx="8" fill="url(#comboBarGrad)" />
+                {/* 1. CÁC CỘT (BARS) TÍNH TOÁN THEO SỐ LIỆU ĐỘNG */}
+                {chartPoints.map((pt) => (
+                  <rect
+                    key={`bar-${pt.label}`}
+                    x={pt.barX}
+                    y={pt.barY}
+                    width="24"
+                    height={pt.barHeight}
+                    rx="8"
+                    fill={pt.isPeak ? "url(#comboBarPeakGrad)" : "url(#comboBarGrad)"}
+                    opacity={hoveredPoint && hoveredPoint.label !== pt.label ? 0.6 : 1}
+                    style={{ transition: "opacity 0.2s ease" }}
+                  />
+                ))}
 
                 {/* 2. VÙNG DIỆN TÍCH DƯỚI LINE (AREA SHADOW) */}
-                <path
-                  d="M 30 80
-                     C 60 76, 68 50, 90 50
-                     C 112 50, 126 17, 150 17
-                     C 174 17, 186 47, 210 47
-                     C 234 47, 246 65, 270 65
-                     C 294 65, 308 89, 330 89
-                     L 330 125 L 30 125 Z"
-                  fill="url(#comboLineAreaGrad)"
-                />
+                {areaPath && <path d={areaPath} fill="url(#comboLineAreaGrad)" />}
+
+                {/* Đường gióng dọc (Guideline) khi lia chuột vào line */}
+                {hoveredPoint && (
+                  <line
+                    x1={hoveredPoint.cx}
+                    y1="18"
+                    x2={hoveredPoint.cx}
+                    y2="125"
+                    stroke="#de5d7c"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 3"
+                    opacity="0.85"
+                  />
+                )}
 
                 {/* 3. ĐƯỜNG LINE CHART CONG MƯỢT MÀ */}
-                <path
-                  d="M 30 80
-                     C 60 76, 68 50, 90 50
-                     C 112 50, 126 17, 150 17
-                     C 174 17, 186 47, 210 47
-                     C 234 47, 246 65, 270 65
-                     C 294 65, 308 89, 330 89"
-                  fill="none"
-                  stroke="#de5d7c"
-                  strokeWidth="3.2"
-                  strokeLinecap="round"
-                  style={{ filter: "drop-shadow(0 3px 6px rgba(222, 93, 124, 0.35))" }}
-                />
+                {linePath && (
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#de5d7c"
+                    strokeWidth="3.2"
+                    strokeLinecap="round"
+                    style={{ filter: "drop-shadow(0 3px 6px rgba(222, 93, 124, 0.35))" }}
+                  />
+                )}
 
                 {/* 4. CÁC NÚT ĐIỂM (DATA POINT DOTS) */}
-                <circle cx="30" cy="80" r="4.5" fill="#ffffff" stroke="#de5d7c" strokeWidth="2.5" />
-                <circle cx="90" cy="50" r="4.5" fill="#ffffff" stroke="#de5d7c" strokeWidth="2.5" />
-                <circle cx="150" cy="17" r="5.5" fill="#ffffff" stroke="#de5d7c" strokeWidth="3" />
-                <circle cx="210" cy="47" r="4.5" fill="#ffffff" stroke="#de5d7c" strokeWidth="2.5" />
-                <circle cx="270" cy="65" r="4.5" fill="#ffffff" stroke="#de5d7c" strokeWidth="2.5" />
-                <circle cx="330" cy="89" r="4.5" fill="#ffffff" stroke="#de5d7c" strokeWidth="2.5" />
+                {chartPoints.map((pt) => {
+                  const isHovered = hoveredPoint?.label === pt.label;
+                  return (
+                    <circle
+                      key={`dot-${pt.label}`}
+                      cx={pt.cx}
+                      cy={pt.cy}
+                      r={isHovered ? "7" : pt.isPeak ? "5.5" : "4.5"}
+                      fill="#ffffff"
+                      stroke="#de5d7c"
+                      strokeWidth={isHovered ? "3.5" : pt.isPeak ? "3" : "2.5"}
+                      style={{
+                        transition: "all 0.15s ease",
+                        filter: isHovered ? "drop-shadow(0 0 6px rgba(222, 93, 124, 0.8))" : "none",
+                      }}
+                    />
+                  );
+                })}
 
                 {/* 5. NHÃN TRỤC HOÀNH (X-AXIS LABELS) */}
-                <text x="30" y="150" textAnchor="middle" fill="#8c9ba5" fontSize="11" fontWeight="600" fontFamily="Plus Jakarta Sans, sans-serif">09h</text>
-                <text x="90" y="150" textAnchor="middle" fill="#8c9ba5" fontSize="11" fontWeight="600" fontFamily="Plus Jakarta Sans, sans-serif">11h</text>
-                <text x="150" y="150" textAnchor="middle" fill="#de5d7c" fontSize="11.5" fontWeight="800" fontFamily="Plus Jakarta Sans, sans-serif">14h-16h</text>
-                <text x="210" y="150" textAnchor="middle" fill="#8c9ba5" fontSize="11" fontWeight="600" fontFamily="Plus Jakarta Sans, sans-serif">17h</text>
-                <text x="270" y="150" textAnchor="middle" fill="#8c9ba5" fontSize="11" fontWeight="600" fontFamily="Plus Jakarta Sans, sans-serif">19h</text>
-                <text x="330" y="150" textAnchor="middle" fill="#8c9ba5" fontSize="11" fontWeight="600" fontFamily="Plus Jakarta Sans, sans-serif">21h</text>
+                {chartPoints.map((pt) => {
+                  const isHovered = hoveredPoint?.label === pt.label;
+                  return (
+                    <text
+                      key={`label-${pt.label}`}
+                      x={pt.cx}
+                      y="150"
+                      textAnchor="middle"
+                      fill={isHovered ? "#de5d7c" : pt.isPeak ? "#de5d7c" : "#8c9ba5"}
+                      fontSize={isHovered ? "12" : pt.isPeak ? "11.5" : "11"}
+                      fontWeight={isHovered || pt.isPeak ? "800" : "600"}
+                      fontFamily="Plus Jakarta Sans, sans-serif"
+                    >
+                      {pt.label}
+                    </text>
+                  );
+                })}
+
+                {/* 6. VÙNG BẮT CHUỘT TRÊN TOÀN ĐƯỜNG LINE VÀ TỪNG KHUNG GIỜ */}
+                {chartPoints.map((pt) => (
+                  <rect
+                    key={`hit-${pt.label}`}
+                    x={pt.cx - 30}
+                    y="15"
+                    width="60"
+                    height="135"
+                    fill="transparent"
+                    style={{ cursor: "pointer" }}
+                    onMouseEnter={() => setHoveredPoint(pt)}
+                    onMouseMove={() => setHoveredPoint(pt)}
+                  />
+                ))}
+
+                {/* 7. TOOLTIP NỔI HIỂN THỊ SỐ LƯỢNG KHI LIA CHUỘT VÀO LINE */}
+                {hoveredPoint && (() => {
+                  const tooltipW = 120;
+                  const tooltipH = hoveredPoint.revenue > 0 ? 52 : 44;
+                  let tipX = hoveredPoint.cx - tooltipW / 2;
+                  if (tipX < 8) tipX = 8;
+                  if (tipX + tooltipW > 352) tipX = 352 - tooltipW;
+                  const isNearTop = hoveredPoint.cy < 55;
+                  const tipY = isNearTop ? hoveredPoint.cy + 14 : hoveredPoint.cy - tooltipH - 10;
+                  const arrowPoints = isNearTop
+                    ? `${hoveredPoint.cx - 5},${tipY} ${hoveredPoint.cx + 5},${tipY} ${hoveredPoint.cx},${tipY - 5}`
+                    : `${hoveredPoint.cx - 5},${tipY + tooltipH} ${hoveredPoint.cx + 5},${tipY + tooltipH} ${hoveredPoint.cx},${tipY + tooltipH + 5}`;
+
+                  return (
+                    <g style={{ pointerEvents: "none" }}>
+                      {/* Nền Tooltip */}
+                      <rect
+                        x={tipX}
+                        y={tipY}
+                        width={tooltipW}
+                        height={tooltipH}
+                        rx="8"
+                        fill="#ffffffff"
+                        style={{ filter: "drop-shadow(0 4px 12px rgba(15, 23, 42, 0.45))" }}
+                      />
+                      {/* Mũi tên chỉ vào điểm */}
+                      <polygon points={arrowPoints} fill="#0f172a" />
+                      {/* Tiêu đề khung giờ */}
+                      <text
+                        x={tipX + tooltipW / 2}
+                        y={tipY + 15}
+                        textAnchor="middle"
+                        fill="#586475ff"
+                        fontSize="10"
+                        fontWeight="600"
+                        fontFamily="Plus Jakarta Sans, sans-serif"
+                      >
+                        Khung {hoveredPoint.label}
+                      </text>
+                      {/* SỐ LƯỢNG ĐƠN HÀNG */}
+                      <text
+                        x={tipX + tooltipW / 2}
+                        y={tipY + 31}
+                        textAnchor="middle"
+                        fill="#586475ff"
+                        fontSize="10"
+
+                        fontFamily="Plus Jakarta Sans, sans-serif"
+                      >
+                        Số lượng: {hoveredPoint.order_count} đơn
+                      </text>
+                      {/* Doanh thu (nếu có) */}
+                      {hoveredPoint.revenue > 0 && (
+                        <text
+                          x={tipX + tooltipW / 2}
+                          y={tipY + 45}
+                          textAnchor="middle"
+                          fill="#586475ff"
+                          fontSize="9.5"
+                          fontWeight="600"
+                          fontFamily="Plus Jakarta Sans, sans-serif"
+                        >
+                          {formatVND(hoveredPoint.revenue, " đ")}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })()}
               </svg>
             </div>
           </div>
@@ -333,7 +565,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 3: Tiến độ nhập hàng & Sẵn sàng bán tại tủ */}
+          {/* Widget 3: Tiến độ nhập hàng & Sẵn sàng bán tại tủ (Động theo CSDL) */}
           <div className="admin-card-box" style={{ margin: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div>
               <div className="admin-card-box-header">
@@ -343,7 +575,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Gauge half circle SVG */}
+              {/* Gauge half circle SVG tự động tính toán theo kitchen.rate */}
               <div className="kitchen-capacity-wrap">
                 <div className="capacity-arc-box">
                   <svg width="170" height="90" viewBox="0 0 170 90">
@@ -354,13 +586,15 @@ export default function Dashboard() {
                       strokeWidth="12"
                       strokeLinecap="round"
                     />
-                    <path
-                      d="M 15 85 A 70 70 0 0 1 138 38"
-                      fill="none"
-                      stroke="url(#pinkArcGrad)"
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                    />
+                    {kitchen.rate > 0 && (
+                      <path
+                        d={`M 15 85 A 70 70 0 0 1 ${kitchen.endX} ${kitchen.endY}`}
+                        fill="none"
+                        stroke="url(#pinkArcGrad)"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                      />
+                    )}
                     <defs>
                       <linearGradient id="pinkArcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stopColor="#f06a8c" />
@@ -369,7 +603,7 @@ export default function Dashboard() {
                     </defs>
                   </svg>
                   <div className="capacity-center-text">
-                    <div className="capacity-percent">82%</div>
+                    <div className="capacity-percent">{loading ? "..." : `${kitchen.rate}%`}</div>
                     <div className="capacity-desc">Tủ mát sẵn sàng</div>
                   </div>
                 </div>
@@ -378,15 +612,15 @@ export default function Dashboard() {
 
             <div className="kitchen-stats-trio">
               <div className="kitchen-stat-mini">
-                <div className="stat-mini-num" style={{ color: "#10b981" }}>142</div>
+                <div className="stat-mini-num" style={{ color: "#10b981" }}>{loading ? "..." : kitchen.total_imported}</div>
                 <div className="stat-mini-label">Đã nhập</div>
               </div>
               <div className="kitchen-stat-mini">
-                <div className="stat-mini-num" style={{ color: "#de5d7c" }}>86</div>
+                <div className="stat-mini-num" style={{ color: "#de5d7c" }}>{loading ? "..." : kitchen.total_sold}</div>
                 <div className="stat-mini-label">Đã bán</div>
               </div>
               <div className="kitchen-stat-mini">
-                <div className="stat-mini-num" style={{ color: "#f59e0b" }}>56</div>
+                <div className="stat-mini-num" style={{ color: "#f59e0b" }}>{loading ? "..." : kitchen.total_in_stock}</div>
                 <div className="stat-mini-label">Còn trong tủ</div>
               </div>
             </div>
@@ -489,10 +723,14 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <button className="btn-pill-outline" style={{ width: "100%", justifyContent: "center" }} type="button">
+            <Link
+              to="/admin/import-receipts"
+              className="btn-pill-outline"
+              style={{ width: "100%", justifyContent: "center", textDecoration: "none" }}
+            >
               <ion-icon name="add"></ion-icon>
               <span>Tạo Phiếu Nhập Hàng Từ Nhà Cung Cấp</span>
-            </button>
+            </Link>
           </div>
         </div>
 
