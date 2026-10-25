@@ -1,48 +1,36 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.websocket.manager import manager
 import json
+from typing import Optional
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from starlette.concurrency import run_in_threadpool
+
+from app.services.realtime_service import RealtimeService
+from app.websocket.manager import manager
 
 router = APIRouter()
 
-@router.websocket("/ws/orders/{order_id}")
-async def websocket_order_tracking(websocket: WebSocket, order_id: int):
-    await manager.connect_order(order_id, websocket)
+@router.websocket("/ws")
+async def realtime_socket(websocket: WebSocket, token: Optional[str] = None):
+    """
+    Kênh realtime dùng chung cho App & Web.
+    Gửi kèm ?token=<JWT> để nhận sự kiện riêng của tài khoản (và của staff nếu là admin/staff);
+    không có token vẫn nhận được sự kiện công khai như tồn kho, sản phẩm thay đổi.
+    """
+    phone, is_staff = await run_in_threadpool(RealtimeService.resolve_identity, token)
+    await manager.connect(websocket, phone, is_staff)
     try:
         await websocket.send_json({
             "event": "connected",
-            "message": f"Đã kết nối theo dõi thời gian thực đơn hàng #{order_id}",
-            "order_id": order_id
+            "authenticated": phone is not None,
+            "is_staff": is_staff,
         })
         while True:
             data = await websocket.receive_text()
             try:
-                msg = json.loads(data)
-                if msg.get("type") == "ping":
+                if json.loads(data).get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
             except Exception:
                 pass
     except WebSocketDisconnect:
-        manager.disconnect_order(order_id, websocket)
+        manager.disconnect(websocket)
     except Exception:
-        manager.disconnect_order(order_id, websocket)
-
-@router.websocket("/ws/notifications/{user_name}")
-async def websocket_user_notifications(websocket: WebSocket, user_name: str):
-    await manager.connect_user(user_name, websocket)
-    try:
-        await websocket.send_json({
-            "event": "connected",
-            "message": f"Đã kết nối kênh thông báo tức thời cho {user_name}",
-        })
-        while True:
-            data = await websocket.receive_text()
-            try:
-                msg = json.loads(data)
-                if msg.get("type") == "ping":
-                    await websocket.send_json({"type": "pong"})
-            except Exception:
-                pass
-    except WebSocketDisconnect:
-        manager.disconnect_user(user_name, websocket)
-    except Exception:
-        manager.disconnect_user(user_name, websocket)
+        manager.disconnect(websocket)

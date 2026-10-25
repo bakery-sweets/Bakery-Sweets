@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../cart/providers/cart_provider.dart';
+import '../../promotions/providers/promotions_provider.dart';
 import '../models/order_model.dart';
 
 class OrdersState {
@@ -76,6 +79,50 @@ class OrdersNotifier extends Notifier<OrdersState> {
         debugPrint('[Orders Error] $e');
       }
       state = state.copyWith(isLoading: false, errorMessage: 'Lỗi kết nối khi tải đơn hàng');
+    }
+  }
+
+  /// Đặt đơn từ các món đang có trong giỏ; trả về đơn vừa tạo, lỗi thì ném [ApiException]
+  Future<OrderModel> placeOrder({
+    required String recipientName,
+    required String recipientPhone,
+    required DateTime pickupTime,
+    required String paymentMethod,
+    String? notes,
+    int? promotionId,
+  }) async {
+    final cartItems = ref.read(cartProvider);
+    if (cartItems.isEmpty) {
+      throw const ApiException('Giỏ hàng đang trống');
+    }
+
+    try {
+      final response = await ApiClient().dio.post('/orders', data: {
+        'recipient_name': recipientName,
+        'recipient_phone': recipientPhone,
+        'pickup_time': pickupTime.toIso8601String(),
+        'notes': notes,
+        'payment_method': paymentMethod,
+        'promotion_id': promotionId,
+        'items': [
+          for (final item in cartItems)
+            {
+              'product_id': item.productId,
+              'size_id': item.sizeId,
+              'quantity': item.quantity,
+              'note': null,
+            },
+        ],
+      });
+      final order = OrderModel.fromJson(response.data as Map<String, dynamic>);
+
+      // Server đã tự xóa các món vừa đặt khỏi giỏ và tính thêm lượt dùng voucher
+      ref.read(cartProvider.notifier).fetchCart();
+      ref.invalidate(promotionsProvider);
+      fetchOrders();
+      return order;
+    } catch (e) {
+      throw ApiException.from(e, 'Không thể đặt hàng, vui lòng thử lại');
     }
   }
 }

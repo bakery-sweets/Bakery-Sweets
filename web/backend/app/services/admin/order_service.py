@@ -3,6 +3,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.order import Order, OrderStatusLog
 from app.models.product import ProductSize
+from app.models.notification import Notification
+from app.services.realtime_service import RealtimeService
 
 # Các bước chuyển trạng thái hợp lệ; Completed và Cancelled là trạng thái cuối
 ALLOWED_TRANSITIONS = {
@@ -11,6 +13,15 @@ ALLOWED_TRANSITIONS = {
     "Ready": ("Completed", "Cancelled"),
     "Completed": (),
     "Cancelled": (),
+}
+
+# Tên trạng thái hiển thị cho khách trong thông báo
+STATUS_LABELS = {
+    "Pending": "Chờ xác nhận",
+    "Processing": "Đang chuẩn bị bánh",
+    "Ready": "Bánh đã sẵn sàng, mời bạn tới quầy nhận",
+    "Completed": "Đã hoàn tất",
+    "Cancelled": "Đã bị hủy",
 }
 
 class AdminOrderService:
@@ -70,8 +81,38 @@ class AdminOrderService:
             new_status=new_status,
             note=note,
         ))
+
+        # Lưu thông báo cho khách (hiện trong mục Thông báo của App) rồi đẩy realtime
+        customer_phone = order.customer.phone if order.customer else None
+        notif = None
+        if customer_phone:
+            message = f"Đơn hàng #{order.order_code}: {STATUS_LABELS.get(new_status, new_status)}."
+            if note:
+                message += f" Ghi chú: {note}"
+            notif = Notification(
+                phone=customer_phone,
+                title=f"Đơn hàng #{order.order_code} đã cập nhật",
+                message=message,
+                type="order",
+                reference_id=order.order_id,
+            )
+            db.add(notif)
+
         db.commit()
         db.refresh(order)
+
+        if notif:
+            RealtimeService.to_user(customer_phone, "order_status_updated", {
+                "title": notif.title,
+                "message": notif.message,
+                "order_id": order.order_id,
+                "order_code": order.order_code,
+                "old_status": old_status,
+                "new_status": new_status,
+            })
+        RealtimeService.to_staff("order_updated", {"order_id": order.order_id, "status": new_status})
+        if new_status == "Cancelled":
+            RealtimeService.stock_changed(db, [(d.product_id, d.size_id) for d in order.details])
         return order
 
     @staticmethod
@@ -96,4 +137,9 @@ class AdminOrderService:
         ))
         db.commit()
         db.refresh(order)
+
+        # Trạng thái thanh toán đổi: các màn hình đơn hàng tự tải lại, không cần hiện thông báo
+        if order.customer:
+            RealtimeService.to_user(order.customer.phone, "order_updated", {"order_id": order.order_id})
+        RealtimeService.to_staff("order_updated", {"order_id": order.order_id, "status": order.status})
         return order

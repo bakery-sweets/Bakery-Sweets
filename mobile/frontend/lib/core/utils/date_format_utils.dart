@@ -6,52 +6,17 @@ class AppDateFormat {
   static final DateFormat _shortFormat = DateFormat('HH:mm dd/MM');
 
   /// Định dạng ngày giờ đầy đủ (VD: 24/10/2026 19:30)
-  static String dateTime(dynamic value, {String? pattern}) {
-    if (value == null) return '';
-    try {
-      DateTime dt;
-      if (value is DateTime) {
-        dt = value;
-      } else if (value is String) {
-        final trimmed = value.trim();
-        if (trimmed.isEmpty) return '';
-        dt = DateTime.parse(trimmed);
-      } else {
-        return '';
-      }
-      final local = dt.isUtc ? dt.toLocal() : dt;
-      if (pattern != null) {
-        return DateFormat(pattern).format(local);
-      }
-      return _dateTimeFormat.format(local);
-    } catch (_) {
-      return value.toString();
-    }
-  }
+  static String dateTime(dynamic value, {String? pattern}) =>
+      _format(value, pattern != null ? DateFormat(pattern) : _dateTimeFormat);
 
   /// Định dạng ngày giờ ngắn gọn (VD: 19:30 24/10)
-  static String short(dynamic value) {
-    if (value == null) return '';
-    try {
-      DateTime dt;
-      if (value is DateTime) {
-        dt = value;
-      } else if (value is String) {
-        final trimmed = value.trim();
-        if (trimmed.isEmpty) return '';
-        dt = DateTime.parse(trimmed);
-      } else {
-        return '';
-      }
-      final local = dt.isUtc ? dt.toLocal() : dt;
-      return _shortFormat.format(local);
-    } catch (_) {
-      return value.toString();
-    }
-  }
+  static String short(dynamic value) => _format(value, _shortFormat);
 
   /// Định dạng ngày tháng năm (VD: 24/10/2026)
-  static String date(dynamic value) {
+  static String date(dynamic value) => _format(value, _dateFormat);
+
+  /// Nhận DateTime hoặc chuỗi ISO từ API, đổi về giờ máy rồi định dạng; không đọc được thì trả nguyên văn
+  static String _format(dynamic value, DateFormat format) {
     if (value == null) return '';
     try {
       DateTime dt;
@@ -64,8 +29,7 @@ class AppDateFormat {
       } else {
         return '';
       }
-      final local = dt.isUtc ? dt.toLocal() : dt;
-      return _dateFormat.format(local);
+      return format.format(dt.isUtc ? dt.toLocal() : dt);
     } catch (_) {
       return value.toString();
     }

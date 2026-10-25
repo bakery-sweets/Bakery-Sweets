@@ -44,7 +44,7 @@ class _LoginModalState extends ConsumerState<LoginModal> {
   void _fillSampleUser() {
     setState(() {
       _isRegister = false;
-      _usernameController.text = 'cus1';
+      _usernameController.text = '0912345678';
       _passwordController.text = '123';
     });
   }
@@ -55,7 +55,7 @@ class _LoginModalState extends ConsumerState<LoginModal> {
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên đăng nhập và mật khẩu')),
+        const SnackBar(content: Text('Vui lòng nhập số điện thoại/email và mật khẩu')),
       );
       return;
     }
@@ -247,7 +247,7 @@ class _LoginModalState extends ConsumerState<LoginModal> {
             TextField(
               controller: _usernameController,
               decoration: InputDecoration(
-                labelText: _isRegister ? 'Tên đăng nhập (username)' : 'Tên đăng nhập hoặc Email',
+                labelText: _isRegister ? 'Số điện thoại đăng ký' : 'Số điện thoại hoặc Email',
                 prefixIcon: const Icon(Icons.person_outline),
                 filled: true,
                 fillColor: AppColors.surfaceVariant,
@@ -282,7 +282,7 @@ class _LoginModalState extends ConsumerState<LoginModal> {
                   TextButton.icon(
                     onPressed: _fillSampleUser,
                     icon: const Icon(Icons.bolt_rounded, size: 16, color: AppColors.primary),
-                    label: const Text('Dùng tài khoản mẫu (cus1)', style: TextStyle(fontSize: 12.5, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                    label: const Text('Dùng tài khoản mẫu (0912345678)', style: TextStyle(fontSize: 12.5, color: AppColors.primary, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),

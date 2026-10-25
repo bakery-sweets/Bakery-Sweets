@@ -7,7 +7,7 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     notification_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_name = Column(String(255), ForeignKey("users.user_name", ondelete="CASCADE"), nullable=False)
+    phone = Column(String(20), ForeignKey("users.phone", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
     type = Column(SQLEnum("order", "system", "promotion", name="notification_type"), default="order")
@@ -16,3 +16,7 @@ class Notification(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User", back_populates="notifications")
+
+    @property
+    def user_name(self) -> str:
+        return self.phone

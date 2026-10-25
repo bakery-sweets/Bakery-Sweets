@@ -1,4 +1,5 @@
 import '../../../core/config/app_config.dart';
+import '../../../core/utils/json_utils.dart';
 
 class ProductSizeModel {
   final int id;
@@ -20,9 +21,7 @@ class ProductSizeModel {
       id: json['id'] as int? ?? 0,
       sizeId: json['size_id'] as int? ?? 0,
       sizeName: json['size_name'] as String? ?? 'Tiêu chuẩn',
-      price: (json['price'] is num)
-          ? (json['price'] as num).toDouble()
-          : double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      price: parseDouble(json['price']),
       stockQuantity: json['stock_quantity'] as int? ?? 0,
     );
   }

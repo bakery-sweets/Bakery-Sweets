@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/realtime/realtime_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home/screens/home_screen.dart';
 import '../../cart/screens/cart_screen.dart';
 import '../../orders/screens/orders_screen.dart';
@@ -26,6 +28,29 @@ class MainNavigationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(navigationIndexProvider);
     final cartCount = ref.watch(cartCountProvider);
+    // Giữ kết nối realtime sống suốt thời gian app mở
+    ref.watch(realtimeProvider);
+
+    // Tài khoản bị khóa từ trang quản trị: đã đăng xuất, báo lý do cho người dùng
+    ref.listen(authProvider, (prev, next) {
+      final reason = next.forcedLogoutReason;
+      if (reason == null || reason == prev?.forcedLogoutReason) return;
+      ref.read(authProvider.notifier).clearForcedLogoutReason();
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.lock_outline, color: AppColors.danger, size: 36),
+          title: const Text('Tài khoản đã bị khóa'),
+          content: Text('Bạn đã được đăng xuất.\nLý do: $reason'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đã hiểu'),
+            ),
+          ],
+        ),
+      );
+    });
 
     final List<Widget> screens = [
       HomeScreen(onNavigateTab: (index) {
@@ -61,6 +86,8 @@ class MainNavigationScreen extends ConsumerWidget {
           currentIndex: currentIndex,
           onTap: (index) {
             ref.read(navigationIndexProvider.notifier).setIndex(index);
+            // Mở tab giỏ hàng thì tải lại để thấy thay đổi từ Web
+            if (index == 1) ref.read(cartProvider.notifier).fetchCart();
           },
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textMuted,

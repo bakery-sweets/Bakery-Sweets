@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { clientProductsApi } from '../../api/client';
 import ProductCard from '../components/ProductCard';
 import { imageUrl, apiErrorMessage } from '../../utils/format';
+import { useRealtimeVersion } from '../../realtime/useRealtime';
 import './Home.css';
 
 const BANNERS = ['/assets/Img/banner1.jpg', '/assets/Img/banner2.jpg'];
@@ -35,6 +36,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [currentBanner, setCurrentBanner] = useState(0);
+  // Tồn kho / sản phẩm thay đổi: tải lại để nhãn "hết hàng", bánh mới... luôn đúng
+  const realtimeVersion = useRealtimeVersion(['stock_updated', 'products_changed']);
 
   useEffect(() => {
     Promise.all([
@@ -52,7 +55,7 @@ export default function Home() {
       })
       .catch((err) => setLoadError(apiErrorMessage(err, 'Không tải được danh sách bánh.')))
       .finally(() => setLoading(false));
-  }, []);
+  }, [realtimeVersion]);
 
   // Banner slideshow
   useEffect(() => {

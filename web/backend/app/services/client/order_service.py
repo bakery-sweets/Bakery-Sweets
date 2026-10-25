@@ -9,6 +9,7 @@ from app.models.product import ProductSize
 from app.models.promotion import OrderPromotion
 from app.schemas.client.order import CheckoutRequest
 from app.services.client.promotion_service import ClientPromotionService
+from app.services.realtime_service import RealtimeService
 
 # Giờ hẹn lấy bánh do client gửi là giờ địa phương (Việt Nam, UTC+7, không có giờ mùa hè)
 VN_TZ = timezone(timedelta(hours=7))
@@ -162,6 +163,18 @@ class ClientOrderService:
 
         db.commit()
         db.refresh(order)
+
+        # Báo nhân viên có đơn mới, đồng bộ giỏ hàng các thiết bị khác của khách và tồn kho mới cho mọi người
+        RealtimeService.to_staff("new_order", {
+            "order_id": order.order_id,
+            "order_code": order.order_code,
+            "recipient_name": order.recipient_name,
+            "final_cost": float(order.final_cost),
+            "source": "web",
+        })
+        if order.customer:
+            RealtimeService.to_user(order.customer.phone, "cart_updated")
+        RealtimeService.stock_changed(db, merged.keys())
         return order
 
     @staticmethod
@@ -209,4 +222,7 @@ class ClientOrderService:
 
         db.commit()
         db.refresh(order)
+
+        RealtimeService.to_staff("order_updated", {"order_id": order.order_id, "status": order.status})
+        RealtimeService.stock_changed(db, [(d.product_id, d.size_id) for d in order.details])
         return order

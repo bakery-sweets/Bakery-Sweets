@@ -43,6 +43,6 @@ class AppConfig {
     return baseUrl.replaceFirst('http://', 'ws://').replaceFirst('https://', 'wss://');
   }
 
-  static String wsNotificationUrl(String userName) => '$wsBaseUrl$apiVersion/ws/notifications/$userName';
-  static String wsOrderTrackingUrl(int orderId) => '$wsBaseUrl$apiVersion/ws/orders/$orderId';
+  // Kênh realtime dùng chung với Web (gửi kèm ?token=<JWT> để nhận sự kiện riêng của tài khoản)
+  static String get wsRealtimeUrl => '$wsBaseUrl$apiVersion/ws';
 }

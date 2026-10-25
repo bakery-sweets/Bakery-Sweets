@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
+    # Trung tâm realtime (WebSocket) đặt ở Mobile Backend, Web Backend gửi sự kiện sang qua API nội bộ
+    # Dùng 127.0.0.1 thay vì localhost: trên Windows "localhost" thử IPv6 trước nên mỗi lần gửi trễ ~2 giây
+    REALTIME_HUB_URL: str = os.getenv("REALTIME_HUB_URL", "http://127.0.0.1:8000")
+    INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "thesweets_internal_realtime_key_2026")
+
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",

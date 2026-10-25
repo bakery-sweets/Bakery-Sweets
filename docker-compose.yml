@@ -57,6 +57,8 @@ services:
       - DB_PASSWORD=123
       - SECRET_KEY=thesweets_web_jwt_secret_key_2026_super_secure
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - REALTIME_HUB_URL=http://mobile_backend:8000
+      - INTERNAL_API_KEY=thesweets_internal_realtime_key_2026
       - TZ=Asia/Ho_Chi_Minh
     depends_on:
       db:
@@ -79,6 +81,7 @@ services:
       - "3000:3000"
     environment:
       - VITE_API_URL=http://localhost:5000
+      - VITE_WS_URL=ws://localhost:8000/ws
     depends_on:
       - web_backend
     volumes:
@@ -104,8 +107,10 @@ services:
       - DB_NAME=thesweets_db
       - DB_USER=user
       - DB_PASSWORD=123
-      - SECRET_KEY=your_jwt_secret_key_here
-      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      # Dùng chung SECRET_KEY với web_backend để trung tâm realtime xác thực được token của cả hai bên
+      - SECRET_KEY=thesweets_web_jwt_secret_key_2026_super_secure
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - INTERNAL_API_KEY=thesweets_internal_realtime_key_2026
       - TZ=Asia/Ho_Chi_Minh
     depends_on:
       db:

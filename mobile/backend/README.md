@@ -38,10 +38,13 @@ mobile/backend/
 ├── Dockerfile
 ├── .env                 # Biến môi trường (DB, JWT secret...)
 ├── app/
-│   ├── config/          # Cấu hình DB, settings
-│   ├── models/          # SQLAlchemy models (ánh xạ 15 bảng DB)
+│   ├── core/            # config.py (settings, JWT secret), security.py (hash mật khẩu, JWT)
+│   ├── config/          # Kết nối DB (engine, session)
+│   ├── models/          # SQLAlchemy models (ánh xạ bảng DB)
 │   ├── schemas/         # Pydantic schemas (request/response)
-│   ├── routers/         # API routes (auth, products, orders...)
-│   ├── services/        # Business logic
-│   └── dependencies/    # Auth middleware, DB session
+│   ├── api/
+│   │   ├── deps.py      # Dependency: get_db, get_current_user, get_current_customer, require_staff
+│   │   └── v1/endpoints/  # API routes (auth, products, cart, orders...) — chỉ nhận request & gọi service
+│   ├── services/        # Business logic (AuthService, OrderService, PromotionService...)
+│   └── websocket/       # Quản lý kết nối WebSocket realtime
 ```

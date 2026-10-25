@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/utils/date_format_utils.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_modal.dart';
-import '../providers/cart_provider.dart';
 import '../../orders/providers/orders_provider.dart';
 import '../../navigation/screens/main_navigation_screen.dart';
-import 'package:dio/dio.dart';
 import '../../promotions/models/promotion_model.dart';
-import '../../promotions/providers/promotions_provider.dart';
 import '../../promotions/screens/voucher_selector_modal.dart';
 
 class CheckoutModal extends ConsumerStatefulWidget {
@@ -206,10 +204,8 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
 
   String _formatPickupDateDisplay(DateTime dt) {
     final now = DateTime.now();
-    final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
-    final isTomorrow = dt.year == now.year &&
-        dt.month == now.month &&
-        dt.day == now.add(const Duration(days: 1)).day;
+    final isToday = DateUtils.isSameDay(dt, now);
+    final isTomorrow = DateUtils.isSameDay(dt, now.add(const Duration(days: 1)));
     final weekday = _formatWeekday(dt);
     if (isToday) {
       return 'Hôm nay ($weekday)';
@@ -219,9 +215,7 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
     return '$weekday, ${dt.day}/${dt.month}/${dt.year}';
   }
 
-  String _formatPickupTimeOnly(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatPickupTimeOnly(DateTime dt) => AppDateFormat.dateTime(dt, pattern: 'HH:mm');
 
   String _formatPickupDisplay(DateTime dt) {
     final hourStr = _formatPickupTimeOnly(dt);
@@ -390,61 +384,35 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
       return;
     }
 
-    final cartItems = ref.read(cartProvider);
-    if (cartItems.isEmpty) return;
-
     setState(() => _isSubmitting = true);
 
     try {
-      final orderData = {
-        'recipient_name': name,
-        'recipient_phone': phone,
-        'pickup_time': _pickupTime.toIso8601String(),
-        'notes': _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+      final notes = _notesController.text.trim();
+      final order = await ref.read(ordersProvider.notifier).placeOrder(
+            recipientName: name,
+            recipientPhone: phone,
+            pickupTime: _pickupTime,
+            paymentMethod: _paymentMethod,
+            notes: notes.isNotEmpty ? notes : null,
+            promotionId: _selectedPromotion?.promotionId,
+          );
+      if (!mounted) return;
+
+      // Số tiền lấy theo đơn server vừa tạo (server mới là nơi tính giảm giá chính thức)
+      Navigator.of(context).pop({
+        'success': true,
+        'order_code': order.orderCode ?? '${order.orderId}',
+        'pickup_display': _formatPickupDisplay(_pickupTime),
         'payment_method': _paymentMethod,
-        'promotion_id': _selectedPromotion?.promotionId,
-        'items': cartItems.map((item) => {
-          'product_id': item.productId,
-          'size_id': item.sizeId,
-          'quantity': item.quantity,
-          'note': null,
-        }).toList(),
-      };
-
-      final response = await ApiClient().dio.post('/orders', data: orderData);
-
-      if (response.statusCode == 200 && mounted) {
-        final resData = response.data as Map<String, dynamic>;
-        final orderCode = resData['order_code'] as String? ?? 'DH${DateTime.now().millisecondsSinceEpoch}';
-
-        ref.read(cartProvider.notifier).clearCart();
-        ref.read(ordersProvider.notifier).fetchOrders();
-        ref.invalidate(promotionsProvider);
-
-        final result = {
-          'success': true,
-          'order_code': orderCode,
-          'pickup_display': _formatPickupDisplay(_pickupTime),
-          'payment_method': _paymentMethod,
-          'final_amount': _finalAmount,
-          'discount_amount': _discountAmount,
-        };
-
-        Navigator.of(context).pop(result);
-      }
-    } catch (e) {
+        'final_amount': order.finalCost,
+        'discount_amount': order.totalCost - order.finalCost,
+      });
+    } on ApiException catch (e) {
       if (mounted) {
-        String errorMsg = 'Không thể đặt hàng: $e';
-        if (e is DioException && e.response?.data != null) {
-          final data = e.response!.data;
-          if (data is Map && data['detail'] != null) {
-            errorMsg = data['detail'].toString();
-          }
-        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade700,
-            content: Text(errorMsg),
+            content: Text(e.message),
           ),
         );
       }

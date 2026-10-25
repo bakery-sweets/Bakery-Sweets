@@ -2,17 +2,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../models/user_model.dart';
 
 class AuthState {
   final UserModel? user;
   final bool isLoading;
   final String? errorMessage;
+  // Lý do bị đăng xuất cưỡng bức (tài khoản bị khóa từ trang quản trị), giao diện đọc để thông báo
+  final String? forcedLogoutReason;
 
   const AuthState({
     this.user,
     this.isLoading = false,
     this.errorMessage,
+    this.forcedLogoutReason,
   });
 
   bool get isAuthenticated => user != null;
@@ -23,11 +27,13 @@ class AuthState {
     String? errorMessage,
     bool clearUser = false,
     bool clearError = false,
+    bool clearForcedLogout = false,
   }) {
     return AuthState(
       user: clearUser ? null : (user ?? this.user),
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      forcedLogoutReason: clearForcedLogout ? null : forcedLogoutReason,
     );
   }
 }
@@ -84,10 +90,8 @@ class AuthNotifier extends Notifier<AuthState> {
         return true;
       }
     } catch (e) {
-      String msg = 'Đăng nhập không thành công';
-      if (e.toString().contains('401') || e.toString().contains('không chính xác')) {
-        msg = 'Sai tên đăng nhập hoặc mật khẩu';
-      }
+      // Server trả câu báo cụ thể: sai mật khẩu (401) hoặc tài khoản bị khóa (403)
+      final msg = ApiException.from(e, 'Đăng nhập không thành công, vui lòng thử lại').message;
       state = state.copyWith(isLoading: false, errorMessage: msg);
       if (kDebugMode) {
         debugPrint('[Login Error] $e');
@@ -132,7 +136,7 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Đăng ký thất bại. Tên đăng nhập hoặc email đã tồn tại.',
+        errorMessage: ApiException.from(e, 'Đăng ký thất bại, vui lòng thử lại').message,
       );
     }
     return false;
@@ -164,12 +168,7 @@ class AuthNotifier extends Notifier<AuthState> {
         return true;
       }
     } catch (e) {
-      String msg = 'Cập nhật thông tin thất bại';
-      if (e.toString().contains('Email')) {
-        msg = 'Email này đã được sử dụng bởi tài khoản khác';
-      } else if (e.toString().contains('thoại')) {
-        msg = 'Số điện thoại này đã được sử dụng';
-      }
+      final msg = ApiException.from(e, 'Cập nhật thông tin thất bại').message;
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }
     return false;
@@ -178,6 +177,16 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     await _storage.delete(key: 'access_token');
     state = const AuthState();
+  }
+
+  /// Tài khoản vừa bị khóa (nhận qua realtime): xóa phiên ngay và giữ lại lý do để hiển thị
+  Future<void> forceLogout(String? reason) async {
+    await _storage.delete(key: 'access_token');
+    state = AuthState(forcedLogoutReason: reason ?? 'Tài khoản của bạn đã bị khóa');
+  }
+
+  void clearForcedLogoutReason() {
+    state = state.copyWith(clearForcedLogout: true);
   }
 }
 

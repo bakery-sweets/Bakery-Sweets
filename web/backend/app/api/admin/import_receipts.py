@@ -12,6 +12,7 @@ from app.schemas.admin.import_receipt import (
     ImportDetailOut,
 )
 from app.schemas.common import ResponseBase
+from app.services.realtime_service import RealtimeService
 
 router = APIRouter()
 
@@ -78,6 +79,8 @@ def create_receipt(
     admin: User = Depends(get_current_admin),
 ):
     receipt = AdminImportReceiptService.create(db, data)
+    if receipt.status == "Completed":
+        RealtimeService.stock_changed(db, [(d.product_id, d.size_id) for d in receipt.details])
     message = "Đã tạo phiếu và nhập kho thành công" if receipt.status == "Completed" else "Đã lưu phiếu nhập tạm"
     return ResponseBase(message=message, data=_to_receipt_out(receipt))
 
@@ -91,5 +94,7 @@ def update_receipt_status(
     receipt = AdminImportReceiptService.update_status(db, import_id, data.status)
     if not receipt:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu nhập")
+    if data.status == "Completed":
+        RealtimeService.stock_changed(db, [(d.product_id, d.size_id) for d in receipt.details])
     message = "Đã nhập kho, tồn kho bánh đã được cộng thêm" if data.status == "Completed" else "Đã hủy phiếu nhập"
     return ResponseBase(message=message, data=_to_receipt_out(receipt))

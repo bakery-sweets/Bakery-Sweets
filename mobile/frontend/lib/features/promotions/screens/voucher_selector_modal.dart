@@ -64,18 +64,10 @@ class _VoucherSelectorModalState extends ConsumerState<VoucherSelectorModal> {
       ),
     );
 
+    // Server chỉ trả về mã còn dùng được, nên mã đã dùng hết lượt cũng rơi vào trường hợp này
     if (found.promotionId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mã voucher không hợp lệ hoặc đã hết hạn')),
-      );
-      return;
-    }
-
-    if (found.isUsed || !found.canUse) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bạn đã sử dụng mã ưu đãi này rồi. Mỗi tài khoản chỉ được dùng 1 lần!'),
-        ),
+        const SnackBar(content: Text('Mã voucher không hợp lệ, đã hết hạn hoặc bạn đã dùng hết lượt')),
       );
       return;
     }

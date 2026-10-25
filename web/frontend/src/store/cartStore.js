@@ -49,6 +49,15 @@ const useCartStore = create(
 
       resetLocal: () => set({ items: [] }),
 
+      // Cập nhật tồn kho realtime cho các món đang nằm trong giỏ
+      applyStock: (stockItems = []) =>
+        set({
+          items: get().items.map((i) => {
+            const s = stockItems.find((x) => x.product_id === i.product_id && x.size_id === i.size_id);
+            return s ? { ...i, stock_quantity: s.stock_quantity } : i;
+          }),
+        }),
+
       addItem: async (product, size, quantity = 1) => {
         if (isLoggedIn()) {
           await clientCartApi.addToCart({ product_id: product.product_id, size_id: size.size_id, quantity });

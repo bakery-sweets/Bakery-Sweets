@@ -6,6 +6,7 @@ import { clientProductsApi } from '../../api/client';
 import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
 import { sizeStock, productStock, isLowStock, cheapestAvailableSize } from '../../utils/stock';
 import popup from '../../utils/popup';
+import { useRealtimeEvent } from '../../realtime/useRealtime';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
@@ -43,6 +44,15 @@ export default function ProductDetail() {
       })
       .catch((err) => setLoadError(apiErrorMessage(err, 'Không tải được thông tin bánh.')));
   }, [id]);
+
+  // Bánh đang xem đổi tồn kho / thông tin: tải lại im lặng, giữ nguyên size & số lượng đang chọn
+  useRealtimeEvent(['stock_updated', 'products_changed'], (e) => {
+    const affected = e.event === 'stock_updated'
+      ? e.items?.some((i) => String(i.product_id) === String(id))
+      : String(e.product_id) === String(id);
+    if (!affected) return;
+    clientProductsApi.getById(id).then((res) => setProduct(res.data)).catch(() => {});
+  });
 
   const sizes = product?.sizes || [];
   const currentSizeObj = sizes.find(s => String(s.size_id) === selectedSize);
