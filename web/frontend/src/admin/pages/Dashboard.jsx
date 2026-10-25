@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [hoveredPoint, setHoveredPoint] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -315,7 +316,11 @@ export default function Dashboard() {
 
             {/* Biểu đồ Cột kết hợp Đường Line (Combo Bar + Line Chart) tự động theo DB */}
             <div style={{ width: "100%", padding: "6px 4px 10px" }}>
-              <svg viewBox="0 0 360 165" style={{ width: "100%", height: "auto", overflow: "visible" }}>
+              <svg
+                viewBox="0 0 360 165"
+                style={{ width: "100%", height: "auto", overflow: "visible" }}
+                onMouseLeave={() => setHoveredPoint(null)}
+              >
                 <defs>
                   {/* Vùng diện tích mờ phủ dưới đường Line */}
                   <linearGradient id="comboLineAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -351,13 +356,27 @@ export default function Dashboard() {
                     height={pt.barHeight}
                     rx="8"
                     fill={pt.isPeak ? "url(#comboBarPeakGrad)" : "url(#comboBarGrad)"}
-                  >
-                    <title>{`${pt.label}: ${pt.order_count} đơn hàng • ${formatVND(pt.revenue, " đ")}`}</title>
-                  </rect>
+                    opacity={hoveredPoint && hoveredPoint.label !== pt.label ? 0.6 : 1}
+                    style={{ transition: "opacity 0.2s ease" }}
+                  />
                 ))}
 
                 {/* 2. VÙNG DIỆN TÍCH DƯỚI LINE (AREA SHADOW) */}
                 {areaPath && <path d={areaPath} fill="url(#comboLineAreaGrad)" />}
+
+                {/* Đường gióng dọc (Guideline) khi lia chuột vào line */}
+                {hoveredPoint && (
+                  <line
+                    x1={hoveredPoint.cx}
+                    y1="18"
+                    x2={hoveredPoint.cx}
+                    y2="125"
+                    stroke="#de5d7c"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 3"
+                    opacity="0.85"
+                  />
+                )}
 
                 {/* 3. ĐƯỜNG LINE CHART CONG MƯỢT MÀ */}
                 {linePath && (
@@ -372,35 +391,127 @@ export default function Dashboard() {
                 )}
 
                 {/* 4. CÁC NÚT ĐIỂM (DATA POINT DOTS) */}
-                {chartPoints.map((pt) => (
-                  <circle
-                    key={`dot-${pt.label}`}
-                    cx={pt.cx}
-                    cy={pt.cy}
-                    r={pt.isPeak ? "5.5" : "4.5"}
-                    fill="#ffffff"
-                    stroke="#de5d7c"
-                    strokeWidth={pt.isPeak ? "3" : "2.5"}
-                  >
-                    <title>{`${pt.label}: ${pt.order_count} đơn hàng • ${formatVND(pt.revenue, " đ")}`}</title>
-                  </circle>
-                ))}
+                {chartPoints.map((pt) => {
+                  const isHovered = hoveredPoint?.label === pt.label;
+                  return (
+                    <circle
+                      key={`dot-${pt.label}`}
+                      cx={pt.cx}
+                      cy={pt.cy}
+                      r={isHovered ? "7" : pt.isPeak ? "5.5" : "4.5"}
+                      fill="#ffffff"
+                      stroke="#de5d7c"
+                      strokeWidth={isHovered ? "3.5" : pt.isPeak ? "3" : "2.5"}
+                      style={{
+                        transition: "all 0.15s ease",
+                        filter: isHovered ? "drop-shadow(0 0 6px rgba(222, 93, 124, 0.8))" : "none",
+                      }}
+                    />
+                  );
+                })}
 
                 {/* 5. NHÃN TRỤC HOÀNH (X-AXIS LABELS) */}
+                {chartPoints.map((pt) => {
+                  const isHovered = hoveredPoint?.label === pt.label;
+                  return (
+                    <text
+                      key={`label-${pt.label}`}
+                      x={pt.cx}
+                      y="150"
+                      textAnchor="middle"
+                      fill={isHovered ? "#de5d7c" : pt.isPeak ? "#de5d7c" : "#8c9ba5"}
+                      fontSize={isHovered ? "12" : pt.isPeak ? "11.5" : "11"}
+                      fontWeight={isHovered || pt.isPeak ? "800" : "600"}
+                      fontFamily="Plus Jakarta Sans, sans-serif"
+                    >
+                      {pt.label}
+                    </text>
+                  );
+                })}
+
+                {/* 6. VÙNG BẮT CHUỘT TRÊN TOÀN ĐƯỜNG LINE VÀ TỪNG KHUNG GIỜ */}
                 {chartPoints.map((pt) => (
-                  <text
-                    key={`label-${pt.label}`}
-                    x={pt.cx}
-                    y="150"
-                    textAnchor="middle"
-                    fill={pt.isPeak ? "#de5d7c" : "#8c9ba5"}
-                    fontSize={pt.isPeak ? "11.5" : "11"}
-                    fontWeight={pt.isPeak ? "800" : "600"}
-                    fontFamily="Plus Jakarta Sans, sans-serif"
-                  >
-                    {pt.label}
-                  </text>
+                  <rect
+                    key={`hit-${pt.label}`}
+                    x={pt.cx - 30}
+                    y="15"
+                    width="60"
+                    height="135"
+                    fill="transparent"
+                    style={{ cursor: "pointer" }}
+                    onMouseEnter={() => setHoveredPoint(pt)}
+                    onMouseMove={() => setHoveredPoint(pt)}
+                  />
                 ))}
+
+                {/* 7. TOOLTIP NỔI HIỂN THỊ SỐ LƯỢNG KHI LIA CHUỘT VÀO LINE */}
+                {hoveredPoint && (() => {
+                  const tooltipW = 120;
+                  const tooltipH = hoveredPoint.revenue > 0 ? 52 : 44;
+                  let tipX = hoveredPoint.cx - tooltipW / 2;
+                  if (tipX < 8) tipX = 8;
+                  if (tipX + tooltipW > 352) tipX = 352 - tooltipW;
+                  const isNearTop = hoveredPoint.cy < 55;
+                  const tipY = isNearTop ? hoveredPoint.cy + 14 : hoveredPoint.cy - tooltipH - 10;
+                  const arrowPoints = isNearTop
+                    ? `${hoveredPoint.cx - 5},${tipY} ${hoveredPoint.cx + 5},${tipY} ${hoveredPoint.cx},${tipY - 5}`
+                    : `${hoveredPoint.cx - 5},${tipY + tooltipH} ${hoveredPoint.cx + 5},${tipY + tooltipH} ${hoveredPoint.cx},${tipY + tooltipH + 5}`;
+
+                  return (
+                    <g style={{ pointerEvents: "none" }}>
+                      {/* Nền Tooltip */}
+                      <rect
+                        x={tipX}
+                        y={tipY}
+                        width={tooltipW}
+                        height={tooltipH}
+                        rx="8"
+                        fill="#0f172a"
+                        style={{ filter: "drop-shadow(0 4px 12px rgba(15, 23, 42, 0.45))" }}
+                      />
+                      {/* Mũi tên chỉ vào điểm */}
+                      <polygon points={arrowPoints} fill="#0f172a" />
+                      {/* Tiêu đề khung giờ */}
+                      <text
+                        x={tipX + tooltipW / 2}
+                        y={tipY + 15}
+                        textAnchor="middle"
+                        fill="#94a3b8"
+                        fontSize="10"
+                        fontWeight="600"
+                        fontFamily="Plus Jakarta Sans, sans-serif"
+                      >
+                        Khung {hoveredPoint.label}
+                      </text>
+                      {/* SỐ LƯỢNG ĐƠN HÀNG */}
+                      <text
+                        x={tipX + tooltipW / 2}
+                        y={tipY + 31}
+                        textAnchor="middle"
+                        fill="#f472b6"
+                        fontSize="12.5"
+                        fontWeight="800"
+                        fontFamily="Plus Jakarta Sans, sans-serif"
+                      >
+                        Số lượng: {hoveredPoint.order_count} đơn
+                      </text>
+                      {/* Doanh thu (nếu có) */}
+                      {hoveredPoint.revenue > 0 && (
+                        <text
+                          x={tipX + tooltipW / 2}
+                          y={tipY + 45}
+                          textAnchor="middle"
+                          fill="#cbd5e1"
+                          fontSize="9.5"
+                          fontWeight="600"
+                          fontFamily="Plus Jakarta Sans, sans-serif"
+                        >
+                          {formatVND(hoveredPoint.revenue, " đ")}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })()}
               </svg>
             </div>
           </div>
