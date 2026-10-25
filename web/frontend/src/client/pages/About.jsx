@@ -247,56 +247,12 @@ export default function About() {
       <section className="about-stores-sec">
         <div className="about-content-wrap">
           <div className="about-header-centered about-fade-up">
-            <span className="about-kicker-label">HỆ THỐNG CỬA HÀNG TẠI TP. HỒ CHÍ MINH</span>
-            <h2 className="about-block-title">Ghé Thăm Không Gian The Sweets</h2>
+            <span className="about-kicker-label">HỆ THỐNG CỬA HÀNG</span>
+            <h2 className="about-block-title">The Sweets</h2>
             <p className="about-block-subtitle">
-              Thưởng thức tách trà ấm cùng hương bánh thơm lừng ngập tràn các chi nhánh của chúng tôi.
+              Cùng đấm chìm trong những chiếc bánh thơm lừng và sang trọng của chúng tôi.
             </p>
           </div>
-
-          <div className="about-stores-grid">
-            {storeBranches.map((branch, index) => (
-              <div
-                key={branch.id}
-                className={`about-store-card about-fade-up delay-${index + 1}`}
-              >
-                <div className="store-card-badge-row">
-                  <span className="store-badge-tag">{branch.tag}</span>
-                  <span className="store-status-open">
-                    <span className="store-green-dot"></span>
-                    Mở Cửa Hàng Ngày
-                  </span>
-                </div>
-                <h3 className="store-branch-title">{branch.name}</h3>
-                <div className="store-info-list">
-                  <div className="store-info-row">
-                    <ion-icon name="location-outline" className="store-icon-pink"></ion-icon>
-                    <span>{branch.address}</span>
-                  </div>
-                  <div className="store-info-row">
-                    <ion-icon name="time-outline" className="store-icon-navy"></ion-icon>
-                    <span><strong>{branch.hours}</strong></span>
-                  </div>
-                  <div className="store-info-row">
-                    <ion-icon name="call-outline" className="store-icon-pink"></ion-icon>
-                    <span>Hotline Đặt Hàng: <strong className="store-hotline-text">{branch.hotline}</strong></span>
-                  </div>
-                </div>
-                <div className="store-btn-row">
-                  <a
-                    href={branch.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="about-btn-map"
-                  >
-                    <ion-icon name="navigate-outline"></ion-icon>
-                    <span>Xem Bản Đồ &amp; Chỉ Đường</span>
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* DẢI HỖ TRỢ TRỰC TIẾP */}
           <div className="about-support-banner about-fade-up">
             <div className="support-banner-item">
