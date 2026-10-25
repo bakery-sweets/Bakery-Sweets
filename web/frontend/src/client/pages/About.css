@@ -1,110 +1,938 @@
-.about-page {
+/* ==========================================================================
+   ABOUT US - SYNCHRONIZED NAVY (#1a2639) & PINK (#ed8a9f) DESIGN SYSTEM
+   ========================================================================== */
+
+.about-page-container {
   width: 100%;
+  font-family: var(--font-body);
+  background-color: #ffffff;
+  color: #1a1c1d;
+  overflow-x: hidden;
 }
 
-.about-banner {
-  position: relative;
-  width: 100%;
-  height: 520px;
-  overflow: hidden;
-  background: #1a1a2e;
-}
-
-.about-banner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.65;
-}
-
-.about-overlay {
-  position: absolute;
-  top: 56%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  color: #fff;
-  width: 90%;
-  max-width: 800px;
-}
-
-.about-overlay h1 {
-  font-size: 3rem;
-  font-weight: 700;
-  margin: 0 0 12px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-}
-
-.about-overlay p {
-  font-size: 1.2rem;
-  margin: 0;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-}
-
-.about-content {
-  max-width: 960px;
-  margin: 60px auto;
-  padding: 0 30px;
+.about-content-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
   box-sizing: border-box;
 }
 
-.about-section {
+/* ==========================================================================
+   SCROLL REVEAL ANIMATIONS (KHI CUỘN NỘI DUNG SẼ MỜ RỒI HIỆN RA TỪ TỪ)
+   ========================================================================== */
+.about-fade-up {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.about-fade-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.about-fade-zoom {
+  opacity: 0;
+  transform: scale(0.96) translateY(24px);
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.about-fade-zoom.is-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* Stagger delay classes (nhịp trễ mềm mại cho thẻ card xuất hiện lần lượt) */
+.delay-1 { transition-delay: 0.08s; }
+.delay-2 { transition-delay: 0.16s; }
+.delay-3 { transition-delay: 0.24s; }
+.delay-4 { transition-delay: 0.32s; }
+
+/* 1. HERO BANNER */
+.about-hero {
+  position: relative;
+  background-color: var(--color-navy);
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 110px 24px 60px;
+  overflow: hidden;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.about-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(237, 138, 159, 0.22) 0%, rgba(26, 38, 57, 0.95) 75%);
+  pointer-events: none;
+}
+
+.about-hero-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* Hiệu ứng hiển thị mượt mà ngay khi tải trang cho phần Hero */
+.about-hero-brand,
+.about-hero-title,
+.about-hero-tagline,
+.about-hero-sub {
+  animation: heroTextEntrance 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.about-hero-title { animation-delay: 0.1s; }
+.about-hero-tagline { animation-delay: 0.2s; }
+.about-hero-sub { animation-delay: 0.3s; }
+
+@keyframes heroTextEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.about-hero-brand,
+.about-hero-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(34px, 4.8vw, 56px);
+  font-weight: 700;
+  font-style: normal;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  margin: 0 auto 10px;
+  text-align: center;
+}
+
+.about-hero-title {
+  font-family: var(--font-heading);
+  font-size: clamp(20px, 2.6vw, 36px);
+  font-weight: 600;
+  font-style: normal;
+  color: #ffffff;
+  line-height: 1.35;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto 10px;
+  text-align: center;
+}
+
+@media (min-width: 860px) {
+  .about-hero-title {
+    white-space: nowrap; /* Giữ chữ "Nghệ Thuật" trên cùng một dòng, không bị ngắt xuống dòng */
+  }
+}
+
+.about-hero-tagline,
+.about-hero-heading-italic {
+  display: block;
+  font-family: var(--font-heading);
+  font-style: normal !important; /* Dùng chung font đứng với The Sweets, không dùng italic */
+  font-size: clamp(24px, 3.2vw, 42px);
+  font-weight: 700;
+  color: #f1b0be;
+  text-shadow: 0 0 24px rgba(241, 176, 190, 0.45);
+  margin: 0 auto 20px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.about-hero-sub {
+  font-size: clamp(15px, 1.35vw, 17px);
+  color: #ffffff;
+  opacity: 0.92;
+  line-height: 1.8;
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* 2. BRAND STORY SECTION */
+.about-story-sec {
+  padding: 95px 0;
+  background-color: #ffffff;
+}
+
+.story-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+@media (min-width: 992px) {
+  .story-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: 68px;
+  }
+}
+
+.story-media-col {
+  position: relative;
+}
+
+.story-img-frame {
+  position: relative;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -10px rgba(26, 38, 57, 0.18);
+  aspect-ratio: 4/3;
+  background-color: var(--color-pink-soft);
+}
+
+.story-img-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.story-img-frame:hover img {
+  transform: scale(1.04);
+}
+
+.story-img-overlay-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 18px 20px;
+  background: linear-gradient(to top, rgba(26, 38, 57, 0.9) 0%, transparent 100%);
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.story-tag-atelier {
+  font-weight: 600;
+  color: var(--color-pink);
+}
+
+.story-float-card {
+  position: absolute;
+  bottom: -20px;
+  right: 20px;
+  background: #ffffff;
+  padding: 14px 22px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 14px 32px rgba(26, 38, 57, 0.12);
+  border: 1px solid var(--color-pink-soft-hover);
+}
+
+.story-float-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-pink-soft);
+  color: var(--color-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.story-float-card h4 {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  color: var(--color-navy);
+  margin: 0;
+}
+
+.story-float-card p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.about-kicker-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-pink);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.about-block-title {
+  font-family: var(--font-heading);
+  font-size: clamp(24px, 3.2vw, 38px);
+  font-weight: 700;
+  color: var(--color-navy);
+  line-height: 1.3;
+  margin-bottom: 22px;
+}
+
+.story-paragraphs p {
+  font-size: 15.5px;
+  line-height: 1.85;
+  color: #475569;
+  margin-bottom: 16px;
+}
+
+.story-quote-card {
+  position: relative;
+  background: var(--color-pink-soft);
+  border: 1px solid var(--color-pink-soft-hover);
+  border-left: 4px solid var(--color-pink);
+  padding: 24px 28px;
+  border-radius: 16px;
+  margin-top: 28px;
+  overflow: hidden;
+}
+
+.quote-icon-decor {
+  position: absolute;
+  right: 14px;
+  bottom: -28px;
+  font-family: var(--font-heading);
+  font-size: 110px;
+  color: rgba(237, 138, 159, 0.2);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.quote-text-line {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-style: italic;
+  color: var(--color-navy);
+  line-height: 1.65;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.quote-author-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--color-pink-hover);
+  position: relative;
+  z-index: 2;
+}
+
+.quote-author-bar {
+  width: 24px;
+  height: 2px;
+  background: var(--color-pink);
+}
+
+/* 3. CORE VALUES */
+.about-pillars-sec {
+  padding: 95px 0;
+  background-color: #fbfbfd;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.about-header-centered {
+  text-align: center;
+  max-width: 740px;
+  margin: 0 auto 56px;
+}
+
+.about-block-subtitle {
+  font-size: 16px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.about-pillars-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 576px) {
+  .about-pillars-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (min-width: 992px) {
+  .about-pillars-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+}
+
+.about-pillar-card {
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 20px;
+  padding: 34px 26px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.35s ease;
+  box-shadow: 0 4px 16px rgba(26, 38, 57, 0.03);
+  box-sizing: border-box;
+}
+
+.about-pillar-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px -4px rgba(237, 138, 159, 0.2);
+  border-color: var(--color-pink-soft-hover);
+}
+
+.pillar-icon-circle {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.pillar-icon-circle.pink {
+  background: var(--color-pink-soft);
+  color: var(--color-pink);
+}
+
+.pillar-icon-circle.blue {
+  background: var(--color-blue-soft);
+  color: var(--color-navy);
+}
+
+.pillar-icon-circle ion-icon {
+  font-size: 30px;
+}
+
+.pillar-item-title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-navy);
+  margin-bottom: 12px;
+}
+
+.pillar-item-desc {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #64748b;
+  margin-bottom: 24px;
+  flex-grow: 1;
+}
+
+.pillar-item-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-pink-hover);
+  border-top: 1px solid #f8fafc;
+  padding-top: 14px;
+}
+
+.pillar-item-footer ion-icon {
+  font-size: 16px;
+}
+
+/* 4. THE CRAFT JOURNEY */
+.about-craft-sec {
+  padding: 95px 0;
+  background-color: #ffffff;
+}
+
+.about-craft-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .about-craft-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+}
+
+.about-craft-card {
+  background: #fbfbfd;
+  border: 1px solid #eef2f6;
+  border-radius: 20px;
+  padding: 34px 28px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.about-craft-card:hover {
+  background: #ffffff;
+  border-color: var(--color-pink-soft-hover);
+  box-shadow: 0 14px 32px rgba(26, 38, 57, 0.08);
+}
+
+.craft-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.craft-card-number {
+  font-family: var(--font-heading);
+  font-size: 44px;
+  font-weight: 700;
+  color: #f1b0be;
+}
+
+.craft-card-icon-pill {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-pink-soft);
+  color: var(--color-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.craft-card-title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-navy);
+  margin-bottom: 10px;
+}
+
+.craft-card-text {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #64748b;
+}
+
+/* 5. STORE LOCATIONS */
+.about-stores-sec {
+  padding: 95px 0;
+  background-color: #fbfbfd;
+}
+
+.about-stores-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
   margin-bottom: 40px;
 }
 
-.about-section h2 {
-  font-size: 1.6rem;
-  color: var(--color-pink);
-  margin-bottom: 12px;
+@media (min-width: 860px) {
+  .about-stores-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+}
+
+.about-store-card {
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 22px;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 18px rgba(26, 38, 57, 0.04);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
+}
+
+.about-store-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(26, 38, 57, 0.1);
+}
+
+.store-card-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.store-badge-tag {
+  font-size: 11px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--color-pink-soft);
+  color: var(--color-pink-hover);
+  padding: 5px 14px;
+  border-radius: 9999px;
 }
 
-.about-section p {
-  font-size: 1.05rem;
-  line-height: 1.8;
+.store-status-open {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.store-green-dot {
+  width: 7px;
+  height: 7px;
+  background: #10b981;
+  border-radius: 50%;
+}
+
+.store-branch-title {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-navy);
+  margin-bottom: 20px;
+}
+
+.store-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 14.5px;
   color: #475569;
+  margin-bottom: 28px;
+  flex-grow: 1;
 }
 
-/* RESPONSIVE */
-@media (max-width: 767px) {
-  .about-banner {
-    height: 280px;
+.store-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  line-height: 1.5;
+}
+
+.store-icon-pink { color: var(--color-pink); font-size: 20px; flex-shrink: 0; }
+.store-icon-navy { color: var(--color-navy); font-size: 20px; flex-shrink: 0; }
+.store-hotline-text { color: var(--color-navy); font-size: 15px; }
+
+.about-btn-map {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-navy);
+  color: #ffffff;
+  padding: 11px 24px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.about-btn-map:hover {
+  background: var(--color-pink);
+  transform: translateY(-2px);
+  color: #ffffff;
+}
+
+.about-support-banner {
+  background: var(--color-pink-soft);
+  border: 1px solid var(--color-pink-soft-hover);
+  border-radius: 18px;
+  padding: 20px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-around;
+  gap: 18px;
+  font-size: 14px;
+  color: var(--color-navy);
+  box-sizing: border-box;
+}
+
+.support-banner-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.support-icon-pink { color: var(--color-pink); font-size: 20px; }
+.support-icon-navy { color: var(--color-navy); font-size: 20px; }
+
+.support-banner-divider {
+  display: none;
+  width: 1px;
+  height: 24px;
+  background: rgba(237, 138, 159, 0.35);
+}
+
+@media (min-width: 768px) {
+  .support-banner-divider {
+    display: block;
   }
-  .about-overlay {
-    top: 58%;
+}
+
+/* 6. CALL-TO-ACTION */
+.about-cta-sec {
+  padding: 80px 0 100px;
+  background-color: #ffffff;
+}
+
+.about-cta-box {
+  position: relative;
+  background: var(--color-navy);
+  border-radius: 28px;
+  padding: 68px 32px;
+  color: #ffffff;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 24px 48px -10px rgba(26, 38, 57, 0.45);
+  box-sizing: border-box;
+}
+
+.about-cta-glow {
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(237, 138, 159, 0.35) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(40px);
+}
+
+.about-cta-content {
+  position: relative;
+  z-index: 2;
+}
+
+.about-cta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  background: rgba(237, 138, 159, 0.2);
+  border: 1px solid rgba(237, 138, 159, 0.4);
+  color: #f1b0be;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 22px;
+}
+
+.about-cta-title {
+  font-family: var(--font-heading);
+  font-size: clamp(26px, 4vw, 44px);
+  font-weight: 700;
+  margin-bottom: 18px;
+  color: #ffffff;
+}
+
+.about-cta-desc {
+  font-size: 16.5px;
+  line-height: 1.75;
+  max-width: 680px;
+  margin: 0 auto 38px;
+  color: #cadbfb;
+}
+
+.about-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.about-btn-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-pink);
+  color: #ffffff;
+  padding: 14px 34px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(237, 138, 159, 0.45);
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.about-btn-cta-primary:hover {
+  background: var(--color-pink-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(237, 138, 159, 0.6);
+  color: #ffffff;
+}
+
+.about-btn-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  padding: 14px 30px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.about-btn-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (TỐI ƯU TOÀN DIỆN MỌI MÀN HÌNH TỪ 320PX ĐẾN 4K)
+   ========================================================================== */
+
+/* Tablet & Mobile (<= 991px) */
+@media (max-width: 991px) {
+  .about-story-sec {
+    padding: 75px 0;
   }
-  .about-overlay h1 {
-    font-size: 1.8rem;
+  .story-layout {
+    gap: 40px;
   }
-  .about-overlay p {
-    font-size: 0.95rem;
+  .about-pillars-sec,
+  .about-craft-sec,
+  .about-stores-sec {
+    padding: 75px 0;
   }
-  .about-content {
-    margin: 30px auto;
+}
+
+/* Mobile Standard (<= 768px) */
+@media (max-width: 768px) {
+  .about-hero {
+    min-height: 380px;
+    padding: 95px 16px 45px;
+  }
+  .about-hero-brand,
+  .about-hero-heading {
+    font-size: 30px;
+    line-height: 1.25;
+  }
+  .about-hero-title {
+    font-size: 20px;
+    line-height: 1.4;
+  }
+  .about-hero-tagline {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+  .about-hero-sub {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .story-float-card {
+    display: none; /* Tránh tràn và che nội dung trên màn hình nhỏ */
+  }
+
+  .story-img-frame {
+    aspect-ratio: 16/10;
+    max-height: 320px;
+  }
+
+  .about-section-header-center {
+    margin-bottom: 38px;
+  }
+
+  .about-block-title {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+
+  .about-support-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 22px 20px;
+    gap: 16px;
+  }
+
+  .about-cta-actions {
+    flex-direction: column;
+  }
+  .about-btn-cta-primary,
+  .about-btn-cta-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+  .about-store-card {
+    padding: 26px 20px;
+  }
+  .about-cta-box {
+    padding: 48px 20px;
+  }
+}
+
+/* Small Smartphone (<= 480px) */
+@media (max-width: 480px) {
+  .about-content-wrap {
     padding: 0 16px;
   }
-  .about-section {
-    margin-bottom: 25px;
+  .about-hero {
+    min-height: 350px;
+    padding: 90px 14px 40px;
   }
-  .about-section h2 {
-    font-size: 1.3rem;
+  .about-hero-brand {
+    font-size: 28px;
   }
-  .about-section p {
-    font-size: 0.95rem;
+  .about-hero-title {
+    font-size: 18.5px;
+  }
+  .about-hero-tagline {
+    font-size: 22px;
+  }
+  .story-quote-card {
+    padding: 20px 18px;
+  }
+  .quote-sentence {
+    font-size: 15.5px;
+  }
+  .about-pillar-card {
+    padding: 26px 20px;
+  }
+  .about-craft-card {
+    padding: 26px 20px;
   }
 }
 
-@media (min-width: 768px) and (max-width: 1024px) {
-  .about-banner {
-    height: 320px;
-  }
-  .about-overlay h1 {
-    font-size: 2.4rem;
-  }
-}
-
-@media (min-width: 1025px) {
-  .about-content {
-    max-width: 1000px;
+/* Hỗ trợ chế độ người dùng giảm chuyển động (Accessibility) */
+@media (prefers-reduced-motion: reduce) {
+  .about-fade-up,
+  .about-fade-zoom,
+  .about-hero-brand,
+  .about-hero-title,
+  .about-hero-tagline,
+  .about-hero-sub {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
   }
 }
