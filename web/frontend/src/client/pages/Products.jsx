@@ -161,8 +161,13 @@ export default function Products() {
   };
 
   const handlePricePreset = (min, max) => {
-    setMinPrice(min);
-    setMaxPrice(max);
+    if (minPrice === min && maxPrice === max) {
+      setMinPrice('');
+      setMaxPrice('');
+    } else {
+      setMinPrice(min);
+      setMaxPrice(max);
+    }
     setPage(1);
   };
 
