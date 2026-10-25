@@ -466,7 +466,7 @@ export default function Dashboard() {
                         width={tooltipW}
                         height={tooltipH}
                         rx="8"
-                        fill="#0f172a"
+                        fill="#ffffffff"
                         style={{ filter: "drop-shadow(0 4px 12px rgba(15, 23, 42, 0.45))" }}
                       />
                       {/* Mũi tên chỉ vào điểm */}
@@ -476,7 +476,7 @@ export default function Dashboard() {
                         x={tipX + tooltipW / 2}
                         y={tipY + 15}
                         textAnchor="middle"
-                        fill="#94a3b8"
+                        fill="#586475ff"
                         fontSize="10"
                         fontWeight="600"
                         fontFamily="Plus Jakarta Sans, sans-serif"
@@ -488,9 +488,9 @@ export default function Dashboard() {
                         x={tipX + tooltipW / 2}
                         y={tipY + 31}
                         textAnchor="middle"
-                        fill="#f472b6"
-                        fontSize="12.5"
-                        fontWeight="800"
+                        fill="#586475ff"
+                        fontSize="10"
+
                         fontFamily="Plus Jakarta Sans, sans-serif"
                       >
                         Số lượng: {hoveredPoint.order_count} đơn
@@ -501,7 +501,7 @@ export default function Dashboard() {
                           x={tipX + tooltipW / 2}
                           y={tipY + 45}
                           textAnchor="middle"
-                          fill="#cbd5e1"
+                          fill="#586475ff"
                           fontSize="9.5"
                           fontWeight="600"
                           fontFamily="Plus Jakarta Sans, sans-serif"
