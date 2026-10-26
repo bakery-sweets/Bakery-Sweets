@@ -1,109 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.config.database import get_db
-from app.models.user import User, Customer
+
+from app.api.deps import get_db, get_current_user
+from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserProfileOut, UpdateProfileRequest
-from app.core.security import verify_password, get_password_hash, create_access_token, get_current_user
+from app.services.auth_service import AuthService
 
 router = APIRouter()
 
-def _build_profile_out(user: User) -> UserProfileOut:
-    customer = user.customer
-    return UserProfileOut(
-        user_name=user.user_name,
-        email=user.email,
-        role=user.role,
-        status=user.status,
-        customer_id=customer.customer_id if customer else None,
-        first_name=customer.first_name if customer else (user.employee.first_name if hasattr(user, 'employee') and user.employee else None),
-        last_name=customer.last_name if customer else (user.employee.last_name if hasattr(user, 'employee') and user.employee else None),
-        phone=customer.phone if customer else (user.employee.phone if hasattr(user, 'employee') and user.employee else None),
-        gender=customer.gender if customer else (user.employee.gender if hasattr(user, 'employee') and user.employee else None),
-    )
-
 @router.post("/login", response_model=TokenResponse)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(
-        (User.user_name == req.user_name) | (User.email == req.user_name)
-    ).first()
-
-    if not user or not verify_password(req.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tên đăng nhập hoặc mật khẩu không chính xác",
-        )
-
-    if user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản của bạn đã bị khóa",
-        )
-
-    token = create_access_token(data={"sub": user.user_name, "role": user.role})
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        user=_build_profile_out(user),
-    )
+    user = AuthService.authenticate(db, req.user_name, req.password)
+    return AuthService.issue_token(user)
 
 @router.post("/register", response_model=TokenResponse)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.user_name == req.user_name).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tên đăng nhập này đã được sử dụng",
-        )
-
-    if db.query(User).filter(User.email == req.email).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email này đã được sử dụng",
-        )
-
-    if req.phone and db.query(Customer).filter(Customer.phone == req.phone).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Số điện thoại này đã được sử dụng",
-        )
-
-    try:
-        new_user = User(
-            user_name=req.user_name,
-            email=req.email,
-            password=get_password_hash(req.password),
-            role="customer",
-            status="active",
-        )
-        db.add(new_user)
-        db.flush()
-
-        new_customer = Customer(
-            user_name=new_user.user_name,
-            first_name=req.first_name,
-            last_name=req.last_name,
-            phone=req.phone,
-            gender=req.gender or "Other",
-        )
-        db.add(new_customer)
-        db.commit()
-        db.refresh(new_user)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi tạo tài khoản: {str(e)}",
-        )
-
-    token = create_access_token(data={"sub": new_user.user_name, "role": new_user.role})
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        user=_build_profile_out(new_user),
-    )
+    new_user = AuthService.register(db, req)
+    return AuthService.issue_token(new_user)
 
 @router.get("/me", response_model=UserProfileOut)
 def get_profile(current_user: User = Depends(get_current_user)):
-    return _build_profile_out(current_user)
+    return AuthService.build_profile(current_user)
 
 @router.put("/profile", response_model=UserProfileOut)
 @router.put("/me", response_model=UserProfileOut)
@@ -112,48 +29,5 @@ def update_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if req.email and req.email != current_user.email:
-        existing_email = db.query(User).filter(User.email == req.email, User.user_name != current_user.user_name).first()
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email này đã được sử dụng bởi tài khoản khác",
-            )
-        current_user.email = req.email
-
-    customer = current_user.customer
-    if not customer:
-        customer = Customer(
-            user_name=current_user.user_name,
-            first_name=req.first_name or "",
-            last_name=req.last_name or "",
-            phone=req.phone,
-            gender=req.gender or "Other",
-        )
-        db.add(customer)
-    else:
-        if req.first_name is not None:
-            customer.first_name = req.first_name.strip()
-        if req.last_name is not None:
-            customer.last_name = req.last_name.strip()
-        if req.phone is not None:
-            phone_val = req.phone.strip() if req.phone.strip() else None
-            if phone_val and phone_val != customer.phone:
-                existing_phone = db.query(Customer).filter(
-                    Customer.phone == phone_val,
-                    Customer.user_name != current_user.user_name,
-                ).first()
-                if existing_phone:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Số điện thoại này đã được sử dụng bởi tài khoản khác",
-                    )
-            customer.phone = phone_val
-        if req.gender is not None:
-            if req.gender in ["Male", "Female", "Other"]:
-                customer.gender = req.gender
-
-    db.commit()
-    db.refresh(current_user)
-    return _build_profile_out(current_user)
-
+    user = AuthService.update_profile(db, current_user, req)
+    return AuthService.build_profile(user)

@@ -6,6 +6,7 @@ from .notifications import router as notifications_router
 from .websocket import router as websocket_router
 from .promotions import router as promotions_router
 from .upload import router as upload_router
+from .internal import router as internal_router
 
 __all__ = [
     "auth_router",
@@ -16,4 +17,5 @@ __all__ = [
     "websocket_router",
     "promotions_router",
     "upload_router",
+    "internal_router",
 ]

@@ -5,6 +5,7 @@ import { adminProductsApi } from "../../api/admin";
 import { clientProductsApi } from "../../api/client";
 import { formatVND, imageUrl, apiErrorMessage, PRODUCT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
+import { useRealtimeEvent } from "../../realtime/useRealtime";
 
 const PAGE_SIZE = 10;
 
@@ -33,6 +34,9 @@ export default function ProductList() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Tồn kho đổi khi khách đặt / hủy đơn hoặc nhập hàng: cột tồn kho tự cập nhật
+  useRealtimeEvent(["stock_updated", "products_changed"], () => loadData());
 
   const categories = [
     { key: "all", label: "Tất Cả", count: products.length },

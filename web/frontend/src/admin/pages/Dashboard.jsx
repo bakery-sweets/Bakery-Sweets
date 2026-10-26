@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import useAdminAuthStore from "../../store/adminAuthStore";
 import { adminDashboardApi, adminOrdersApi, adminProductsApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD } from "../../utils/format";
+import { useRealtimeEvent } from "../../realtime/useRealtime";
 import "./Dashboard.css";
 
 const ACTIVE_STATUSES = ["Pending", "Processing", "Ready"];
@@ -45,6 +46,9 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Số liệu tổng quan cập nhật ngay khi có đơn mới / đơn đổi trạng thái / tồn kho thay đổi
+  useRealtimeEvent(["new_order", "order_updated", "stock_updated", "products_changed"], () => loadData());
 
   const stats = useMemo(() => {
     const validOrders = orders.filter((o) => o.status !== "Cancelled");

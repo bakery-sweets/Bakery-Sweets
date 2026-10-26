@@ -47,3 +47,9 @@ app.*.map.json
 .agents/
 
 __pycache__/
+
+# Local ngrok & environment configuration
+env.json
+*.local.json
+.env.local
+ngrok.env

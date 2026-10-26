@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_image.dart';
 import '../models/product_model.dart';
@@ -319,13 +320,26 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         elevation: 4,
                         shadowColor: AppColors.primary.withValues(alpha: 0.4),
                       ),
-                      onPressed: () {
-                        ref.read(cartProvider.notifier).addToCart(
-                              product,
-                              selectedSize,
-                              _quantity,
-                            );
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        try {
+                          await ref.read(cartProvider.notifier).addToCart(
+                                product,
+                                selectedSize,
+                                _quantity,
+                              );
+                        } on ApiException catch (e) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              backgroundColor: AppColors.danger,
+                              behavior: SnackBarBehavior.floating,
+                              content: Text(e.message),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                          return;
+                        }
+                        messenger.showSnackBar(
                           SnackBar(
                             backgroundColor: AppColors.navy,
                             behavior: SnackBarBehavior.floating,

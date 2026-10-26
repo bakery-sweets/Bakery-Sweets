@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/date_format_utils.dart';
 import '../../../core/widgets/no_internet_widget.dart';
 import '../../navigation/screens/main_navigation_screen.dart';
 import '../models/promotion_model.dart';
@@ -80,7 +80,7 @@ class _VoucherCard extends ConsumerWidget {
     final expiryStr = isUsed
         ? 'Đã sử dụng'
         : (promo.endDate != null
-            ? 'HSD: ${DateFormat('dd/MM/yyyy').format(promo.endDate!)}'
+            ? 'HSD: ${AppDateFormat.date(promo.endDate)}'
             : 'Có hiệu lực');
 
     return Container(

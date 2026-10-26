@@ -1,3 +1,5 @@
+import '../../../core/utils/json_utils.dart';
+
 class CartItemModel {
   final int? cartId;
   final int productId;
@@ -7,6 +9,7 @@ class CartItemModel {
   final String sizeName;
   final double price;
   final int quantity;
+  final int? stockQuantity; // Tồn kho của size, null nếu chưa biết
 
   const CartItemModel({
     this.cartId,
@@ -17,6 +20,7 @@ class CartItemModel {
     required this.sizeName,
     required this.price,
     required this.quantity,
+    this.stockQuantity,
   });
 
   double get subtotal => price * quantity;
@@ -30,6 +34,7 @@ class CartItemModel {
     String? sizeName,
     double? price,
     int? quantity,
+    int? stockQuantity,
   }) {
     return CartItemModel(
       cartId: cartId ?? this.cartId,
@@ -40,6 +45,7 @@ class CartItemModel {
       sizeName: sizeName ?? this.sizeName,
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
+      stockQuantity: stockQuantity ?? this.stockQuantity,
     );
   }
 
@@ -51,10 +57,9 @@ class CartItemModel {
       image: json['image'] as String?,
       sizeId: json['size_id'] as int? ?? 0,
       sizeName: json['size_name'] as String? ?? '',
-      price: (json['price'] is num)
-          ? (json['price'] as num).toDouble()
-          : double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      price: parseDouble(json['price']),
       quantity: json['quantity'] as int? ?? 1,
+      stockQuantity: json['stock_quantity'] as int?,
     );
   }
 
@@ -68,6 +73,7 @@ class CartItemModel {
       'size_name': sizeName,
       'price': price,
       'quantity': quantity,
+      'stock_quantity': stockQuantity,
     };
   }
 }

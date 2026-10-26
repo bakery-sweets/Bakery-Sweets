@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { clientProductsApi } from '../../api/client';
 import ProductCard from '../components/ProductCard';
 import { formatVND, apiErrorMessage } from '../../utils/format';
+import { useRealtimeVersion } from '../../realtime/useRealtime';
 import './Products.css';
 
 const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
@@ -18,6 +19,8 @@ export default function Products() {
   const [categories, setCategories] = useState([{ id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' }]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  // Tồn kho / sản phẩm thay đổi (có người đặt, admin sửa bánh): tải lại danh sách, giữ nguyên bộ lọc
+  const realtimeVersion = useRealtimeVersion(['stock_updated', 'products_changed']);
 
   useEffect(() => {
     Promise.all([clientProductsApi.getAll(), clientProductsApi.getCategories()])
@@ -38,7 +41,7 @@ export default function Products() {
       })
       .catch((err) => setLoadError(apiErrorMessage(err, 'Không tải được danh sách bánh.')))
       .finally(() => setLoading(false));
-  }, []);
+  }, [realtimeVersion]);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState(urlSearch);

@@ -1,3 +1,5 @@
+import '../../../core/utils/json_utils.dart';
+
 class PromotionModel {
   final int promotionId;
   final String promotionCode;
@@ -62,17 +64,9 @@ class PromotionModel {
       startDate: json['start_date'] != null ? DateTime.tryParse(json['start_date'].toString()) : null,
       endDate: json['end_date'] != null ? DateTime.tryParse(json['end_date'].toString()) : null,
       status: json['status'] as String? ?? 'Active',
-      minOrderValue: (json['min_order_value'] is num)
-          ? (json['min_order_value'] as num).toDouble()
-          : double.tryParse(json['min_order_value']?.toString() ?? '0') ?? 0.0,
-      discountPercentage: (json['discount_percentage'] is num)
-          ? (json['discount_percentage'] as num).toDouble()
-          : double.tryParse(json['discount_percentage']?.toString() ?? '0') ?? 0.0,
-      maxDiscountValue: json['max_discount_value'] != null
-          ? ((json['max_discount_value'] is num)
-              ? (json['max_discount_value'] as num).toDouble()
-              : double.tryParse(json['max_discount_value'].toString()))
-          : null,
+      minOrderValue: parseDouble(json['min_order_value']),
+      discountPercentage: parseDouble(json['discount_percentage']),
+      maxDiscountValue: parseDoubleOrNull(json['max_discount_value']),
       usageLimitPerUser: limitPerUser,
       totalUsageLimit: json['total_usage_limit'] as int?,
       usedByCurrentUser: usedCount,

@@ -10,8 +10,14 @@ from app.api.deps import get_db, get_current_admin
 from app.core.security import get_password_hash
 from app.models.user import User, Customer
 from app.schemas.common import ResponseBase
+from app.services.realtime_service import RealtimeService
 
 router = APIRouter()
+
+def _kick_if_locked(user: User, was_active: bool):
+    # Vừa bị khóa: đăng xuất ngay trên mọi thiết bị đang mở App / Web
+    if was_active and user.status == "locked":
+        RealtimeService.kick_user(user.phone, "account_locked", {"reason": user.lock_reason})
 
 PHONE_PATTERN = re.compile(r"^0\d{9}$")
 
@@ -146,6 +152,7 @@ def update_user(
     target_user = db.query(User).filter(User.phone == phone).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+    was_active = target_user.status == "active"
 
     if target_user.phone == admin.phone:
         if data.role is not None and data.role != "admin":
@@ -193,6 +200,7 @@ def update_user(
         db.rollback()
         raise HTTPException(status_code=400, detail="Email này đã được sử dụng bởi tài khoản khác")
     db.refresh(target_user)
+    _kick_if_locked(target_user, was_active)
 
     return ResponseBase(message="Cập nhật tài khoản thành công", data=to_item_out(target_user))
 
@@ -210,7 +218,8 @@ def toggle_user_status(
     if not user:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
 
-    if user.status == "active":
+    was_active = user.status == "active"
+    if was_active:
         user.status = "locked"
         reason = data.reason.strip() if (data and data.reason and data.reason.strip()) else "Khóa bởi Quản trị viên"
         user.lock_reason = reason
@@ -222,4 +231,5 @@ def toggle_user_status(
 
     db.commit()
     db.refresh(user)
+    _kick_if_locked(user, was_active)
     return ResponseBase(message=msg, data=to_item_out(user))

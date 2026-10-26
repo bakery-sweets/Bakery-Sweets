@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/network/websocket_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../orders/providers/orders_provider.dart';
 import '../models/notification_model.dart';
@@ -35,18 +33,13 @@ class NotificationsState {
 }
 
 class NotificationsNotifier extends Notifier<NotificationsState> {
-  StreamSubscription? _wsSubscription;
-
   @override
   NotificationsState build() {
     ref.listen(authProvider, (prev, next) {
       if (prev?.user?.userName != next.user?.userName) {
         if (next.isAuthenticated && next.user != null) {
-          _initSocket(next.user!.userName);
           fetchNotifications();
         } else {
-          _wsSubscription?.cancel();
-          WebSocketService().disconnect();
           state = const NotificationsState();
         }
       }
@@ -54,52 +47,20 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
 
     final auth = ref.read(authProvider);
     if (auth.isAuthenticated && auth.user != null) {
-      _initSocket(auth.user!.userName);
       Future.microtask(() => fetchNotifications());
     }
-
-    ref.onDispose(() {
-      _wsSubscription?.cancel();
-    });
 
     return const NotificationsState();
   }
 
-  void _initSocket(String userName) {
-    _wsSubscription?.cancel();
-    WebSocketService().connect(userName);
-    _wsSubscription = WebSocketService().messageStream.listen((event) {
-      _handleRealtimeMessage(event);
-    });
-  }
-
-  void _handleRealtimeMessage(Map<String, dynamic> data) {
-    final eventName = data['event'] as String?;
-    if (eventName == 'new_notification') {
-      final title = data['title'] as String? ?? 'Thông báo đơn hàng';
-      final message = data['message'] as String? ?? '';
-      final orderId = data['order_id'] as int?;
-
-      final newNotif = NotificationModel(
-        notificationId: DateTime.now().millisecondsSinceEpoch,
-        userName: ref.read(authProvider).user?.userName ?? '',
-        title: title,
-        message: message,
-        type: 'order',
-        referenceId: orderId,
-        isRead: false,
-        createdAt: DateTime.now().toIso8601String(),
-      );
-
-      // Thêm thông báo mới vào đầu danh sách
-      state = state.copyWith(
-        notifications: [newNotif, ...state.notifications],
-        lastRealtimeAlert: '$title: $message',
-      );
-
-      // Đồng thời tự động cập nhật danh sách đơn hàng
-      ref.read(ordersProvider.notifier).fetchOrders();
-    }
+  /// Nhận thông báo realtime (đặt đơn thành công, nhân viên đổi trạng thái đơn):
+  /// hiện banner ngay, tải lại danh sách thông báo (lấy đúng id từ server) và đơn hàng
+  void onRealtimeNotification(Map<String, dynamic> data) {
+    final title = data['title'] as String? ?? 'Thông báo đơn hàng';
+    final message = data['message'] as String? ?? '';
+    state = state.copyWith(lastRealtimeAlert: '$title: $message');
+    fetchNotifications();
+    ref.read(ordersProvider.notifier).fetchOrders();
   }
 
   void clearAlert() {

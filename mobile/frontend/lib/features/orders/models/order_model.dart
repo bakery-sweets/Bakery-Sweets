@@ -1,3 +1,5 @@
+import '../../../core/utils/json_utils.dart';
+
 class OrderItemModel {
   final int productId;
   final String productName;
@@ -47,8 +49,8 @@ class OrderItemModel {
       sizeId: json['size_id'] as int? ?? 0,
       sizeName: json['size_name'] as String? ?? 'Tiêu chuẩn',
       quantity: json['quantity'] as int? ?? 1,
-      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
-      subtotal: double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
+      price: parseDouble(json['price']),
+      subtotal: parseDouble(json['subtotal']),
     );
   }
 }
@@ -91,8 +93,8 @@ class OrderModel {
       recipientPhone: json['recipient_phone'] as String? ?? '',
       pickupTime: json['pickup_time'] as String?,
       notes: json['notes'] as String?,
-      totalCost: double.tryParse(json['total_cost']?.toString() ?? '0') ?? 0.0,
-      finalCost: double.tryParse(json['final_cost']?.toString() ?? '0') ?? 0.0,
+      totalCost: parseDouble(json['total_cost']),
+      finalCost: parseDouble(json['final_cost']),
       paymentMethod: json['payment_method'] as String? ?? 'COD',
       status: json['status'] as String? ?? 'Pending',
       orderDate: json['order_date'] as String?,

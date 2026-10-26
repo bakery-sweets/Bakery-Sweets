@@ -6,6 +6,7 @@ import {
   formatVND, formatDate, formatDateTime, apiErrorMessage, imageUrl,
   ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS,
 } from '../../utils/format';
+import { useRealtimeVersion } from '../../realtime/useRealtime';
 import './Receipt.css';
 
 const STATUS_CLASS = { Completed: 'success', Ready: 'success', Pending: 'warning', Processing: 'warning', Cancelled: 'gray' };
@@ -30,6 +31,8 @@ export default function Receipt() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  // Nhân viên đổi trạng thái / xác nhận thanh toán: trạng thái đơn trên trang tự cập nhật
+  const realtimeVersion = useRealtimeVersion(['order_status_updated', 'order_updated']);
 
   useEffect(() => {
     if (!user) return;
@@ -38,12 +41,13 @@ export default function Receipt() {
         const list = res.data || [];
         setOrders(list);
         if (list.length > 0) {
-          setSelectedOrderId(list[0].order_id);
+          // Giữ hóa đơn đang xem khi tải lại do realtime
+          setSelectedOrderId((prev) => (list.some((o) => o.order_id === prev) ? prev : list[0].order_id));
         }
       })
       .catch((err) => setLoadError(apiErrorMessage(err, 'Không tải được lịch sử đơn hàng.')))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, realtimeVersion]);
 
   if (!user) {
     return (

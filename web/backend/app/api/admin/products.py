@@ -8,6 +8,7 @@ from app.models.user import User
 from app.services.admin.product_service import AdminProductService
 from app.schemas.admin.product import ProductCreate, ProductUpdate, AdminProductOut, ProductSizeOut
 from app.schemas.common import ResponseBase
+from app.services.realtime_service import RealtimeService
 
 router = APIRouter()
 
@@ -103,6 +104,7 @@ def create_product(
     admin: User = Depends(get_current_admin),
 ):
     product = AdminProductService.create(db, data)
+    RealtimeService.products_changed(product.product_id, "created")
     return ResponseBase(message="Thêm sản phẩm thành công", data=_to_product_out(product))
 
 @router.put("/{product_id}", response_model=ResponseBase[AdminProductOut], summary="Cập nhật sản phẩm")
@@ -115,6 +117,7 @@ def update_product(
     product = AdminProductService.update(db, product_id, data)
     if not product:
         raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm để cập nhật")
+    RealtimeService.products_changed(product.product_id, "updated")
     return ResponseBase(message="Cập nhật sản phẩm thành công", data=_to_product_out(product))
 
 @router.delete("/{product_id}", response_model=ResponseBase, summary="Ngừng kinh doanh sản phẩm (xóa mềm)")
@@ -126,4 +129,5 @@ def delete_product(
     success = AdminProductService.delete(db, product_id)
     if not success:
         raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm để xóa")
+    RealtimeService.products_changed(product_id, "discontinued")
     return ResponseBase(message="Đã chuyển sản phẩm sang ngừng kinh doanh")

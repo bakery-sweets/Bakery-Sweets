@@ -1,11 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_image.dart';
 import '../providers/cart_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_modal.dart';
 import 'checkout_modal.dart';
+
+/// Chạy thao tác giỏ hàng, báo lỗi (hết hàng, mất kết nối...) bằng SnackBar
+Future<void> _runCartAction(BuildContext context, Future<void> Function() action) async {
+  try {
+    await action();
+  } on ApiException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.danger,
+        content: Text(e.message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+}
 
 class CartScreen extends ConsumerWidget {
   final VoidCallback? onBackToHome;
@@ -44,8 +61,8 @@ class CartScreen extends ConsumerWidget {
                       ),
                       TextButton(
                         onPressed: () {
-                          ref.read(cartProvider.notifier).clearCart();
                           Navigator.pop(ctx);
+                          _runCartAction(context, () => ref.read(cartProvider.notifier).clearCart());
                         },
                         child: const Text('Xóa hết', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
                       ),
@@ -112,149 +129,156 @@ class CartScreen extends ConsumerWidget {
                   ),
                 ),
 
-                // Danh sách món trong giỏ
+                // Danh sách món trong giỏ (kéo xuống để tải lại, đồng bộ thay đổi từ Web)
                 Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: cart.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final item = cart[index];
-                      return Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.cardBorder),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Ảnh sản phẩm
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: SizedBox(
-                                width: 68,
-                                height: 68,
-                                child: AppImage(
-                                  imagePath: item.image,
-                                  fit: BoxFit.cover,
-                                  placeholder: Container(color: AppColors.surfaceVariant),
-                                  errorWidget: Container(
-                                    color: AppColors.primaryLight,
-                                    child: const Center(child: Text('🧁', style: TextStyle(fontSize: 24))),
+                  child: RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: () => ref.read(cartProvider.notifier).fetchCart(),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: cart.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final item = cart[index];
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.cardBorder),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Ảnh sản phẩm
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: SizedBox(
+                                  width: 68,
+                                  height: 68,
+                                  child: AppImage(
+                                    imagePath: item.image,
+                                    fit: BoxFit.cover,
+                                    placeholder: Container(color: AppColors.surfaceVariant),
+                                    errorWidget: Container(
+                                      color: AppColors.primaryLight,
+                                      child: const Center(child: Text('🧁', style: TextStyle(fontSize: 24))),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
+                              const SizedBox(width: 12),
 
-                            // Tên, Size & Giá
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.productName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surfaceVariant,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      item.sizeName,
+                              // Tên, Size & Giá
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.productName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary,
+                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
+                                    const SizedBox(height: 3),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceVariant,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        item.sizeName,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      AppTheme.formatCurrency(item.price),
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Bộ điều khiển số lượng (- [qty] +) & Nút xóa
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () => _runCartAction(
+                                      context,
+                                      () => ref.read(cartProvider.notifier).removeItem(item.productId, item.sizeId),
+                                    ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    AppTheme.formatCurrency(item.price),
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: AppColors.inputBorder),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        InkWell(
+                                          onTap: () => _runCartAction(
+                                            context,
+                                            () => ref.read(cartProvider.notifier).decrementQty(item.productId, item.sizeId),
+                                          ),
+                                          child: const Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 8),
+                                            child: Icon(Icons.remove, size: 14),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${item.quantity}',
+                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                        ),
+                                        InkWell(
+                                          onTap: () => _runCartAction(
+                                            context,
+                                            () => ref.read(cartProvider.notifier).incrementQty(item.productId, item.sizeId),
+                                          ),
+                                          child: const Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 8),
+                                            child: Icon(Icons.add, size: 14),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-
-                            // Bộ điều khiển số lượng (- [qty] +) & Nút xóa
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onPressed: () {
-                                    ref.read(cartProvider.notifier).removeItem(item.productId, item.sizeId);
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: AppColors.inputBorder),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      InkWell(
-                                        onTap: () {
-                                          ref.read(cartProvider.notifier).decrementQty(item.productId, item.sizeId);
-                                        },
-                                        child: const Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 8),
-                                          child: Icon(Icons.remove, size: 14),
-                                        ),
-                                      ),
-                                      Text(
-                                        '${item.quantity}',
-                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                                      ),
-                                      InkWell(
-                                        onTap: () {
-                                          ref.read(cartProvider.notifier).incrementQty(item.productId, item.sizeId);
-                                        },
-                                        child: const Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 8),
-                                          child: Icon(Icons.add, size: 14),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
 

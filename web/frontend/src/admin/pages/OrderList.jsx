@@ -4,6 +4,7 @@ import AdminHeader from "../components/AdminHeader";
 import { adminOrdersApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
+import { useRealtimeEvent } from "../../realtime/useRealtime";
 import "./OrderList.css";
 
 const URGENT_WINDOW_MS = 2 * 60 * 60 * 1000;
@@ -143,6 +144,9 @@ export default function OrderList() {
     }, AUTO_REFRESH_MS);
     return () => clearInterval(timer);
   }, [loadOrders]);
+
+  // Có đơn mới hoặc đơn vừa được cập nhật (khách hủy, nhân viên khác đổi trạng thái): tải lại ngay
+  useRealtimeEvent(["new_order", "order_updated"], () => loadOrders());
 
   // Khi in bảng đối soát, hiển thị toàn bộ đơn đang lọc thay vì chỉ trang hiện tại
   useEffect(() => {

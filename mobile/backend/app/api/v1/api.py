@@ -8,6 +8,7 @@ from app.api.v1.endpoints import (
     websocket_router,
     promotions_router,
     upload_router,
+    internal_router,
 )
 
 api_router = APIRouter()
@@ -20,3 +21,4 @@ api_router.include_router(notifications_router, tags=["Notifications"])
 api_router.include_router(websocket_router, tags=["WebSockets (Real-time)"])
 api_router.include_router(promotions_router, tags=["Promotions & Vouchers"])
 api_router.include_router(upload_router, tags=["Media Upload"])
+api_router.include_router(internal_router, tags=["Internal"])
