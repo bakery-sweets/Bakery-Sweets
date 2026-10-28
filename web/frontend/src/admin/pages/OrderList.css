@@ -196,12 +196,9 @@
 
 /* ===== Bảng đơn hàng ===== */
 .admin-table-clean .col-currency {
-  text-align: right;
+  text-align: left;
+  padding-left: 14px;
   white-space: nowrap;
-}
-
-.admin-table-clean .col-actions {
-  text-align: right;
 }
 
 .order-code {
@@ -241,12 +238,12 @@
   color: var(--admin-primary);
 }
 
-/* Ghi chú (viết chữ lên bánh, nến, ít ngọt...) phải đọc đầy đủ ngay trên bảng, không cắt chữ */
+/* Ghi chú: giới hạn tối đa 3 dòng gọn gàng, hover để xem toàn bộ */
 .order-note-inline {
-  min-width: 180px;
-  max-width: 260px;
+  min-width: 150px;
+  max-width: 230px;
   margin-top: 6px;
-  padding: 4px 8px;
+  padding: 5px 8px;
   font-size: 11.5px;
   line-height: 1.4;
   color: #b45309;
@@ -254,7 +251,13 @@
   border: 1px solid #fef3c7;
   border-radius: 8px;
   white-space: pre-line;
+  word-break: break-word;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .order-note-inline ion-icon {
@@ -520,10 +523,36 @@
   margin: 4px 6px;
 }
 
-.btn-pill-outline.order-view-btn {
-  padding: 8px 16px;
-  font-size: 12.5px;
-  white-space: nowrap;
+/* Cả dòng đơn bấm được để mở panel chi tiết */
+.order-row {
+  cursor: pointer;
+}
+
+.order-row:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: -2px;
+}
+
+.admin-table-clean tbody tr.order-row.is-selected td {
+  background: var(--admin-primary-light);
+}
+
+.admin-table-clean tbody tr.order-row.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-primary);
+}
+
+.admin-table-clean .col-actions {
+  width: 1%;
+  padding-left: 0;
+  text-align: right;
+  font-size: 18px;
+  line-height: 0;
+  color: #cbd5e1;
+}
+
+.order-row:hover .col-actions,
+.order-row.is-selected .col-actions {
+  color: var(--admin-primary);
 }
 
 /* Hàng skeleton / empty state không đổi nền khi hover */
@@ -612,43 +641,124 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ===== Modal phiếu hóa đơn ===== */
-.order-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
+/* ===== Bố cục trang: bảng bên trái, panel chi tiết đơn ghim bên phải ===== */
+.order-page {
+  --order-panel-w: clamp(450px, 32vw, 540px);
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
+  flex-direction: column;
+  min-width: 0;
 }
 
-.order-modal {
-  width: 100%;
-  max-width: 616px;
-  max-height: 92vh;
-  overflow-y: auto;
+/* Đo bề rộng thật của bảng để ẩn bớt cột khi panel chiếm chỗ */
+.order-table-card {
+  container: order-table / inline-size;
+}
+
+.order-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 950;
+  width: var(--order-panel-w);
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
-  padding: 28px;
   background: #ffffff;
-  border: 1px solid var(--admin-border);
-  border-radius: 24px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border-left: 1px solid var(--admin-border);
+  box-shadow: -12px 0 32px rgba(15, 23, 42, 0.06);
+  animation: order-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.order-modal-header {
+@keyframes order-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.order-panel-backdrop {
+  display: none;
+}
+
+/* Màn hình rộng: panel đứng cạnh bảng (không che), bảng tự gọn lại */
+@media (min-width: 1280px) {
+  .order-page.has-panel {
+    padding-right: var(--order-panel-w);
+  }
+
+  .order-page.has-panel .admin-table-clean .col-actions {
+    display: none;
+  }
+
+  .order-page.has-panel .order-note-inline {
+    min-width: 0;
+    max-width: 200px;
+  }
+
+  /* Thu gọn khoảng cách: giới hạn cột Hẹn lấy bánh & đặt Tổng tiền ngay sát bên */
+  .order-page.has-panel .admin-table-clean th:nth-child(3),
+  .order-page.has-panel .admin-table-clean td:nth-child(3) {
+    max-width: 200px;
+  }
+
+  .order-page.has-panel .admin-table-clean th.col-currency,
+  .order-page.has-panel .admin-table-clean td.col-currency {
+    width: 130px;
+    text-align: left;
+    padding-left: 10px;
+  }
+
+  /* Món & thanh toán đã có đủ trên panel, ẩn khỏi bảng khi không đủ chỗ */
+  @container order-table (max-width: 1100px) {
+    .order-page.has-panel .col-items {
+      display: none;
+    }
+  }
+
+  @container order-table (max-width: 860px) {
+    .order-page.has-panel .col-payment {
+      display: none;
+    }
+  }
+}
+
+/* Màn hình hẹp (tablet): panel trượt ra đè lên bảng */
+@media (max-width: 1279px) {
+  .order-panel {
+    width: min(500px, 100%);
+    box-shadow: -16px 0 40px rgba(15, 23, 42, 0.16);
+  }
+
+  .order-panel-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 940;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(2px);
+  }
+}
+
+.order-panel-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
+  padding: 20px 20px 16px;
   border-bottom: 1px solid #f1f2f4;
 }
 
-.order-modal-eyebrow {
+.order-panel-heading {
+  min-width: 0;
+}
+
+.order-panel-eyebrow {
   font-size: 11px;
   font-weight: 800;
   color: var(--admin-primary);
@@ -656,83 +766,417 @@
   letter-spacing: 1px;
 }
 
-.order-modal-title {
-  margin: 2px 0 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--admin-text);
+.order-panel-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
 }
 
-.order-modal-close {
+.order-panel-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--admin-text);
+  overflow-wrap: anywhere;
+}
+
+.order-panel-subtitle {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.order-panel-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+}
+
+.order-panel-position {
+  margin-right: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-icon-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: #f8fafc;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  font-size: 18px;
+  color: #64748b;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.order-icon-btn:hover:not(:disabled) {
+  background: var(--admin-primary-light);
+  border-color: var(--admin-primary-border);
+  color: var(--admin-primary);
+}
+
+.order-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.order-panel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Thanh tiến trình trạng thái */
+.order-stepper {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+/* Đoạn nối từ chấm bước trước tới chấm bước này */
+.order-step + .order-step::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: #e2e8f0;
+}
+
+.order-step.is-done::before,
+.order-step.is-current::before {
+  background: var(--admin-primary);
+}
+
+.order-step-dot {
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8fafc;
-  border: 1px solid var(--admin-border);
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
   border-radius: 50%;
-  font-size: 20px;
-  color: #64748b;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  font-size: 14px;
+  color: #ffffff;
 }
 
-.order-modal-close:hover {
-  background: #f1f2f4;
-  color: var(--admin-text);
+.order-step.is-done .order-step-dot {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
 }
 
-.order-meta {
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  background: var(--admin-primary-light);
+.order-step.is-current .order-step-dot {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 4px rgba(222, 93, 124, 0.15);
+}
+
+.order-step.is-current .order-step-dot::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--admin-primary);
+}
+
+.order-step-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.order-step.is-done .order-step-label {
+  color: #475569;
+}
+
+.order-step.is-current .order-step-label {
+  font-weight: 800;
+  color: var(--admin-primary);
+}
+
+.order-panel-cancelled {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
   border-radius: 14px;
   font-size: 12.5px;
+  color: #b91c1c;
 }
 
-.order-meta-row {
+.order-panel-cancelled > ion-icon {
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+.order-panel-cancelled strong {
+  display: block;
+  font-size: 13.5px;
+}
+
+.order-panel-cancelled p {
+  margin: 2px 0;
+  color: #7f1d1d;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.order-panel-cancelled span {
+  font-size: 11.5px;
+  opacity: 0.8;
+}
+
+/* Giờ hẹn lấy bánh */
+.order-panel-pickup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+}
+
+.order-panel-pickup > ion-icon {
+  flex-shrink: 0;
+  font-size: 22px;
+  color: #64748b;
+}
+
+.order-panel-pickup-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.order-panel-pickup-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.order-panel-pickup strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--admin-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.order-panel-countdown {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.order-panel-pickup.is-urgent {
+  background: var(--admin-primary-light);
+  border-color: var(--admin-primary-border);
+}
+
+.order-panel-pickup.is-urgent > ion-icon,
+.order-panel-pickup.is-urgent strong {
+  color: var(--admin-primary);
+}
+
+.order-panel-pickup.is-urgent .order-panel-countdown {
+  background: var(--admin-primary-border);
+  color: var(--admin-primary-dark);
+}
+
+.order-panel-pickup.is-late {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.order-panel-pickup.is-late > ion-icon,
+.order-panel-pickup.is-late strong {
+  color: #dc2626;
+}
+
+.order-panel-pickup.is-late .order-panel-countdown {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+/* Các khối thông tin */
+.order-panel-section > .order-section-label,
+.order-panel-section-head {
+  display: block;
+  margin: 0 0 8px;
+}
+
+.order-panel-section-head {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+}
+
+.order-panel-section-head .order-section-label {
+  margin: 0;
+}
+
+.order-panel-section-meta {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.order-panel-customer {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.order-meta-row + .order-meta-row {
-  margin-top: 4px;
-}
-
-.order-meta-label {
+.order-panel-avatar {
   flex-shrink: 0;
-  color: #64748b;
-}
-
-.order-meta-value {
-  font-weight: 700;
-  color: var(--admin-text);
-  text-align: right;
-}
-
-.order-meta-value.is-accent {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 2px;
+  background: var(--admin-primary-light);
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 800;
   color: var(--admin-primary);
 }
 
-.order-meta-pay {
+.order-panel-customer-info {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.order-panel-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #f1f2f4;
+  border-radius: 14px;
+}
+
+.order-panel-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.order-panel-item + .order-panel-item {
+  border-top: 1px solid #f1f2f4;
+}
+
+.order-panel-qty {
+  flex-shrink: 0;
+  min-width: 34px;
+  padding: 2px 6px;
+  box-sizing: border-box;
+  background: var(--admin-primary-light);
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--admin-primary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-panel-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-panel-item-name {
+  font-weight: 700;
+  color: var(--admin-text);
+  overflow-wrap: anywhere;
+}
+
+.order-panel-item-meta {
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.order-panel-item-note {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: #b45309;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.order-panel-summary {
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 14px;
+}
+
+.order-panel-summary .order-receipt-row {
+  align-items: center;
+  gap: 8px;
+}
+
+.order-panel-summary .order-receipt-row > strong {
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.order-panel-pay-status {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .btn-pill-outline.order-pay-confirm-btn {
   padding: 4px 12px;
   font-size: 11.5px;
-}
-
-.order-section {
-  margin-bottom: 16px;
 }
 
 .order-section-label {
@@ -742,18 +1186,28 @@
   text-transform: uppercase;
 }
 
-.order-receipt-items {
-  margin-top: 8px;
-  border-top: 1px solid #f8f9fa;
+/* Đáy panel: thao tác nghiệp vụ luôn nhìn thấy, không phải cuộn */
+.order-panel-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  background: #ffffff;
+  border-top: 1px solid #f1f2f4;
 }
 
-.order-receipt-item {
+.order-panel-footer .btn-pill-primary.order-btn-primary {
+  width: 100%;
+}
+
+.order-panel-footer-row {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f8f9fa;
-  font-size: 13px;
+  gap: 10px;
+}
+
+.order-panel-footer-row > button {
+  flex: 1;
+  min-height: 44px;
 }
 
 .order-receipt-item-price {
@@ -763,7 +1217,6 @@
 }
 
 .order-note-box {
-  margin-bottom: 16px;
   padding: 10px 14px;
   background: #fef9ee;
   border: 1px solid #fef3c7;
@@ -833,7 +1286,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
   padding-top: 12px;
   border-top: 2px dashed #e2e8f0;
   font-size: 14px;
@@ -849,14 +1301,6 @@
 }
 
 /* Timeline lịch sử xử lý */
-.order-timeline-section {
-  margin-bottom: 18px;
-}
-
-.order-timeline {
-  margin-top: 10px;
-}
-
 .order-timeline-item {
   display: flex;
   gap: 12px;
@@ -925,30 +1369,7 @@
   color: #b91c1c;
 }
 
-/* Khu vực footer modal & các nút hành động nghiệp vụ */
-.order-modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid #f1f2f4;
-  flex-wrap: wrap;
-}
-
-.order-modal-footer-spacer {
-  display: none;
-}
-
-.order-modal-footer-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto; /* Luôn ép cụm nút xử lý sang góc phải */
-  flex-wrap: wrap;
-}
-
+/* Các nút hành động nghiệp vụ ở đáy panel */
 /* Nút Tiếp Nhận / Hoàn Tất (Primary Action) - to, nổi bật nhất */
 .btn-pill-primary.order-btn-primary {
   display: inline-flex;
@@ -1015,7 +1436,7 @@
   color: #64748b;
 }
 
-/* Nút Hủy Đơn (Destructive Action) - Viền đỏ, đẩy sang góc trái */
+/* Nút Hủy Đơn (Destructive Action) - Viền đỏ, đặt bên trái, tách khỏi nút chính */
 .order-btn-cancel {
   display: inline-flex;
   align-items: center;
@@ -1054,7 +1475,6 @@
 
 /* Hộp nhập lý do hủy đơn (cancelMode) */
 .order-cancel-box {
-  margin-top: 16px;
   padding: 14px 16px;
   background: #fff5f5;
   border: 1px solid #fee2e2;
@@ -1128,7 +1548,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 12px;
   padding: 8px 12px;
   background: #fffbeb;
   border: 1px solid #fef3c7;
@@ -1145,10 +1564,14 @@
 
 /* Touch target đạt chuẩn 44px tối thiểu trên tablet (iPad 10.9": ngang 1180px / dọc 820px) */
 @media (max-width: 1180px) {
-  .btn-pill-outline.order-view-btn,
   .btn-pill-outline.order-pay-confirm-btn {
     min-height: 44px;
     min-width: 44px;
+  }
+
+  .order-icon-btn {
+    width: 44px;
+    height: 44px;
   }
 
   .order-popover-item {
@@ -1163,31 +1586,6 @@
 }
 
 @media (max-width: 600px) {
-  .order-modal {
-    padding: 20px;
-  }
-
-  .order-modal-footer {
-    flex-direction: column-reverse;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .order-modal-footer-actions {
-    width: 100%;
-    flex-direction: column;
-    margin-left: 0;
-    gap: 10px;
-  }
-
-  .order-modal-footer-actions button,
-  .order-btn-cancel,
-  .order-btn-secondary,
-  .btn-pill-primary.order-btn-primary {
-    width: 100%;
-    justify-content: center;
-  }
-
   .order-cancel-actions {
     flex-direction: column;
   }
@@ -1198,7 +1596,42 @@
 }
 
 @media print {
-  .order-pagination {
+  .order-pagination,
+  .order-panel,
+  .order-panel-backdrop {
     display: none;
+  }
+
+  .order-page.has-panel {
+    padding-right: 0;
+  }
+
+  /* "In Phiếu Thu": chỉ in panel của đơn đang mở */
+  body.print-order-receipt .admin-sidebar,
+  body.print-order-receipt .admin-header,
+  body.print-order-receipt .admin-page-container,
+  body.print-order-receipt .order-panel-nav,
+  body.print-order-receipt .order-panel-footer,
+  body.print-order-receipt .order-icon-btn,
+  body.print-order-receipt .order-pay-confirm-btn {
+    display: none;
+  }
+
+  body.print-order-receipt .admin-main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  body.print-order-receipt .order-panel {
+    position: static;
+    display: flex;
+    width: auto;
+    border: none;
+    box-shadow: none;
+    animation: none;
+  }
+
+  body.print-order-receipt .order-panel-body {
+    overflow: visible;
   }
 }

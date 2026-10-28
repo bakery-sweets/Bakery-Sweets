@@ -4,6 +4,7 @@ import AdminHeader from "../components/AdminHeader";
 import { adminOrdersApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
+import usePopupStore from "../../store/popupStore";
 import { useRealtimeEvent } from "../../realtime/useRealtime";
 import "./OrderList.css";
 
@@ -17,7 +18,31 @@ const isUrgent = (o) =>
   !!o.pickup_time &&
   new Date(o.pickup_time).getTime() - Date.now() <= URGENT_WINDOW_MS;
 
-// Nút chuyển bước tiếp theo trong modal (server trả next_statuses theo bảng chuyển trạng thái hợp lệ)
+// "1 giờ 20 phút", "45 phút", "2 ngày"
+const formatDuration = (ms) => {
+  const mins = Math.round(Math.abs(ms) / 60000);
+  if (mins < 60) return `${mins} phút`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return mins % 60 ? `${hours} giờ ${mins % 60} phút` : `${hours} giờ`;
+  return `${Math.floor(hours / 24)} ngày`;
+};
+
+// Đếm ngược tới giờ hẹn lấy bánh (chỉ với đơn chưa xong)
+const pickupCountdown = (o) => {
+  if (!o.pickup_time || ["Completed", "Cancelled"].includes(o.status)) return null;
+  const diff = new Date(o.pickup_time).getTime() - Date.now();
+  return diff >= 0 ? { text: `Còn ${formatDuration(diff)}`, late: false } : { text: `Trễ ${formatDuration(diff)}`, late: true };
+};
+
+// Các bước xử lý một đơn, hiển thị thành thanh tiến trình trên panel chi tiết
+const STATUS_STEPS = [
+  { key: "Pending", label: "Chờ nhận" },
+  { key: "Processing", label: "Chuẩn bị" },
+  { key: "Ready", label: "Sẵn sàng" },
+  { key: "Completed", label: "Hoàn tất" },
+];
+
+// Nút chuyển bước tiếp theo trên panel chi tiết (server trả next_statuses theo bảng chuyển trạng thái hợp lệ)
 const NEXT_STEP = {
   Processing: { label: "Tiếp Nhận & Chuẩn Bị", icon: "restaurant-outline" },
   Ready: { label: "Báo Sẵn Sàng Tại Quầy", icon: "bag-check-outline" },
@@ -47,6 +72,14 @@ const TABS = [
 const normalize = (s) =>
   (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
 
+// Giới hạn ghi chú tối đa 50 chữ (nếu dữ liệu cũ vượt quá thì cắt gọn)
+const truncateWords = (str, maxWords = 50) => {
+  if (!str) return "";
+  const words = str.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return str;
+  return words.slice(0, maxWords).join(" ") + "...";
+};
+
 // Độ rộng cố định cho thanh skeleton (không dùng Math.random để mỗi lần render không bị nhảy)
 const SKELETON_WIDTHS = [55, 85, 70, 90, 60, 75, 65, 45];
 
@@ -73,6 +106,23 @@ function EmptyState({ icon, title, text, actionLabel, onAction }) {
         </button>
       )}
     </div>
+  );
+}
+
+function StatusStepper({ status }) {
+  const current = STATUS_STEPS.findIndex((s) => s.key === status);
+  return (
+    <ol className="order-stepper" aria-label="Tiến trình xử lý đơn">
+      {STATUS_STEPS.map((s, i) => {
+        const done = i < current || status === "Completed";
+        return (
+          <li key={s.key} className={`order-step ${done ? "is-done" : i === current ? "is-current" : ""}`}>
+            <span className="order-step-dot">{done && <ion-icon name="checkmark"></ion-icon>}</span>
+            <span className="order-step-label">{s.label}</span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -151,7 +201,10 @@ export default function OrderList() {
   // Khi in bảng đối soát, hiển thị toàn bộ đơn đang lọc thay vì chỉ trang hiện tại
   useEffect(() => {
     const showAll = () => flushSync(() => setPrintAll(true));
-    const restore = () => setPrintAll(false);
+    const restore = () => {
+      setPrintAll(false);
+      document.body.classList.remove("print-order-receipt");
+    };
     window.addEventListener("beforeprint", showAll);
     window.addEventListener("afterprint", restore);
     return () => {
@@ -171,9 +224,28 @@ export default function OrderList() {
   };
 
   const openOrder = (o) => {
+    // Bấm lại đúng đơn đang mở thì giữ nguyên (không mất lý do hủy đang gõ dở)
+    if (selectedOrder?.order_id === o.order_id) return;
     setSelectedOrder(o);
     setCancelMode(false);
     setCancelReason("");
+  };
+
+  const closePanel = () => setSelectedOrder(null);
+
+  // In riêng phiếu thu của đơn đang mở (CSS @media print ẩn phần còn lại của trang)
+  const printReceipt = () => {
+    document.body.classList.add("print-order-receipt");
+    window.print();
+  };
+
+  const copyText = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      popup.success(`Đã sao chép ${label}.`);
+    } catch {
+      popup.error("Không sao chép được, vui lòng thử lại.");
+    }
   };
 
   const runOrderAction = async (request, successMessage, fallback) => {
@@ -297,6 +369,49 @@ export default function OrderList() {
   const lastUpdatedText = lastUpdated?.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
   const showSkeleton = loading && orders.length === 0;
 
+  const selectedId = selectedOrder?.order_id;
+  const selectedIndex = selectedOrder ? filteredOrders.findIndex((o) => o.order_id === selectedId) : -1;
+
+  // Chuyển sang đơn trước/sau trong danh sách đang lọc, tự lật trang nếu đơn nằm ở trang khác
+  const goToSibling = (step) => {
+    const target = filteredOrders[selectedIndex + step];
+    if (selectedIndex < 0 || !target) return;
+    openOrder(target);
+    setCurrentPage(Math.floor((selectedIndex + step) / pageSize) + 1);
+  };
+
+  // Phím tắt khi panel đang mở: Esc đóng (hoặc thoát ô nhập lý do hủy), ↑/↓ chuyển đơn trước/sau.
+  // Không truyền deps để handler luôn đọc danh sách mới nhất.
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const handleKeyDown = (e) => {
+      // Nhường phím cho hộp thoại xác nhận và popover đổi trạng thái nếu đang mở
+      if (usePopupStore.getState().dialog.isOpen || activeDropdownOrderId) return;
+      const typing = e.target.closest?.("input, textarea, select");
+      if (e.key === "Escape") {
+        if (cancelMode) {
+          setCancelMode(false);
+          setCancelReason("");
+        } else if (!typing) {
+          closePanel();
+        }
+        return;
+      }
+      if (typing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        goToSibling(e.key === "ArrowUp" ? -1 : 1);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  });
+
+  // Giữ dòng đang xem trong tầm nhìn khi chuyển đơn bằng phím/nút
+  useEffect(() => {
+    if (selectedId) document.querySelector(`[data-order-id="${selectedId}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [selectedId, page]);
+
   const renderEmptyState = () => {
     if (error && orders.length === 0) {
       return <EmptyState icon="cloud-offline-outline" title="Không tải được đơn hàng" text={error} actionLabel="Thử lại" onAction={handleRefresh} />;
@@ -321,9 +436,12 @@ export default function OrderList() {
 
   const selectedStatus = selectedOrder && (ORDER_STATUS[selectedOrder.status] || {});
   const selectedPay = selectedOrder && (PAYMENT_BADGE[selectedOrder.payment_status] || PAYMENT_BADGE.Unpaid);
+  const countdown = selectedOrder && pickupCountdown(selectedOrder);
+  const cancelLog =
+    selectedOrder?.status === "Cancelled" ? selectedOrder.status_logs?.findLast((l) => l.new_status === "Cancelled") : null;
 
   return (
-    <>
+    <div className={`order-page ${selectedOrder ? "has-panel" : ""}`}>
       <AdminHeader />
 
       <div className="admin-page-container">
@@ -361,7 +479,7 @@ export default function OrderList() {
         </div>
 
         {/* Main Orders Table */}
-        <div className="admin-card-box">
+        <div className="admin-card-box order-table-card">
           <div className="order-toolbar">
             <div className="order-search-box">
               <ion-icon name="search-outline"></ion-icon>
@@ -425,11 +543,11 @@ export default function OrderList() {
                   <th>MÃ ĐƠN</th>
                   <th>KHÁCH HÀNG &amp; SĐT</th>
                   <th>HẸN LẤY BÁNH</th>
-                  <th>MÓN &amp; KÍCH CỠ</th>
+                  <th className="col-items">MÓN &amp; KÍCH CỠ</th>
                   <th className="col-currency">TỔNG TIỀN</th>
-                  <th>THANH TOÁN</th>
+                  <th className="col-payment">THANH TOÁN</th>
                   <th>TRẠNG THÁI</th>
-                  <th className="col-actions">CHI TIẾT</th>
+                  <th className="col-actions" aria-label="Xem chi tiết"></th>
                 </tr>
               </thead>
               <tbody>
@@ -448,7 +566,19 @@ export default function OrderList() {
                   const isOpen = activeDropdownOrderId === o.order_id;
                   const isRowLoading = rowLoadingId === o.order_id;
                   return (
-                  <tr key={o.order_id}>
+                  <tr
+                    key={o.order_id}
+                    data-order-id={o.order_id}
+                    className={`order-row ${selectedId === o.order_id ? "is-selected" : ""}`}
+                    tabIndex={0}
+                    onClick={() => openOrder(o)}
+                    onKeyDown={(e) => {
+                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        openOrder(o);
+                      }
+                    }}
+                  >
                     <td>
                       <span className="order-code">#{o.order_code}</span>
                     </td>
@@ -457,17 +587,19 @@ export default function OrderList() {
                       <div className="order-customer-phone">{o.recipient_phone}</div>
                     </td>
                     <td>
-                      <div className={`order-pickup ${urgent ? "is-urgent" : ""}`}>
+                      <div className={`order-pickup ${urgent ? "is-urgent" : ""}`} title={o.notes ? `Ghi chú: ${o.notes}` : undefined}>
                         <ion-icon name="time-outline"></ion-icon>
                         <span>{formatDateTime(o.pickup_time)}</span>
+                        {o.notes && (
+                          <ion-icon
+                            name="document-text"
+                            style={{ color: "#d97706", fontSize: "14px", marginLeft: "4px" }}
+                            title={`Có ghi chú: ${o.notes}`}
+                          />
+                        )}
                       </div>
-                      {o.notes && (
-                        <div className="order-note-inline">
-                          <ion-icon name="create-outline"></ion-icon>{o.notes}
-                        </div>
-                      )}
                     </td>
-                    <td>
+                    <td className="col-items">
                       <div className="order-items">
                         {o.details.map((it) => (
                           <div key={`${it.product_id}-${it.size_id}`} className="order-item">
@@ -479,7 +611,7 @@ export default function OrderList() {
                     <td className="col-currency">
                       <span className="order-total">{formatVND(o.final_cost, " đ")}</span>
                     </td>
-                    <td>
+                    <td className="col-payment">
                       <div className="order-pay-method">{PAYMENT_METHOD[o.payment_method] || o.payment_method}</div>
                       <div className={`order-pay-status is-${(o.payment_status || "unpaid").toLowerCase()}`}>
                         {PAYMENT_STATUS[o.payment_status] || o.payment_status}
@@ -563,10 +695,8 @@ export default function OrderList() {
                         )}
                       </div>
                     </td>
-                    <td className="col-actions">
-                      <button type="button" onClick={() => openOrder(o)} className="btn-pill-outline order-view-btn">
-                        Xem Phiếu
-                      </button>
+                    <td className="col-actions" aria-hidden="true">
+                      <ion-icon name="chevron-forward-outline"></ion-icon>
                     </td>
                   </tr>
                   );
@@ -594,115 +724,213 @@ export default function OrderList() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Modal Xem Phiếu / Chi Tiết Hóa Đơn */}
-        {selectedOrder && (
-          <div className="order-modal-overlay">
-            <div className="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
-              {/* Modal Header */}
-              <div className="order-modal-header">
-                <div>
-                  <span className="order-modal-eyebrow">PHIẾU HÓA ĐƠN BÁN LẺ</span>
-                  <h3 id="order-modal-title" className="order-modal-title">#{selectedOrder.order_code}</h3>
-                </div>
-                <button type="button" className="order-modal-close" aria-label="Đóng phiếu" onClick={() => setSelectedOrder(null)}>
-                  <ion-icon name="close-outline"></ion-icon>
-                </button>
-              </div>
+      {/* Panel chi tiết đơn bên phải: bấm vào dòng nào trong bảng thì hiện ngay đơn đó */}
+      {selectedOrder && (
+        <>
+          {/* Nền mờ chỉ hiện khi panel nổi đè lên bảng (màn hình hẹp) — bấm để đóng */}
+          <div className="order-panel-backdrop" onClick={closePanel} aria-hidden="true" />
 
-              {/* Info meta */}
-              <div className="order-meta">
-                <div className="order-meta-row">
-                  <span className="order-meta-label">Khách hàng:</span>
-                  <span className="order-meta-value">{selectedOrder.recipient_name} ({selectedOrder.recipient_phone})</span>
-                </div>
-                <div className="order-meta-row">
-                  <span className="order-meta-label">Hẹn nhận bánh:</span>
-                  <span className="order-meta-value is-accent">{formatDateTime(selectedOrder.pickup_time)}</span>
-                </div>
-                <div className="order-meta-row">
-                  <span className="order-meta-label">Trạng thái:</span>
+          <aside className="order-panel" aria-labelledby="order-panel-title">
+            <div className="order-panel-header">
+              <div className="order-panel-heading">
+                <span className="order-panel-eyebrow">Chi tiết đơn hàng</span>
+                <div className="order-panel-title-row">
+                  <h3 id="order-panel-title" className="order-panel-title">#{selectedOrder.order_code}</h3>
                   <span className={`badge-pill order-badge-sm ${selectedStatus.badge || ""}`}>
                     {selectedStatus.label || selectedOrder.status}
                   </span>
                 </div>
-                <div className="order-meta-row">
-                  <span className="order-meta-label">Thanh toán:</span>
-                  <span className="order-meta-pay">
-                    <span className="order-meta-value">
-                      {PAYMENT_METHOD[selectedOrder.payment_method] || selectedOrder.payment_method}
-                    </span>
-                    <span className={`badge-pill order-badge-sm ${selectedPay.badge}`}>
-                      <span className={`dot-status ${selectedPay.dot}`}></span>
-                      {PAYMENT_STATUS[selectedOrder.payment_status] || selectedOrder.payment_status}
-                    </span>
-                    {selectedOrder.payment_status === "Unpaid" && selectedOrder.status !== "Cancelled" && (
-                      <button
-                        type="button"
-                        className="btn-pill-outline order-pay-confirm-btn"
-                        disabled={actionLoading}
-                        onClick={handleConfirmPayment}
-                      >
-                        Xác nhận đã thu
-                      </button>
-                    )}
+                <span className="order-panel-subtitle">Đặt lúc {formatDateTime(selectedOrder.order_date)}</span>
+              </div>
+              <div className="order-panel-nav">
+                {selectedIndex >= 0 && (
+                  <span className="order-panel-position">
+                    {selectedIndex + 1}/{filteredOrders.length}
                   </span>
-                </div>
+                )}
+                <button
+                  type="button"
+                  className="order-icon-btn"
+                  disabled={selectedIndex <= 0}
+                  onClick={() => goToSibling(-1)}
+                  title="Đơn trước (phím ↑)"
+                  aria-label="Đơn trước"
+                >
+                  <ion-icon name="chevron-up-outline"></ion-icon>
+                </button>
+                <button
+                  type="button"
+                  className="order-icon-btn"
+                  disabled={selectedIndex < 0 || selectedIndex >= filteredOrders.length - 1}
+                  onClick={() => goToSibling(1)}
+                  title="Đơn sau (phím ↓)"
+                  aria-label="Đơn sau"
+                >
+                  <ion-icon name="chevron-down-outline"></ion-icon>
+                </button>
+                <button type="button" className="order-icon-btn" onClick={closePanel} title="Đóng (Esc)" aria-label="Đóng chi tiết đơn">
+                  <ion-icon name="close-outline"></ion-icon>
+                </button>
               </div>
+            </div>
 
-              {/* Items List */}
-              <div className="order-section">
-                <span className="order-section-label">Danh Sách Bánh</span>
-                <div className="order-receipt-items">
-                  {selectedOrder.details.map((it) => (
-                    <div key={`${it.product_id}-${it.size_id}`} className="order-receipt-item">
-                      <span><strong>{it.quantity}x</strong> {it.product_name} <small className="order-item-size">({it.size_name})</small></span>
-                      <span className="order-receipt-item-price">{formatVND(it.total_price, " đ")}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedOrder.notes && (
-                <div className="order-note-box">
-                  <strong>Ghi chú đơn hàng:</strong> {selectedOrder.notes}
-                </div>
-              )}
-
-              {Number(selectedOrder.discount_amount) > 0 && (
-                <div className="order-receipt-row order-receipt-discount-row">
-                  <div className="order-receipt-discount-label">
-                    <span>Giảm giá:</span>
-                    {(selectedOrder.promotion_code || selectedOrder.promotion_name) && (
-                      <span
-                        className="order-voucher-badge"
-                        title={selectedOrder.promotion_name || selectedOrder.promotion_code}
-                      >
-                        <ion-icon name="ticket-outline"></ion-icon>
-                        {selectedOrder.promotion_code && (
-                          <strong className="order-voucher-code">[{selectedOrder.promotion_code}]</strong>
-                        )}
-                        {selectedOrder.promotion_name && (
-                          <span className="order-voucher-name">{selectedOrder.promotion_name}</span>
-                        )}
+            <div className="order-panel-body">
+              {/* Tiến trình xử lý, hoặc lý do hủy nếu đơn đã hủy */}
+              {selectedOrder.status === "Cancelled" ? (
+                <div className="order-panel-cancelled">
+                  <ion-icon name="close-circle"></ion-icon>
+                  <div>
+                    <strong>Đơn đã bị hủy</strong>
+                    {cancelLog?.note && <p>Lý do: {cancelLog.note}</p>}
+                    {cancelLog && (
+                      <span>
+                        {formatDateTime(cancelLog.changed_at)}{cancelLog.changed_by ? ` · ${cancelLog.changed_by}` : ""}
                       </span>
                     )}
                   </div>
-                  <span className="order-receipt-discount">-{formatVND(selectedOrder.discount_amount, " đ")}</span>
+                </div>
+              ) : (
+                <StatusStepper status={selectedOrder.status} />
+              )}
+
+              {/* Giờ hẹn lấy bánh + đếm ngược */}
+              <div className={`order-panel-pickup ${countdown?.late ? "is-late" : isUrgent(selectedOrder) ? "is-urgent" : ""}`}>
+                <ion-icon name="time-outline"></ion-icon>
+                <div className="order-panel-pickup-info">
+                  <span className="order-panel-pickup-label">Hẹn lấy bánh</span>
+                  <strong>{formatDateTime(selectedOrder.pickup_time)}</strong>
+                </div>
+                {countdown && <span className="order-panel-countdown">{countdown.text}</span>}
+              </div>
+
+              {/* Khách hàng */}
+              <section className="order-panel-section">
+                <h4 className="order-section-label">Khách hàng</h4>
+                <div className="order-panel-customer">
+                  <span className="order-panel-avatar" aria-hidden="true">
+                    {(selectedOrder.recipient_name || "?").trim().charAt(0).toUpperCase()}
+                  </span>
+                  <div className="order-panel-customer-info">
+                    <div className="order-customer-name">{selectedOrder.recipient_name}</div>
+                    <div className="order-customer-phone">{selectedOrder.recipient_phone}</div>
+                  </div>
+                  <a
+                    href={`tel:${selectedOrder.recipient_phone}`}
+                    className="order-icon-btn"
+                    title="Gọi cho khách"
+                    aria-label="Gọi cho khách"
+                  >
+                    <ion-icon name="call-outline"></ion-icon>
+                  </a>
+                  <button
+                    type="button"
+                    className="order-icon-btn"
+                    title="Sao chép số điện thoại"
+                    aria-label="Sao chép số điện thoại"
+                    onClick={() => copyText(selectedOrder.recipient_phone, "số điện thoại")}
+                  >
+                    <ion-icon name="copy-outline"></ion-icon>
+                  </button>
+                </div>
+              </section>
+
+              {selectedOrder.notes && (
+                <div className="order-note-box" title={selectedOrder.notes}>
+                  <strong>Ghi chú đơn hàng:</strong> {truncateWords(selectedOrder.notes, 50)}
                 </div>
               )}
 
-              {/* Total & Action */}
-              <div className="order-receipt-total">
-                <span>Tổng Thanh Toán:</span>
-                <span className="order-receipt-total-amount">{formatVND(selectedOrder.final_cost, " đ")}</span>
-              </div>
+              {/* Danh sách bánh */}
+              <section className="order-panel-section">
+                <div className="order-panel-section-head">
+                  <h4 className="order-section-label">Danh sách bánh</h4>
+                  <span className="order-panel-section-meta">{selectedOrder.total_quantity} bánh</span>
+                </div>
+                <ul className="order-panel-items">
+                  {selectedOrder.details.map((it) => (
+                    <li key={`${it.product_id}-${it.size_id}`} className="order-panel-item">
+                      <span className="order-panel-qty">{it.quantity}x</span>
+                      <div className="order-panel-item-info">
+                        <div className="order-panel-item-name">{it.product_name}</div>
+                        <div className="order-panel-item-meta">
+                          {it.size_name} · {formatVND(it.price, " đ")}
+                        </div>
+                        {it.note && <div className="order-panel-item-note">{it.note}</div>}
+                      </div>
+                      <span className="order-receipt-item-price">{formatVND(it.total_price, " đ")}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              {/* Thanh toán */}
+              <section className="order-panel-section">
+                <h4 className="order-section-label">Thanh toán</h4>
+                <div className="order-panel-summary">
+                  <div className="order-receipt-row">
+                    <span>Phương thức</span>
+                    <strong>{PAYMENT_METHOD[selectedOrder.payment_method] || selectedOrder.payment_method}</strong>
+                  </div>
+                  <div className="order-receipt-row">
+                    <span>Trạng thái</span>
+                    <span className="order-panel-pay-status">
+                      <span className={`badge-pill order-badge-sm ${selectedPay.badge}`}>
+                        <span className={`dot-status ${selectedPay.dot}`}></span>
+                        {PAYMENT_STATUS[selectedOrder.payment_status] || selectedOrder.payment_status}
+                      </span>
+                      {selectedOrder.payment_status === "Unpaid" && selectedOrder.status !== "Cancelled" && (
+                        <button
+                          type="button"
+                          className="btn-pill-outline order-pay-confirm-btn"
+                          disabled={actionLoading}
+                          onClick={handleConfirmPayment}
+                        >
+                          Xác nhận đã thu
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  <div className="order-receipt-row">
+                    <span>Tạm tính</span>
+                    <span className="order-receipt-item-price">{formatVND(selectedOrder.total_cost, " đ")}</span>
+                  </div>
+
+                  {Number(selectedOrder.discount_amount) > 0 && (
+                    <div className="order-receipt-row order-receipt-discount-row">
+                      <div className="order-receipt-discount-label">
+                        <span>Giảm giá</span>
+                        {(selectedOrder.promotion_code || selectedOrder.promotion_name) && (
+                          <span
+                            className="order-voucher-badge"
+                            title={selectedOrder.promotion_name || selectedOrder.promotion_code}
+                          >
+                            <ion-icon name="ticket-outline"></ion-icon>
+                            {selectedOrder.promotion_code && (
+                              <strong className="order-voucher-code">[{selectedOrder.promotion_code}]</strong>
+                            )}
+                            {selectedOrder.promotion_name && (
+                              <span className="order-voucher-name">{selectedOrder.promotion_name}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      <span className="order-receipt-discount">-{formatVND(selectedOrder.discount_amount, " đ")}</span>
+                    </div>
+                  )}
+
+                  <div className="order-receipt-total">
+                    <span>Tổng thanh toán</span>
+                    <span className="order-receipt-total-amount">{formatVND(selectedOrder.final_cost, " đ")}</span>
+                  </div>
+                </div>
+              </section>
 
               {/* Timeline lịch sử trạng thái */}
               {selectedOrder.status_logs?.length > 0 && (
-                <div className="order-timeline-section">
-                  <span className="order-section-label">Lịch Sử Xử Lý</span>
+                <section className="order-panel-section">
+                  <h4 className="order-section-label">Lịch sử xử lý</h4>
                   <div className="order-timeline">
                     {selectedOrder.status_logs.map((log) => {
                       // Log thanh toán giữ nguyên trạng thái đơn (old_status === new_status)
@@ -727,19 +955,13 @@ export default function OrderList() {
                       );
                     })}
                   </div>
-                </div>
+                </section>
               )}
+            </div>
 
-              {/* Cảnh báo thanh toán online nếu chưa thanh toán trước khi hoàn tất */}
-              {!cancelMode && needsPaymentFirst(selectedOrder) && selectedOrder.next_statuses?.includes("Completed") && (
-                <div className="order-actions-hint" role="note">
-                  <ion-icon name="alert-circle-outline"></ion-icon>
-                  <span>Đơn thanh toán online cần được xác nhận đã thanh toán trước khi hoàn tất.</span>
-                </div>
-              )}
-
-              {/* Hộp nhập lý do hủy đơn khi ở chế độ cancelMode */}
-              {cancelMode && (
+            {/* Thao tác nghiệp vụ luôn ghim ở đáy panel */}
+            <div className="order-panel-footer">
+              {cancelMode ? (
                 <div className="order-cancel-box">
                   <label htmlFor="order-cancel-reason" className="order-cancel-label">
                     Lý do hủy đơn (bắt buộc) — tồn kho sẽ được hoàn lại
@@ -773,65 +995,61 @@ export default function OrderList() {
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* Hàng nút nghiệp vụ ở đáy Modal (1 hàng ngang thống nhất) */}
-              {!cancelMode && (
-                <div className="order-modal-footer">
-                  {/* Destructive Action: Hủy Đơn (đẩy sang góc trái, cách xa nút chính để tránh bấm nhầm) */}
-                  {selectedOrder.next_statuses?.includes("Cancelled") ? (
-                    <button
-                      type="button"
-                      className="order-btn-cancel"
-                      disabled={actionLoading}
-                      onClick={() => setCancelMode(true)}
-                      title="Hủy đơn hàng và hoàn lại tồn kho"
-                    >
-                      <ion-icon name="close-circle-outline"></ion-icon>
-                      <span>Hủy Đơn</span>
-                    </button>
-                  ) : (
-                    <div className="order-modal-footer-spacer"></div>
+              ) : (
+                <>
+                  {/* Cảnh báo thanh toán online nếu chưa thanh toán trước khi hoàn tất */}
+                  {needsPaymentFirst(selectedOrder) && selectedOrder.next_statuses?.includes("Completed") && (
+                    <div className="order-actions-hint" role="note">
+                      <ion-icon name="alert-circle-outline"></ion-icon>
+                      <span>Đơn thanh toán online cần được xác nhận đã thanh toán trước khi hoàn tất.</span>
+                    </div>
                   )}
 
-                  {/* Cụm nút xử lý bên phải: In Phiếu Thu (Secondary) + Bước Tiếp Theo (Primary) */}
-                  <div className="order-modal-footer-actions">
-                    <button
-                      type="button"
-                      className="order-btn-secondary"
-                      onClick={() => window.print()}
-                      title="In phiếu thu bán lẻ"
-                    >
+                  {selectedOrder.next_statuses
+                    ?.filter((s) => NEXT_STEP[s])
+                    .map((s) => {
+                      const blocked = s === "Completed" && needsPaymentFirst(selectedOrder);
+                      const codUnpaid = s === "Completed" && selectedOrder.payment_status !== "Paid" && !blocked;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          className="btn-pill-primary order-btn-primary"
+                          disabled={actionLoading || blocked}
+                          title={blocked ? "Cần xác nhận thanh toán trước khi hoàn tất" : undefined}
+                          onClick={() => handleChangeStatus(s)}
+                        >
+                          <ion-icon name={NEXT_STEP[s].icon}></ion-icon>
+                          <span>{codUnpaid ? "Thu Tiền & Hoàn Tất" : NEXT_STEP[s].label}</span>
+                        </button>
+                      );
+                    })}
+
+                  <div className="order-panel-footer-row">
+                    {/* Hủy đơn để bên trái, tách khỏi nút chính để tránh bấm nhầm */}
+                    {selectedOrder.next_statuses?.includes("Cancelled") && (
+                      <button
+                        type="button"
+                        className="order-btn-cancel"
+                        disabled={actionLoading}
+                        onClick={() => setCancelMode(true)}
+                        title="Hủy đơn hàng và hoàn lại tồn kho"
+                      >
+                        <ion-icon name="close-circle-outline"></ion-icon>
+                        <span>Hủy Đơn</span>
+                      </button>
+                    )}
+                    <button type="button" className="order-btn-secondary" onClick={printReceipt} title="In phiếu thu bán lẻ">
                       <ion-icon name="print-outline"></ion-icon>
                       <span>In Phiếu Thu</span>
                     </button>
-
-                    {selectedOrder.next_statuses
-                      ?.filter((s) => NEXT_STEP[s])
-                      .map((s) => {
-                        const blocked = s === "Completed" && needsPaymentFirst(selectedOrder);
-                        const codUnpaid = s === "Completed" && selectedOrder.payment_status !== "Paid" && !blocked;
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            className="btn-pill-primary order-btn-primary"
-                            disabled={actionLoading || blocked}
-                            title={blocked ? "Cần xác nhận thanh toán trước khi hoàn tất" : undefined}
-                            onClick={() => handleChangeStatus(s)}
-                          >
-                            <ion-icon name={NEXT_STEP[s].icon}></ion-icon>
-                            <span>{codUnpaid ? "Thu Tiền & Hoàn Tất" : NEXT_STEP[s].label}</span>
-                          </button>
-                        );
-                      })}
                   </div>
-                </div>
+                </>
               )}
             </div>
-          </div>
-        )}
-      </div>
-    </>
+          </aside>
+        </>
+      )}
+    </div>
   );
 }

@@ -178,6 +178,94 @@
   color: #de5d7c;
 }
 
+/* Desktop: sidebar thu gọn thành thanh icon khi không thao tác, rê chuột vào (hoặc Tab bằng bàn phím)
+   thì mở rộng nổi đè lên nội dung — các trang nhiều cột như Quản lý đơn hàng được rộng hơn */
+@media (min-width: 1025px) {
+  .admin-sidebar {
+    width: var(--admin-sidebar-rail);
+    overflow-x: hidden;
+    /* Trễ một nhịp trước khi thu lại để chuột lướt qua mép trái không làm menu giật */
+    transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1) 0.15s, box-shadow 0.22s ease 0.15s;
+  }
+
+  /* :focus-visible thay vì :focus-within để bấm chuột vào mục menu xong vẫn tự thu lại */
+  .admin-sidebar:is(:hover, :has(:focus-visible)) {
+    width: var(--admin-sidebar-w);
+    box-shadow: 10px 0 30px rgba(15, 23, 42, 0.08);
+    transition-delay: 0.06s;
+  }
+
+  /* Giữ nguyên chiều cao khối logo để các mục menu không xê dịch khi mở rộng */
+  .admin-sidebar-brand {
+    height: 91px;
+    box-sizing: border-box;
+    padding: 0 10px;
+  }
+
+  .admin-brand-logo-img {
+    height: 34px;
+    max-width: 56px;
+    transition: height 0.22s ease 0.15s, max-width 0.22s ease 0.15s, transform 0.2s ease;
+  }
+
+  .admin-sidebar:is(:hover, :has(:focus-visible)) .admin-brand-logo-img {
+    height: 54px;
+    max-width: 180px;
+    transition-delay: 0.06s, 0.06s, 0s;
+  }
+
+  /* Cắt nhãn bên trong từng mục, tránh hiện thanh cuộn ngang khi đang thu gọn */
+  .admin-nav-menu,
+  .admin-nav-item,
+  .admin-logout-btn {
+    overflow-x: hidden;
+  }
+
+  .admin-nav-item span,
+  .admin-logout-btn span {
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.12s ease 0.1s;
+  }
+
+  .admin-sidebar:is(:hover, :has(:focus-visible)) .admin-nav-item span,
+  .admin-sidebar:is(:hover, :has(:focus-visible)) .admin-logout-btn span {
+    opacity: 1;
+    transition-delay: 0.16s;
+  }
+
+  /* Tiêu đề nhóm thu thành một vạch ngắn khi sidebar đang thu gọn */
+  .sidebar-section-title {
+    position: relative;
+    white-space: nowrap;
+    color: transparent;
+    transition: color 0.12s ease 0.1s;
+  }
+
+  .sidebar-section-title::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 18px;
+    height: 2px;
+    margin: -1px 0 0 -9px;
+    border-radius: 2px;
+    background: #e2e8f0;
+    transition: opacity 0.12s ease 0.1s;
+  }
+
+  .admin-sidebar:is(:hover, :has(:focus-visible)) .sidebar-section-title {
+    color: #94a3b8;
+    transition-delay: 0.16s;
+  }
+
+  .admin-sidebar:is(:hover, :has(:focus-visible)) .sidebar-section-title::after {
+    opacity: 0;
+    transition-delay: 0s;
+  }
+}
+
 @media (max-width: 1024px) {
   .admin-sidebar {
     transform: translateX(-100%);
