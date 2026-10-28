@@ -152,6 +152,27 @@ export default function Pay() {
       return;
     }
 
+    const noteText = (shippingInfo.note || "").trim();
+    if (noteText) {
+      if (noteText.length > 200) {
+        popup.warning("Ghi chú cho tiệm bánh không được vượt quá 200 ký tự!");
+        return;
+      }
+      const noteWords = noteText.split(/\s+/).filter(Boolean);
+      if (noteWords.length > 50) {
+        popup.warning("Ghi chú cho tiệm bánh chỉ giới hạn tối đa 50 chữ!");
+        return;
+      }
+      if (noteWords.some((w) => w.length > 25)) {
+        popup.warning("Ghi chú chứa từ quá dài không hợp lệ (tối đa 25 ký tự liên tục)!");
+        return;
+      }
+      if (/(.)\1{4,}/.test(noteText)) {
+        popup.warning("Ghi chú chứa ký tự lặp lại vô nghĩa!");
+        return;
+      }
+    }
+
     const recipientDesc = shippingInfo.recipientMode === 'self'
       ? `${currentRecipientName} (${currentRecipientPhone})`
       : `${currentRecipientName} [Nhận hộ] (${currentRecipientPhone})`;
@@ -407,12 +428,29 @@ export default function Pay() {
 
               {/* Ghi chú chung cho đơn hàng */}
               <div className="pay-form-group" style={{ marginBottom: 0, marginTop: '14px' }}>
-                <label>Ghi chú cho tiệm bánh (tùy chọn)</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ margin: 0 }}>Ghi chú cho tiệm bánh (tùy chọn)</label>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: (shippingInfo.note || "").length >= 200 ? '#ef4444' : '#64748b' }}>
+                    {(shippingInfo.note || "").trim().split(/\s+/).filter(Boolean).length}/50 chữ · {(shippingInfo.note || "").length}/200 ký tự
+                  </span>
+                </div>
                 <textarea 
                   rows="2"
-                  placeholder="VD: Viết chữ 'Happy Birthday', thêm nến số 25, 1 bộ dao nĩa..."
+                  maxLength={200}
+                  placeholder="VD: Viết chữ 'Happy Birthday', thêm nến số 25... (Tối đa 50 chữ, 200 ký tự)"
                   value={shippingInfo.note}
-                  onChange={e => setShippingInfo({...shippingInfo, note: e.target.value})}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val.length > 200) return;
+                    const words = val.trim().split(/\s+/).filter(Boolean);
+                    if (words.length > 50) {
+                      const trimmed = words.slice(0, 50).join(" ");
+                      setShippingInfo({...shippingInfo, note: trimmed});
+                      popup.warning("Ghi chú cho tiệm bánh chỉ giới hạn tối đa 50 chữ!");
+                      return;
+                    }
+                    setShippingInfo({...shippingInfo, note: val});
+                  }}
                 ></textarea>
               </div>
             </div>

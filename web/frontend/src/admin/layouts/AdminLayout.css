@@ -11,6 +11,9 @@
   --admin-text: #1e293b;
   --admin-muted: #8c9ba5;
   --admin-radius: 22px;
+  --admin-sidebar-w: 250px;
+  /* Độ rộng sidebar khi thu gọn còn icon (desktop) */
+  --admin-sidebar-rail: 76px;
 }
 
 .admin-wrapper {
@@ -351,10 +354,11 @@
   }
 }
 
+/* Desktop: chỉ chừa chỗ cho thanh icon, sidebar mở rộng sẽ nổi đè lên nội dung */
 @media (min-width: 1025px) {
   .admin-main-content {
-    margin-left: 250px;
-    width: calc(100% - 250px);
+    margin-left: var(--admin-sidebar-rail);
+    width: calc(100% - var(--admin-sidebar-rail));
   }
 }
 

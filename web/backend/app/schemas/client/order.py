@@ -1,5 +1,6 @@
+import re
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from decimal import Decimal
 
@@ -16,6 +17,27 @@ class CheckoutRequest(BaseModel):
     payment_method: Literal["COD", "Banking", "Momo", "Credit Card", "VNPay"] = "COD"
     items: Optional[List[CheckoutOrderItem]] = None
     voucher_code: Optional[str] = None
+
+    @field_validator("notes")
+    @classmethod
+    def validate_notes(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                return None
+            if len(v_trimmed) > 200:
+                raise ValueError("Ghi chú không được vượt quá 200 ký tự")
+            words = v_trimmed.split()
+            if len(words) > 50:
+                raise ValueError("Ghi chú không được chứa quá 50 chữ")
+            # Chặn 1 chữ kéo dài vô nghĩa không có dấu cách (vd: aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
+            if any(len(w) > 25 for w in words):
+                raise ValueError("Ghi chú không được chứa từ quá dài")
+            # Chặn ký tự lặp liên tiếp vô nghĩa >= 5 lần (vd: aaaaa...)
+            if re.search(r'(.)\1{4,}', v_trimmed):
+                raise ValueError("Ghi chú không được chứa ký tự lặp lại nhiều lần")
+            return v_trimmed
+        return v
 
 class CancelOrderRequest(BaseModel):
     note: Optional[str] = None
