@@ -3,6 +3,7 @@ import AdminHeader from "../components/AdminHeader";
 import { adminImportReceiptsApi, adminProductsApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, IMPORT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
+import { saveBlob, downloadErrorMessage } from "../../utils/download";
 import "./OrderList.css";
 
 const PAGE_SIZE = 10;
@@ -41,6 +42,7 @@ export default function ImportReceiptList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [form, setForm] = useState(null);
 
   const loadData = useCallback(async () => {
@@ -147,6 +149,19 @@ export default function ImportReceiptList() {
       popup.error(apiErrorMessage(err, "Không thể tạo phiếu nhập"));
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    const receipt = selected;
+    setExportingPdf(true);
+    try {
+      const blob = await adminImportReceiptsApi.exportPdf(receipt.import_id);
+      saveBlob(blob, `phieu-nhap-${receipt.import_code}.pdf`);
+    } catch (err) {
+      popup.error(await downloadErrorMessage(err, "Không xuất được phiếu nhập PDF"));
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -362,8 +377,8 @@ export default function ImportReceiptList() {
                 <span className="order-receipt-total-amount">{formatVND(selected.total_amount, " đ")}</span>
               </div>
 
-              {selected.status === "Pending" && (
-                <div className="order-modal-footer">
+              <div className="order-modal-footer">
+                {selected.status === "Pending" ? (
                   <button
                     type="button"
                     className="order-btn-cancel"
@@ -373,7 +388,21 @@ export default function ImportReceiptList() {
                     <ion-icon name="close-circle-outline"></ion-icon>
                     <span>Hủy Phiếu</span>
                   </button>
-                  <div className="order-modal-footer-actions">
+                ) : (
+                  <div className="order-modal-footer-spacer"></div>
+                )}
+                <div className="order-modal-footer-actions">
+                  <button
+                    type="button"
+                    className="order-btn-secondary"
+                    disabled={exportingPdf}
+                    onClick={handleExportPdf}
+                    title="Tải phiếu nhập kho dạng PDF để in và ký xác nhận"
+                  >
+                    <ion-icon name={exportingPdf ? "hourglass-outline" : "document-text-outline"}></ion-icon>
+                    <span>{exportingPdf ? "Đang xuất..." : "Xuất Phiếu PDF"}</span>
+                  </button>
+                  {selected.status === "Pending" && (
                     <button
                       type="button"
                       className="btn-pill-primary order-btn-primary"
@@ -383,9 +412,9 @@ export default function ImportReceiptList() {
                       <ion-icon name="checkmark-done-outline"></ion-icon>
                       <span>Xác Nhận Nhập Kho</span>
                     </button>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}

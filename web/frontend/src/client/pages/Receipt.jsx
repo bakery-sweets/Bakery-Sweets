@@ -7,6 +7,8 @@ import {
   ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS,
 } from '../../utils/format';
 import { useRealtimeVersion } from '../../realtime/useRealtime';
+import { saveBlob, downloadErrorMessage } from '../../utils/download';
+import popup from '../../utils/popup';
 import './Receipt.css';
 
 const STATUS_CLASS = { Completed: 'success', Ready: 'success', Pending: 'warning', Processing: 'warning', Cancelled: 'gray' };
@@ -31,6 +33,7 @@ export default function Receipt() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [downloading, setDownloading] = useState(false);
   // Nhân viên đổi trạng thái / xác nhận thanh toán: trạng thái đơn trên trang tự cập nhật
   const realtimeVersion = useRealtimeVersion(['order_status_updated', 'order_updated']);
 
@@ -64,6 +67,19 @@ export default function Receipt() {
 
   const displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.phone || "Khách hàng";
   const selectedOrder = orders.find(o => o.order_id === selectedOrderId) || (orders.length > 0 ? orders[0] : null);
+
+  const handleDownloadInvoice = async () => {
+    const order = selectedOrder;
+    setDownloading(true);
+    try {
+      const blob = await clientOrdersApi.downloadInvoice(order.order_id);
+      saveBlob(blob, `hoa-don-${order.order_code}.pdf`);
+    } catch (err) {
+      popup.error(await downloadErrorMessage(err, 'Không tải được hóa đơn, vui lòng thử lại.'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="receipt-page-wrapper">
@@ -275,6 +291,15 @@ export default function Receipt() {
                       </div>
                       <h2 className="receipt-detail-title">Chi Tiết Hóa Đơn</h2>
                     </div>
+                    <button
+                      type="button"
+                      className="receipt-pdf-btn"
+                      onClick={handleDownloadInvoice}
+                      disabled={downloading}
+                    >
+                      <ion-icon name={downloading ? 'hourglass-outline' : 'download-outline'}></ion-icon>
+                      <span>{downloading ? 'Đang tải...' : 'Tải hóa đơn PDF'}</span>
+                    </button>
                   </div>
 
                   {/* THÔNG TIN KHÁCH HÀNG & ĐƠN HÀNG */}

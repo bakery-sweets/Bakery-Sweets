@@ -555,6 +555,37 @@
 .receipt-detail-head {
   padding: 20px 24px 16px;
   border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.receipt-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: #ffffff;
+  color: #1a2639;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.receipt-pdf-btn:hover:not(:disabled) {
+  background: #1a2639;
+  border-color: #1a2639;
+  color: #ffffff;
+}
+
+.receipt-pdf-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .receipt-detail-badge-row {

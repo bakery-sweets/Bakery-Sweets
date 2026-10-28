@@ -36,6 +36,8 @@ Hệ thống bán bánh The Sweets: website (khách hàng + quản trị) và �
 - Hai backend gửi sự kiện sang `realtime` qua API nội bộ `POST /internal/events` (khóa `INTERNAL_API_KEY`); client mở WebSocket tới `realtime` kèm JWT.
 - Mỗi backend chia 3 lớp: `api/` (router, xác thực) → `services/` (nghiệp vụ) → `database/` + ORM models dùng chung ở `common/`. Router không truy vấn CSDL trực tiếp; service không phụ thuộc FastAPI mà ném lỗi trong `app/core/exceptions.py`, `app/api/errors.py` chuyển chúng thành mã HTTP.
 
+Muốn biết một chức năng đi qua những file nào: xem [docs/LUONG-XU-LY-CHUC-NANG.md](docs/LUONG-XU-LY-CHUC-NANG.md).
+
 ## Chạy bằng Docker
 
 ```bash

@@ -113,12 +113,18 @@ web/backend/
         ├── __init__.py
         ├── auth_service.py              # Đăng nhập Admin/Khách, đăng ký, tra cứu user cho deps.py
         ├── realtime_service.py          # Gửi sự kiện sang Realtime Server (port 8001)
+        ├── export/                      # Dựng file tải về (không phụ thuộc FastAPI, trả bytes)
+        │   ├── excel_service.py         # Báo cáo doanh thu .xlsx (4 sheet, biểu đồ cột & tròn)
+        │   ├── pdf_service.py           # Hóa đơn bán hàng & phiếu nhập kho .pdf
+        │   ├── text.py                  # Định dạng tiền/ngày, đọc số tiền bằng chữ
+        │   └── assets/                  # Font Be Vietnam Pro (OFL) + logo
         ├── admin/
         │   ├── __init__.py
         │   ├── order_service.py         # Nghiệp vụ duyệt đơn & ghi log trạng thái
         │   ├── product_service.py       # Nghiệp vụ thêm, sửa, xóa món, điều chỉnh giá/kho
         │   ├── stats_service.py         # Nghiệp vụ tính toán doanh thu & top sản phẩm
         │   ├── user_service.py          # Nghiệp vụ cấp, sửa, khóa/mở khóa tài khoản
+        │   ├── report_service.py        # Báo cáo doanh thu theo kỳ (màn hình Thống kê + file Excel)
         │   └── upload_service.py        # Kiểm tra & lưu ảnh sản phẩm vào thư mục uploads
         └── client/
             ├── __init__.py

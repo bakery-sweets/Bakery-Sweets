@@ -2,8 +2,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_customer
+from app.api.files import file_response, PDF
 from thesweets_common.models.user import User
 from app.services.client.order_service import ClientOrderService
+from app.services.export.pdf_service import PdfExportService
 from app.schemas.client.order import (
     CheckoutRequest,
     ClientOrderOut,
@@ -82,6 +84,19 @@ def get_order_by_id(
     if not order:
         raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng này")
     return ResponseBase(data=_to_client_order_out(order))
+
+@router.get("/{order_id}/invoice", summary="Tải hóa đơn PDF của đơn hàng")
+def download_my_invoice(
+    order_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_customer),
+):
+    if not user.customer:
+        raise HTTPException(status_code=400, detail="Tài khoản chưa có hồ sơ khách hàng")
+    order = ClientOrderService.get_order_by_id(db, user.customer.customer_id, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng này")
+    return file_response(PdfExportService.order_invoice(order), f"hoa-don-{order.order_code}.pdf", PDF)
 
 @router.put("/{order_id}/cancel", response_model=ResponseBase[ClientOrderOut], summary="Hủy đơn hàng đang chờ xử lý")
 def cancel_my_order(

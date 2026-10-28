@@ -31,6 +31,8 @@ export const adminOrdersApi = {
   getById: (id) => axiosClient.get(`/admin/orders/${id}`),
   updateStatus: (id, status, note) => axiosClient.patch(`/admin/orders/${id}/status`, { status, note }),
   confirmPayment: (id, note) => axiosClient.patch(`/admin/orders/${id}/payment`, { note }),
+  // Hóa đơn bán hàng PDF (trả về Blob)
+  exportInvoice: (id) => axiosClient.get(`/admin/orders/${id}/invoice`, { responseType: "blob" }),
 };
 
 export const adminUsersApi = {
@@ -42,6 +44,10 @@ export const adminUsersApi = {
 
 export const adminStatisticalApi = {
   getOverview: () => axiosClient.get("/admin/statistical/overview"),
+  // period: today | week | month | quarter | year
+  getReport: (period) => axiosClient.get("/admin/statistical/report", { params: { period } }),
+  // Báo cáo doanh thu dạng Excel (trả về Blob)
+  exportReport: (period) => axiosClient.get("/admin/statistical/report/export", { params: { period }, responseType: "blob" }),
 };
 
 export const adminImportReceiptsApi = {
@@ -49,6 +55,8 @@ export const adminImportReceiptsApi = {
   getSuppliers: () => axiosClient.get("/admin/import-receipts/suppliers"),
   create: (data) => axiosClient.post("/admin/import-receipts", data),
   updateStatus: (id, status) => axiosClient.patch(`/admin/import-receipts/${id}/status`, { status }),
+  // Phiếu nhập kho PDF (trả về Blob)
+  exportPdf: (id) => axiosClient.get(`/admin/import-receipts/${id}/pdf`, { responseType: "blob" }),
 };
 
 export const adminPromotionsApi = {

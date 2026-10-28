@@ -2,8 +2,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_admin
+from app.api.files import file_response, PDF
 from thesweets_common.models.user import User
 from app.services.admin.import_receipt_service import AdminImportReceiptService
+from app.services.export.pdf_service import PdfExportService
 from app.schemas.admin.import_receipt import (
     SupplierOut,
     ImportReceiptCreate,
@@ -71,6 +73,17 @@ def get_receipt(
     if not receipt:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu nhập")
     return ResponseBase(data=_to_receipt_out(receipt))
+
+@router.get("/{import_id}/pdf", summary="Xuất phiếu nhập kho (PDF)")
+def export_receipt_pdf(
+    import_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    receipt = AdminImportReceiptService.get_by_id(db, import_id)
+    if not receipt:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu nhập")
+    return file_response(PdfExportService.import_receipt(receipt), f"phieu-nhap-{receipt.import_code}.pdf", PDF)
 
 @router.post("", response_model=ResponseBase[ImportReceiptOut], status_code=status.HTTP_201_CREATED, summary="Tạo phiếu nhập hàng")
 def create_receipt(

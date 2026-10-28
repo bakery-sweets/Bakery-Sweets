@@ -28,6 +28,8 @@ export const clientOrdersApi = {
   getMyOrders: () => axiosClient.get("/client/orders"),
   getOrderById: (id) => axiosClient.get(`/client/orders/${id}`),
   cancelOrder: (id, data) => axiosClient.put(`/client/orders/${id}/cancel`, data),
+  // Hóa đơn PDF của đơn hàng (trả về Blob)
+  downloadInvoice: (id) => axiosClient.get(`/client/orders/${id}/invoice`, { responseType: "blob" }),
 };
 
 export const clientPromotionsApi = {

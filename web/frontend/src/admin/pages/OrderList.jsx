@@ -5,6 +5,7 @@ import { adminOrdersApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
 import usePopupStore from "../../store/popupStore";
+import { saveBlob, downloadErrorMessage } from "../../utils/download";
 import { useRealtimeEvent } from "../../realtime/useRealtime";
 import "./OrderList.css";
 
@@ -142,6 +143,7 @@ export default function OrderList() {
   const [cancelReason, setCancelReason] = useState("");
   const [activeDropdownOrderId, setActiveDropdownOrderId] = useState(null);
   const [rowLoadingId, setRowLoadingId] = useState(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
   // Tăng mỗi lần tải/thao tác: phản hồi danh sách về muộn (VD: auto-refresh chạy song song lúc đổi trạng thái) sẽ bị bỏ qua
   const loadSeq = useRef(0);
 
@@ -432,6 +434,19 @@ export default function OrderList() {
       );
     }
     return <EmptyState icon="file-tray-outline" title={`Không có đơn ở mục "${tabLabel}"`} text="Đơn hàng sẽ hiện ở đây khi chuyển sang trạng thái này." />;
+  };
+
+  const handleExportInvoice = async () => {
+    const order = selectedOrder;
+    setExportingPdf(true);
+    try {
+      const blob = await adminOrdersApi.exportInvoice(order.order_id);
+      saveBlob(blob, `hoa-don-${order.order_code}.pdf`);
+    } catch (err) {
+      popup.error(await downloadErrorMessage(err, "Không xuất được hóa đơn PDF"));
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const selectedStatus = selectedOrder && (ORDER_STATUS[selectedOrder.status] || {});
@@ -1039,6 +1054,16 @@ export default function OrderList() {
                         <span>Hủy Đơn</span>
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="order-btn-secondary"
+                      onClick={handleExportInvoice}
+                      disabled={exportingPdf}
+                      title="Tải hóa đơn bán hàng dạng PDF để in hoặc gửi khách"
+                    >
+                      <ion-icon name={exportingPdf ? "hourglass-outline" : "document-text-outline"}></ion-icon>
+                      <span>{exportingPdf ? "Đang xuất..." : "Xuất Hóa Đơn PDF"}</span>
+                    </button>
                     <button type="button" className="order-btn-secondary" onClick={printReceipt} title="In phiếu thu bán lẻ">
                       <ion-icon name="print-outline"></ion-icon>
                       <span>In Phiếu Thu</span>

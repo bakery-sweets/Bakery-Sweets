@@ -1,71 +1,56 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
-import { adminOrdersApi, adminProductsApi } from "../../api/admin";
-import { formatVND, formatDate, toLocalDateInput, apiErrorMessage, PAYMENT_METHOD } from "../../utils/format";
+import { adminStatisticalApi } from "../../api/admin";
+import { formatVND, formatDate, toLocalDateInput, apiErrorMessage } from "../../utils/format";
+import { saveBlob, downloadErrorMessage } from "../../utils/download";
+import popup from "../../utils/popup";
 
-const DAY_LABELS = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
 const CATEGORY_COLORS = ["#de5d7c", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"];
 const PAYMENT_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#de5d7c", "#8b5cf6"];
 
-const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-const startOfPeriod = (key, now) => {
-  const d = startOfDay(now);
-  if (key === "week") d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  if (key === "month") d.setDate(1);
-  if (key === "quarter") d.setMonth(Math.floor(d.getMonth() / 3) * 3, 1);
-  if (key === "year") d.setMonth(0, 1);
-  return d;
-};
-
-// Các cột của biểu đồ theo kỳ: hôm nay theo 2 giờ, tuần/tháng theo ngày, quý/năm theo tháng
-const buildBuckets = (key, start) => {
-  const make = (count, step) =>
-    Array.from({ length: count }, (_, i) => {
-      const from = step(new Date(start), i);
-      const to = step(new Date(start), i + 1);
-      return { from, to };
-    });
-
-  if (key === "today") {
-    return make(12, (d, i) => { d.setHours(i * 2); return d; }).map((b) => {
-      const h = b.from.getHours();
-      return { ...b, label: `${h}h`, fullLabel: `${h}:00 - ${h + 2}:00` };
-    });
-  }
-  if (key === "week" || key === "month") {
-    const days = key === "week" ? 7 : new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
-    return make(days, (d, i) => { d.setDate(d.getDate() + i); return d; }).map((b) => ({
-      ...b,
-      label: key === "week" ? DAY_LABELS[b.from.getDay()] : String(b.from.getDate()),
-      fullLabel: `${DAY_LABELS[b.from.getDay()]} ${formatDate(b.from)}`,
-    }));
-  }
-  const months = key === "quarter" ? 3 : 12;
-  return make(months, (d, i) => { d.setMonth(d.getMonth() + i); return d; }).map((b) => ({
-    ...b,
-    label: `T${b.from.getMonth() + 1}`,
-    fullLabel: `Tháng ${b.from.getMonth() + 1}/${b.from.getFullYear()}`,
-  }));
-};
-
-const summarize = (list) => {
-  const revenue = list.reduce((s, o) => s + Number(o.final_cost), 0);
-  const itemsSold = list.reduce((s, o) => s + o.total_quantity, 0);
-  return { revenue, itemsSold, count: list.length, avg: list.length ? revenue / list.length : 0 };
-};
-
-const toShares = (map) => {
-  const total = Object.values(map).reduce((s, v) => s + v, 0);
-  return Object.entries(map)
-    .map(([name, value]) => ({ name, value, percent: total ? Math.round((value / total) * 100) : 0 }))
-    .sort((a, b) => b.value - a.value);
+const EMPTY_REPORT = {
+  periodStart: null,
+  endDate: null,
+  revenue: 0,
+  count: 0,
+  cancelled: 0,
+  itemsSold: 0,
+  avg: 0,
+  chart: [],
+  categoryShare: [],
+  paymentShare: [],
+  topProducts: [],
 };
 
 const shortMoney = (v) => {
   if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `${Math.round(v / 1e3)}K`;
   return String(v);
+};
+
+// Số liệu do backend tính (/admin/statistical/report) nên màn hình và file Excel luôn khớp nhau;
+// ở đây chỉ đổi Decimal (chuỗi) sang số và tính chiều cao cột biểu đồ
+const toViewModel = (r) => {
+  const rows = r.buckets.map((b) => ({ label: b.label, fullLabel: b.full_label, rev: Number(b.revenue) }));
+  const max = Math.max(0, ...rows.map((b) => b.rev));
+  const shares = (items) => items.map((c) => ({ ...c, value: Number(c.value) }));
+  return {
+    periodStart: r.start_date,
+    endDate: r.end_date,
+    revenue: Number(r.revenue),
+    count: r.order_count,
+    cancelled: r.cancelled_count,
+    itemsSold: r.items_sold,
+    avg: Number(r.avg_order_value),
+    chart: rows.map((b) => ({
+      ...b,
+      h: max ? Math.max(4, Math.round((b.rev / max) * 100)) : 4,
+      isPeak: max > 0 && b.rev === max,
+    })),
+    categoryShare: shares(r.category_share),
+    paymentShare: shares(r.payment_share),
+    topProducts: r.product_ranking.slice(0, 5).map((p) => ({ ...p, revenue: Number(p.revenue) })),
+  };
 };
 
 function ShareBars({ items, colors, loading }) {
@@ -90,9 +75,9 @@ function ShareBars({ items, colors, loading }) {
 
 export default function Statistical() {
   const [activePeriod, setActivePeriod] = useState("week");
-  const [orders, setOrders] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [report, setReport] = useState(EMPTY_REPORT);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
 
   const now = useMemo(() => new Date(), []);
@@ -106,113 +91,46 @@ export default function Statistical() {
   ];
   const periodLabel = periods.find((p) => p.key === activePeriod)?.label || "";
 
+  // Bật trạng thái tải ngay lúc đổi kỳ (thay vì trong effect) để không render 2 lần
+  const changePeriod = (key) => {
+    if (key === activePeriod) return;
+    setLoading(true);
+    setError("");
+    setActivePeriod(key);
+  };
+
   useEffect(() => {
-    Promise.all([adminOrdersApi.getAll(), adminProductsApi.getAll()])
-      .then(([ord, prod]) => {
-        setOrders(ord.data);
-        setProducts(prod.data);
+    let ignore = false;
+    adminStatisticalApi
+      .getReport(activePeriod)
+      .then((res) => {
+        if (!ignore) setReport(toViewModel(res.data));
       })
-      .catch((err) => setError(apiErrorMessage(err, "Không tải được dữ liệu báo cáo")))
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Doanh thu chỉ tính đơn Completed (giống định nghĩa của /admin/dashboard/overview)
-  const completedOrders = useMemo(() => orders.filter((o) => o.status === "Completed"), [orders]);
-
-  const report = useMemo(() => {
-    const periodStart = startOfPeriod(activePeriod, now);
-    const inRange = (o, from, to) => {
-      const t = new Date(o.order_date);
-      return t >= from && t < to;
-    };
-    const periodEnd = new Date(now.getTime() + 1);
-    const inPeriod = completedOrders.filter((o) => inRange(o, periodStart, periodEnd));
-    const cancelled = orders.filter((o) => o.status === "Cancelled" && inRange(o, periodStart, periodEnd)).length;
-
-    const categoryOf = {};
-    products.forEach((p) => { categoryOf[p.product_id] = p.category_name || "Khác"; });
-
-    const byCategory = {};
-    const byProduct = {};
-    const byPayment = {};
-    inPeriod.forEach((o) => {
-      const method = PAYMENT_METHOD[o.payment_method] || o.payment_method;
-      byPayment[method] = (byPayment[method] || 0) + Number(o.final_cost);
-      o.details.forEach((d) => {
-        const lineTotal = Number(d.total_price);
-        const cat = categoryOf[d.product_id] || "Khác";
-        byCategory[cat] = (byCategory[cat] || 0) + lineTotal;
-        byProduct[d.product_id] = byProduct[d.product_id] || { name: d.product_name, category: cat, sales: 0, revenue: 0 };
-        byProduct[d.product_id].sales += d.quantity;
-        byProduct[d.product_id].revenue += lineTotal;
+      .catch((err) => {
+        if (!ignore) setError(apiErrorMessage(err, "Không tải được dữ liệu báo cáo"));
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
       });
-    });
-
-    // Tỷ trọng từng món tính trên tổng tiền bánh (trước voucher) để các món cộng lại đúng 100%
-    const linesTotal = Object.values(byCategory).reduce((s, v) => s + v, 0);
-    const productRanking = Object.values(byProduct)
-      .sort((a, b) => b.sales - a.sales || b.revenue - a.revenue)
-      .map((p, idx) => ({ ...p, rank: idx + 1, percent: linesTotal ? Math.round((p.revenue / linesTotal) * 100) : 0 }));
-
-    const buckets = buildBuckets(activePeriod, periodStart).map((b) => ({
-      ...b,
-      rev: inPeriod.filter((o) => inRange(o, b.from, b.to)).reduce((s, o) => s + Number(o.final_cost), 0),
-    }));
-    const max = Math.max(...buckets.map((b) => b.rev));
-    const chart = buckets.map((b) => ({
-      ...b,
-      h: max ? Math.max(4, Math.round((b.rev / max) * 100)) : 4,
-      isPeak: max > 0 && b.rev === max,
-    }));
-
-    return {
-      periodStart,
-      ...summarize(inPeriod),
-      cancelled,
-      chart,
-      categoryShare: toShares(byCategory),
-      paymentShare: toShares(byPayment),
-      productRanking,
-      topProducts: productRanking.slice(0, 5),
+    return () => {
+      ignore = true;
     };
-  }, [activePeriod, orders, completedOrders, products, now]);
+  }, [activePeriod]);
 
   const peak = report.chart.find((b) => b.isPeak);
   const chartTitle = activePeriod === "today" ? "Theo Giờ" : ["week", "month"].includes(activePeriod) ? "Theo Ngày" : "Theo Tháng";
   const showBarValues = report.chart.length <= 12;
 
-  const exportCsv = () => {
-    const rows = [
-      ["BÁO CÁO DOANH THU", periodLabel],
-      ["Từ ngày", formatDate(report.periodStart), "Đến ngày", formatDate(now)],
-      [],
-      ["Chỉ số", "Giá trị"],
-      ["Doanh thu (đ)", report.revenue],
-      ["Số đơn hoàn tất", report.count],
-      ["Số đơn bị hủy", report.cancelled],
-      ["Số bánh bán ra", report.itemsSold],
-      ["Giá trị trung bình / đơn (đ)", Math.round(report.avg)],
-      [],
-      [`Doanh thu ${chartTitle.toLowerCase()}`, "Doanh thu (đ)"],
-      ...report.chart.map((b) => [b.fullLabel, b.rev]),
-      [],
-      ["Danh mục", "Tiền bánh (đ)", "Tỷ trọng (%)"],
-      ...report.categoryShare.map((c) => [c.name, c.value, c.percent]),
-      [],
-      ["Phương thức thanh toán", "Doanh thu (đ)", "Tỷ trọng (%)"],
-      ...report.paymentShare.map((c) => [c.name, c.value, c.percent]),
-      [],
-      ["Hạng", "Tên bánh", "Danh mục", "Số lượng", "Tiền bánh (đ)", "Tỷ trọng (%)"],
-      ...report.productRanking.map((p) => [p.rank, p.name, p.category, p.sales, p.revenue, p.percent]),
-    ];
-    const csv = rows.map((r) => r.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
-    // BOM để Excel đọc đúng tiếng Việt UTF-8
-    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `bao-cao-doanh-thu-${activePeriod}-${toLocalDateInput(now)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const blob = await adminStatisticalApi.exportReport(activePeriod);
+      saveBlob(blob, `bao-cao-doanh-thu-${activePeriod}-${toLocalDateInput(new Date())}.xlsx`);
+    } catch (err) {
+      popup.error(await downloadErrorMessage(err, "Không xuất được file Excel"));
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -230,11 +148,11 @@ export default function Statistical() {
           <div className="admin-page-actions">
             <div className="btn-pill-outline" style={{ cursor: "default" }}>
               <ion-icon name="calendar-outline"></ion-icon>
-              <span>{formatDate(report.periodStart)} - {formatDate(now)}</span>
+              <span>{formatDate(report.periodStart)} - {formatDate(report.endDate || now)}</span>
             </div>
-            <button className="btn-pill-primary" type="button" onClick={exportCsv} disabled={loading}>
-              <ion-icon name="download-outline"></ion-icon>
-              <span>Xuất Excel (CSV)</span>
+            <button className="btn-pill-primary" type="button" onClick={exportExcel} disabled={loading || exporting}>
+              <ion-icon name={exporting ? "hourglass-outline" : "download-outline"}></ion-icon>
+              <span>{exporting ? "Đang xuất..." : "Xuất Excel"}</span>
             </button>
           </div>
         </div>
@@ -244,7 +162,7 @@ export default function Statistical() {
           {periods.map((p) => (
             <button
               key={p.key}
-              onClick={() => setActivePeriod(p.key)}
+              onClick={() => changePeriod(p.key)}
               className={`tab-pill-btn ${activePeriod === p.key ? "active" : ""}`}
             >
               {p.label}
