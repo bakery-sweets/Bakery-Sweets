@@ -1,110 +1,209 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
 import { adminStatisticalApi } from "../../api/admin";
-import { formatVND, formatDate, toLocalDateInput, apiErrorMessage } from "../../utils/format";
+import { formatVND, toLocalDateInput, apiErrorMessage } from "../../utils/format";
 import { saveBlob, downloadErrorMessage } from "../../utils/download";
 import popup from "../../utils/popup";
+import "./Statistical.css";
 
-const CATEGORY_COLORS = ["#de5d7c", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"];
-const PAYMENT_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#de5d7c", "#8b5cf6"];
+const TIME_GROUPS = [
+  { key: "day", label: "Ngày" },
+  { key: "month", label: "Tháng" },
+  { key: "quarter", label: "Quý" },
+  { key: "year", label: "Năm" },
+];
+const CUSTOMER_GROUPS = TIME_GROUPS.filter((g) => ["quarter", "year"].includes(g.key));
+const groupLabel = (key) => TIME_GROUPS.find((g) => g.key === key)?.label.toLowerCase() || "";
 
+// "2026-10-28" -> "28/10/2026" (không qua Date để khỏi lệch múi giờ)
+const dmy = (s) => (s ? s.split("-").reverse().join("/") : "—");
+const money = (v) => formatVND(v, " đ");
+
+const rangeError = (from, to) =>
+  !from || !to ? "Vui lòng chọn đủ Từ ngày và Đến ngày." : from > to ? "Từ ngày phải nhỏ hơn hoặc bằng Đến ngày." : "";
+// Bảng thu - chi: theo ngày lọc khoảng ngày, theo tháng / quý chọn năm, theo năm liệt kê mọi năm
+const usesYear = (f) => ["month", "quarter"].includes(f.group_by);
+const filterError = (f) =>
+  rangeError(f.from_date, f.to_date) || (f.group_by === "day" ? rangeError(f.time_from_date, f.time_to_date) : "");
+const toParams = ({ time_from_date, time_to_date, time_year, ...rest }) => ({
+  ...rest,
+  ...(rest.group_by === "day" && { time_from_date, time_to_date }),
+  ...(usesYear(rest) && { time_year }),
+});
+
+const EMPTY_PIVOT = { columns: [], rows: [], column_totals: [], count: 0, total: 0 };
 const EMPTY_REPORT = {
-  periodStart: null,
-  endDate: null,
-  revenue: 0,
-  count: 0,
-  cancelled: 0,
-  itemsSold: 0,
-  avg: 0,
-  chart: [],
-  categoryShare: [],
-  paymentShare: [],
-  topProducts: [],
+  first_year: null,
+  last_year: null,
+  summary: null,
+  by_time: [],
+  by_staff: EMPTY_PIVOT,
+  by_customer: EMPTY_PIVOT,
+  by_product: EMPTY_PIVOT,
 };
 
-const shortMoney = (v) => {
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-  if (v >= 1e3) return `${Math.round(v / 1e3)}K`;
-  return String(v);
-};
-
-// Số liệu do backend tính (/admin/statistical/report) nên màn hình và file Excel luôn khớp nhau;
-// ở đây chỉ đổi Decimal (chuỗi) sang số và tính chiều cao cột biểu đồ
-const toViewModel = (r) => {
-  const rows = r.buckets.map((b) => ({ label: b.label, fullLabel: b.full_label, rev: Number(b.revenue) }));
-  const max = Math.max(0, ...rows.map((b) => b.rev));
-  const shares = (items) => items.map((c) => ({ ...c, value: Number(c.value) }));
-  return {
-    periodStart: r.start_date,
-    endDate: r.end_date,
-    revenue: Number(r.revenue),
-    count: r.order_count,
-    cancelled: r.cancelled_count,
-    itemsSold: r.items_sold,
-    avg: Number(r.avg_order_value),
-    chart: rows.map((b) => ({
-      ...b,
-      h: max ? Math.max(4, Math.round((b.rev / max) * 100)) : 4,
-      isPeak: max > 0 && b.rev === max,
-    })),
-    categoryShare: shares(r.category_share),
-    paymentShare: shares(r.payment_share),
-    topProducts: r.product_ranking.slice(0, 5).map((p) => ({ ...p, revenue: Number(p.revenue) })),
-  };
-};
-
-function ShareBars({ items, colors, loading }) {
-  if (items.length === 0) {
-    return <div style={{ fontSize: "12.5px", color: "#8c9ba5" }}>{loading ? "Đang tải..." : "Chưa có doanh thu trong kỳ này."}</div>;
-  }
-  return items.map((c, idx) => {
-    const color = colors[idx % colors.length];
-    return (
-      <div key={c.name}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", marginBottom: "6px" }}>
-          <span>{c.name}</span>
-          <span style={{ color }}>{c.percent}% ({shortMoney(c.value)} đ)</span>
+function Section({ title, subtitle, actions, children }) {
+  return (
+    <div className="admin-card-box">
+      <div className="admin-card-box-header">
+        <div className="card-title-group">
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
         </div>
-        <div style={{ width: "100%", height: "8px", background: "#f1f2f4", borderRadius: "9999px", overflow: "hidden" }}>
-          <div style={{ width: `${c.percent}%`, height: "100%", background: color, borderRadius: "9999px" }}></div>
-        </div>
+        {actions}
       </div>
-    );
-  });
+      {children}
+    </div>
+  );
+}
+
+function GroupTabs({ items, value, onChange }) {
+  return (
+    <div className="report-group-tabs">
+      {items.map((g) => (
+        <button key={g.key} type="button" onClick={() => onChange(g.key)} className={`tab-pill-btn ${value === g.key ? "active" : ""}`}>
+          {g.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Bộ lọc khoảng ngày đặt ngay trong bảng mà nó áp dụng
+function DateRangeFilter({ from, to, onChange }) {
+  const error = rangeError(from, to);
+  return (
+    <div className="report-filter-row">
+      <label>
+        Từ ngày
+        <input type="date" value={from} max={to || undefined} onChange={(e) => onChange(e.target.value, to)} />
+      </label>
+      <label>
+        Đến ngày
+        <input type="date" value={to} min={from || undefined} onChange={(e) => onChange(from, e.target.value)} />
+      </label>
+      {error && <span className="report-filter-error">{error}</span>}
+    </div>
+  );
+}
+
+function YearFilter({ value, years, onChange }) {
+  return (
+    <div className="report-filter-row">
+      <label>
+        Năm
+        <select value={value} onChange={(e) => onChange(Number(e.target.value))}>
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function EmptyRow({ colSpan, loading }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} style={{ textAlign: "center", color: "#8c9ba5" }}>
+        {loading ? "Đang tải..." : "Chưa có hóa đơn trong khoảng thời gian này."}
+      </td>
+    </tr>
+  );
+}
+
+// Bảng thống kê chéo: mỗi dòng một nhân viên / khách hàng / sản phẩm, mỗi cột một kỳ
+function PivotTable({ data, nameLabel, subLabel, countLabel, loading }) {
+  const colSpan = data.columns.length + 5;
+  return (
+    <div className="admin-table-clean-wrapper report-table-scroll">
+      <table className="admin-table-clean report-table">
+        <thead>
+          <tr>
+            <th style={{ width: "44px" }}>STT</th>
+            <th>{nameLabel}</th>
+            <th>{subLabel}</th>
+            {data.columns.map((c) => (
+              <th key={c} className="num">{c}</th>
+            ))}
+            <th className="num">Tổng cộng</th>
+            <th className="num">{countLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.rows.length === 0 && <EmptyRow colSpan={colSpan} loading={loading} />}
+          {data.rows.map((r, idx) => (
+            <tr key={`${idx}-${r.name}`}>
+              <td>{idx + 1}</td>
+              <td style={{ fontWeight: "700", color: "#1e293b" }}>{r.name}</td>
+              <td style={{ color: "#64748b" }}>{r.sub || "—"}</td>
+              {r.values.map((v, i) => (
+                <td key={data.columns[i]} className={`num ${Number(v) ? "" : "muted"}`}>
+                  {Number(v) ? money(v) : "—"}
+                </td>
+              ))}
+              <td className="num strong">{money(r.total)}</td>
+              <td className="num">{r.count.toLocaleString("vi-VN")}</td>
+            </tr>
+          ))}
+        </tbody>
+        {data.rows.length > 0 && (
+          <tfoot>
+            <tr>
+              <td></td>
+              <td colSpan="2">Tổng cộng</td>
+              {data.column_totals.map((v, i) => (
+                <td key={data.columns[i]} className="num">{money(v)}</td>
+              ))}
+              <td className="num">{money(data.total)}</td>
+              <td className="num">{data.count.toLocaleString("vi-VN")}</td>
+            </tr>
+          </tfoot>
+        )}
+      </table>
+    </div>
+  );
 }
 
 export default function Statistical() {
-  const [activePeriod, setActivePeriod] = useState("week");
+  // Mặc định từ 01/01 năm nay đến hôm nay
+  const [filter, setFilter] = useState(() => {
+    const now = new Date();
+    const from = toLocalDateInput(new Date(now.getFullYear(), 0, 1));
+    const to = toLocalDateInput(now);
+    return {
+      from_date: from,
+      to_date: to,
+      time_from_date: from,
+      time_to_date: to,
+      time_year: now.getFullYear(),
+      group_by: "month",
+      customer_group_by: "quarter",
+    };
+  });
   const [report, setReport] = useState(EMPTY_REPORT);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
 
-  const now = useMemo(() => new Date(), []);
+  const invalid = filterError(filter);
 
-  const periods = [
-    { key: "today", label: "Hôm Nay" },
-    { key: "week", label: "Tuần Này" },
-    { key: "month", label: "Tháng Này" },
-    { key: "quarter", label: "Quý Này" },
-    { key: "year", label: `Năm ${now.getFullYear()}` },
-  ];
-  const periodLabel = periods.find((p) => p.key === activePeriod)?.label || "";
-
-  // Bật trạng thái tải ngay lúc đổi kỳ (thay vì trong effect) để không render 2 lần
-  const changePeriod = (key) => {
-    if (key === activePeriod) return;
-    setLoading(true);
+  // Bật trạng thái tải ngay lúc đổi bộ lọc (thay vì trong effect) để không render 2 lần
+  const updateFilter = (patch) => {
+    const next = { ...filter, ...patch };
+    if (Object.keys(patch).every((k) => patch[k] === filter[k])) return;
+    setFilter(next);
     setError("");
-    setActivePeriod(key);
+    if (!filterError(next)) setLoading(true);
   };
 
   useEffect(() => {
+    if (invalid) return;
     let ignore = false;
     adminStatisticalApi
-      .getReport(activePeriod)
+      .getReport(toParams(filter))
       .then((res) => {
-        if (!ignore) setReport(toViewModel(res.data));
+        if (!ignore) setReport(res.data);
       })
       .catch((err) => {
         if (!ignore) setError(apiErrorMessage(err, "Không tải được dữ liệu báo cáo"));
@@ -115,23 +214,57 @@ export default function Statistical() {
     return () => {
       ignore = true;
     };
-  }, [activePeriod]);
-
-  const peak = report.chart.find((b) => b.isPeak);
-  const chartTitle = activePeriod === "today" ? "Theo Giờ" : ["week", "month"].includes(activePeriod) ? "Theo Ngày" : "Theo Tháng";
-  const showBarValues = report.chart.length <= 12;
+  }, [filter, invalid]);
 
   const exportExcel = async () => {
     setExporting(true);
     try {
-      const blob = await adminStatisticalApi.exportReport(activePeriod);
-      saveBlob(blob, `bao-cao-doanh-thu-${activePeriod}-${toLocalDateInput(new Date())}.xlsx`);
+      const blob = await adminStatisticalApi.exportReport(toParams(filter));
+      const compact = (s) => s.replaceAll("-", "");
+      saveBlob(blob, `bao-cao-doanh-thu-${compact(filter.from_date)}-${compact(filter.to_date)}.xlsx`);
     } catch (err) {
       popup.error(await downloadErrorMessage(err, "Không xuất được file Excel"));
     } finally {
       setExporting(false);
     }
   };
+
+  const s = report.summary;
+  const rangeText = `từ ${dmy(filter.from_date)} đến ${dmy(filter.to_date)}`;
+  const timeRangeText = `từ ${dmy(filter.time_from_date)} đến ${dmy(filter.time_to_date)}`;
+  const yearsText = !report.first_year
+    ? "toàn bộ dữ liệu"
+    : report.first_year === report.last_year
+      ? `toàn bộ dữ liệu năm ${report.first_year}`
+      : `toàn bộ dữ liệu từ năm ${report.first_year} đến năm ${report.last_year}`;
+  // Các năm có dữ liệu để chọn khi xem thu - chi theo tháng / quý
+  const firstYear = Math.min(report.first_year || filter.time_year, filter.time_year);
+  const lastYear = Math.max(report.last_year || filter.time_year, filter.time_year);
+  const years = Array.from({ length: lastYear - firstYear + 1 }, (_, i) => lastYear - i);
+  const timeScopeText =
+    filter.group_by === "day" ? timeRangeText : usesYear(filter) ? `năm ${filter.time_year}` : yearsText;
+  const show = (v, fmt = money) => (loading || !s ? "..." : fmt(v));
+  const count = (v) => v.toLocaleString("vi-VN");
+  const summaryRows = [
+    { label: "Số hóa đơn (đơn hoàn tất)", value: show(s?.invoice_count, count), note: s ? `${s.cancelled_count} đơn bị hủy trong kỳ` : "" },
+    { label: "Số bánh bán ra", value: show(s?.items_sold, count) },
+    { label: "Tổng tiền hàng (trước giảm giá)", value: show(s?.gross_amount) },
+    { label: "Giảm giá voucher", value: show(s?.discount_amount) },
+    { label: "Tổng tiền hóa đơn (Tổng thu)", value: show(s?.revenue), note: "Tiền hàng − giảm giá", strong: true },
+    { label: "Tổng chi (nhập hàng)", value: show(s?.expense), note: s ? `${s.import_count} phiếu nhập hoàn tất` : "" },
+    { label: "Lợi nhuận", value: show(s?.profit), note: "Tổng thu − tổng chi", strong: true, neg: s && Number(s.profit) < 0 },
+  ];
+
+  const timeTotals = report.by_time.reduce(
+    (t, r) => ({
+      invoice_count: t.invoice_count + r.invoice_count,
+      revenue: t.revenue + Number(r.revenue),
+      import_count: t.import_count + r.import_count,
+      expense: t.expense + Number(r.expense),
+      profit: t.profit + Number(r.profit),
+    }),
+    { invoice_count: 0, revenue: 0, import_count: 0, expense: 0, profit: 0 },
+  );
 
   return (
     <>
@@ -142,32 +275,15 @@ export default function Statistical() {
         <div className="admin-page-header-row">
           <div className="admin-page-title-group">
             <h1>Báo Cáo Doanh Thu</h1>
-            <p>Doanh thu, cơ cấu doanh số &amp; các dòng bánh bán chạy của tiệm</p>
+            <p>Tổng tiền hóa đơn, thu – chi – lợi nhuận và thống kê theo nhân viên, khách hàng, sản phẩm</p>
           </div>
 
           <div className="admin-page-actions">
-            <div className="btn-pill-outline" style={{ cursor: "default" }}>
-              <ion-icon name="calendar-outline"></ion-icon>
-              <span>{formatDate(report.periodStart)} - {formatDate(report.endDate || now)}</span>
-            </div>
-            <button className="btn-pill-primary" type="button" onClick={exportExcel} disabled={loading || exporting}>
+            <button className="btn-pill-primary" type="button" onClick={exportExcel} disabled={loading || exporting || !!invalid}>
               <ion-icon name={exporting ? "hourglass-outline" : "download-outline"}></ion-icon>
               <span>{exporting ? "Đang xuất..." : "Xuất Excel"}</span>
             </button>
           </div>
-        </div>
-
-        {/* Period Pills */}
-        <div className="admin-filter-tabs">
-          {periods.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => changePeriod(p.key)}
-              className={`tab-pill-btn ${activePeriod === p.key ? "active" : ""}`}
-            >
-              {p.label}
-            </button>
-          ))}
         </div>
 
         {error && (
@@ -176,202 +292,114 @@ export default function Statistical() {
           </div>
         )}
 
-        {/* 4 Metric Cards */}
-        <div className="admin-grid-4" style={{ marginBottom: "22px" }}>
-          <div className="dashboard-hero-card" style={{ minHeight: "150px" }}>
-            <div className="kpi-card-header">
-              <span className="kpi-label">DOANH THU {periodLabel.toUpperCase()}</span>
-            </div>
-            <div>
-              <div className="kpi-big-value" style={{ fontSize: "28px" }}>{loading ? "..." : formatVND(report.revenue, " đ")}</div>
-            </div>
-          </div>
-
-          <div className="kpi-card-white" style={{ minHeight: "150px" }}>
-            <div className="kpi-card-header">
-              <span className="kpi-label">ĐƠN HOÀN TẤT</span>
-            </div>
-            <div>
-              <div className="kpi-big-value" style={{ fontSize: "28px" }}>{loading ? "..." : report.count.toLocaleString("vi-VN")} <span style={{ fontSize: "16px", color: "#64748b" }}>đơn</span></div>
-              <div className="kpi-footer-row">
-                <span style={{ color: "#64748b" }}>{report.cancelled} đơn bị hủy</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="kpi-card-white" style={{ minHeight: "150px" }}>
-            <div className="kpi-card-header">
-              <span className="kpi-label">BÁNH BÁN RA</span>
-            </div>
-            <div>
-              <div className="kpi-big-value" style={{ fontSize: "28px" }}>{loading ? "..." : report.itemsSold.toLocaleString("vi-VN")} <span style={{ fontSize: "16px", color: "#64748b" }}>bánh</span></div>
-              <div className="kpi-footer-row">
-                <span style={{ color: "#64748b" }}>TB {report.count ? (report.itemsSold / report.count).toFixed(1) : 0} bánh/đơn</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="kpi-card-white" style={{ minHeight: "150px" }}>
-            <div className="kpi-card-header">
-              <span className="kpi-label">GIÁ TRỊ TRUNG BÌNH / ĐƠN</span>
-            </div>
-            <div>
-              <div className="kpi-big-value" style={{ fontSize: "28px" }}>{loading ? "..." : formatVND(Math.round(report.avg), " đ")}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 2 Grid: Bar Chart & Category Share */}
-        <div className="admin-grid-split" style={{ marginBottom: "22px" }}>
-          <div className="admin-card-box" style={{ margin: 0 }}>
-            <div className="admin-card-box-header">
-              <div className="card-title-group">
-                <h3>Doanh Thu {chartTitle}</h3>
-                <p>Doanh thu từ các đơn đã hoàn tất trong {periodLabel.toLowerCase()}</p>
-              </div>
-              <span className="badge-pill pink">{peak ? `Cao nhất: ${peak.fullLabel} (${shortMoney(peak.rev)})` : "Chưa có doanh thu"}</span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "180px", padding: "20px 4px 0" }}>
-              {report.chart.map((b, idx) => (
-                <div
-                  key={idx}
-                  title={`${b.fullLabel}: ${formatVND(b.rev, " đ")}`}
-                  style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: "6px" }}
-                >
-                  {showBarValues && (
-                    <span style={{ fontSize: "10.5px", fontWeight: "700", color: b.isPeak ? "#de5d7c" : "#8c9ba5" }}>
-                      {shortMoney(b.rev)}
-                    </span>
-                  )}
-                  <div
-                    style={{
-                      width: "100%",
-                      maxWidth: "36px",
-                      height: `${b.h}%`,
-                      background: b.isPeak
-                        ? "linear-gradient(180deg, #de5d7c 0%, #c74767 100%)"
-                        : "linear-gradient(180deg, #fce4ec 0%, #f8bbd0 100%)",
-                      borderRadius: showBarValues ? "12px 12px 4px 4px" : "6px 6px 2px 2px",
-                      boxShadow: b.isPeak ? "0 4px 12px rgba(222, 93, 124, 0.35)" : "none",
-                    }}
-                  ></div>
-                  <span style={{ fontSize: showBarValues ? "11px" : "9.5px", fontWeight: "700", color: b.isPeak ? "#de5d7c" : "#64748b" }}>
-                    {b.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="admin-card-box" style={{ margin: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div>
-              <div className="admin-card-box-header">
-                <div className="card-title-group">
-                  <h3>Cơ Cấu Theo Danh Mục</h3>
-                  <p>Tỷ trọng tiền bánh bán ra theo danh mục</p>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "10px" }}>
-                <ShareBars items={report.categoryShare} colors={CATEGORY_COLORS} loading={loading} />
-              </div>
-            </div>
-
-            <div style={{ background: "#fff0f4", borderRadius: "14px", padding: "12px", marginTop: "16px", fontSize: "12px", color: "#de5d7c", fontWeight: "600" }}>
-              <ion-icon name="bulb-outline" style={{ verticalAlign: "-2px", marginRight: "4px" }}></ion-icon>{report.categoryShare.length
-                ? `${report.categoryShare[0].name} đang đóng góp doanh thu lớn nhất trong kỳ này.`
-                : "Chưa có đơn hoàn tất nào trong kỳ này."}
-            </div>
-          </div>
-        </div>
-
-        {/* 2 Grid: Top Products & Payment Methods */}
-        <div className="admin-grid-split">
-          <div className="admin-card-box" style={{ margin: 0 }}>
-            <div className="admin-card-box-header">
-              <div className="card-title-group">
-                <h3>Top 5 Bánh Bán Chạy</h3>
-                <p>Xếp theo số lượng bán trong {periodLabel.toLowerCase()}</p>
-              </div>
-            </div>
-
-            <div className="admin-table-clean-wrapper">
-              <table className="admin-table-clean">
-                <thead>
-                  <tr>
-                    <th style={{ width: "40px" }}>HẠNG</th>
-                    <th>TÊN BÁNH</th>
-                    <th>DANH MỤC</th>
-                    <th>SỐ LƯỢNG BÁN</th>
-                    <th>TIỀN BÁNH</th>
-                    <th>TỶ TRỌNG</th>
+        {/* a) Tổng tiền hóa đơn từ ngày a đến ngày b */}
+        <Section title="Tổng Tiền Hóa Đơn Theo Khoảng Ngày" subtitle={`Các hóa đơn (đơn hoàn tất) ${rangeText}`}>
+          <DateRangeFilter
+            from={filter.from_date}
+            to={filter.to_date}
+            onChange={(from_date, to_date) => updateFilter({ from_date, to_date })}
+          />
+          <div className="admin-table-clean-wrapper">
+            <table className="admin-table-clean report-table">
+              <thead>
+                <tr>
+                  <th>Chỉ tiêu</th>
+                  <th className="num">Giá trị</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summaryRows.map((r) => (
+                  <tr key={r.label}>
+                    <td style={{ fontWeight: r.strong ? "800" : "600", color: "#1e293b" }}>{r.label}</td>
+                    <td className={`num ${r.neg ? "neg" : r.strong ? "strong" : ""}`} style={{ fontWeight: r.strong ? "800" : "700" }}>
+                      {r.value}
+                    </td>
+                    <td style={{ color: "#64748b" }}>{r.note || ""}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {report.topProducts.length === 0 && (
-                    <tr>
-                      <td colSpan="6" style={{ textAlign: "center", color: "#8c9ba5" }}>
-                        {loading ? "Đang tải..." : "Chưa có món bánh nào được bán trong kỳ này."}
-                      </td>
-                    </tr>
-                  )}
-                  {report.topProducts.map((c) => (
-                    <tr key={c.rank}>
-                      <td>
-                        <span
-                          style={{
-                            width: "26px",
-                            height: "26px",
-                            borderRadius: "50%",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "12px",
-                            fontWeight: "800",
-                            background: c.rank === 1 ? "#fff0f4" : "#f1f5f9",
-                            color: c.rank === 1 ? "#de5d7c" : "#64748b",
-                          }}
-                        >
-                          {c.rank}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: "700", color: "#1e293b" }}>{c.name}</span>
-                      </td>
-                      <td>
-                        <span className="badge-pill pink" style={{ fontSize: "11px" }}>{c.category}</span>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: "700" }}>{c.sales} bánh</span>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: "800", color: "#de5d7c" }}>{formatVND(c.revenue, " đ")}</span>
-                      </td>
-                      <td>
-                        <span style={{ color: "#64748b", fontWeight: "700" }}>{c.percent}%</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
+        </Section>
 
-          <div className="admin-card-box" style={{ margin: 0 }}>
-            <div className="admin-card-box-header">
-              <div className="card-title-group">
-                <h3>Phương Thức Thanh Toán</h3>
-                <p>Doanh thu theo cách khách thanh toán</p>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "10px" }}>
-              <ShareBars items={report.paymentShare} colors={PAYMENT_COLORS} loading={loading} />
-            </div>
+        {/* b) Thu - chi - lợi nhuận theo ngày / tháng / quý / năm */}
+        <Section
+          title={`Thu – Chi – Lợi Nhuận Theo ${TIME_GROUPS.find((g) => g.key === filter.group_by).label}`}
+          subtitle={`Tổng thu = tổng tiền hóa đơn, tổng chi = tổng tiền phiếu nhập hàng, ${timeScopeText}`}
+          actions={<GroupTabs items={TIME_GROUPS} value={filter.group_by} onChange={(key) => updateFilter({ group_by: key })} />}
+        >
+          {filter.group_by === "day" && (
+            <DateRangeFilter
+              from={filter.time_from_date}
+              to={filter.time_to_date}
+              onChange={(time_from_date, time_to_date) => updateFilter({ time_from_date, time_to_date })}
+            />
+          )}
+          {usesYear(filter) && (
+            <YearFilter value={filter.time_year} years={years} onChange={(time_year) => updateFilter({ time_year })} />
+          )}
+          <div className="admin-table-clean-wrapper report-table-scroll">
+            <table className="admin-table-clean report-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th className="num">Số hóa đơn</th>
+                  <th className="num">Tổng thu</th>
+                  <th className="num">Số phiếu nhập</th>
+                  <th className="num">Tổng chi</th>
+                  <th className="num">Lợi nhuận</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.by_time.length === 0 && <EmptyRow colSpan={6} loading={loading} />}
+                {report.by_time.map((r) => (
+                  <tr key={r.label}>
+                    <td style={{ fontWeight: "700", color: "#1e293b" }}>{r.label}</td>
+                    <td className="num">{r.invoice_count}</td>
+                    <td className="num">{money(r.revenue)}</td>
+                    <td className="num">{r.import_count}</td>
+                    <td className="num">{money(r.expense)}</td>
+                    <td className={`num ${Number(r.profit) < 0 ? "neg" : "strong"}`}>{money(r.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              {report.by_time.length > 0 && (
+                <tfoot>
+                  <tr>
+                    <td>Tổng cộng</td>
+                    <td className="num">{timeTotals.invoice_count}</td>
+                    <td className="num">{money(timeTotals.revenue)}</td>
+                    <td className="num">{timeTotals.import_count}</td>
+                    <td className="num">{money(timeTotals.expense)}</td>
+                    <td className={`num ${timeTotals.profit < 0 ? "neg" : ""}`}>{money(timeTotals.profit)}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
           </div>
-        </div>
+        </Section>
 
+        {/* c) Nhân viên x năm */}
+        <Section title="Thống Kê Theo Nhân Viên Và Năm" subtitle={`Tổng tiền hóa đơn mỗi nhân viên lập theo từng năm, ${yearsText}`}>
+          <PivotTable data={report.by_staff} nameLabel="Nhân viên" subLabel="SĐT" countLabel="Số hóa đơn" loading={loading} />
+          <div className="report-note">Nhân viên lập hóa đơn là người chuyển đơn sang trạng thái Hoàn tất.</div>
+        </Section>
+
+        {/* d) Khách hàng x quý / năm */}
+        <Section
+          title={`Thống Kê Theo Khách Hàng Và ${filter.customer_group_by === "year" ? "Năm" : "Quý"}`}
+          subtitle={`Tổng tiền hóa đơn của từng khách hàng theo ${groupLabel(filter.customer_group_by)}, ${yearsText}`}
+          actions={<GroupTabs items={CUSTOMER_GROUPS} value={filter.customer_group_by} onChange={(key) => updateFilter({ customer_group_by: key })} />}
+        >
+          <PivotTable data={report.by_customer} nameLabel="Khách hàng" subLabel="SĐT" countLabel="Số hóa đơn" loading={loading} />
+        </Section>
+
+        {/* e) Sản phẩm x quý */}
+        <Section title="Thống Kê Theo Sản Phẩm Và Quý" subtitle={`Tổng tiền bánh trên hóa đơn của từng sản phẩm theo quý, ${yearsText}`}>
+          <PivotTable data={report.by_product} nameLabel="Sản phẩm" subLabel="Danh mục" countLabel="SL bán" loading={loading} />
+          <div className="report-note">Tiền bánh = đơn giá × số lượng trên hóa đơn (trước giảm giá voucher).</div>
+        </Section>
       </div>
     </>
   );

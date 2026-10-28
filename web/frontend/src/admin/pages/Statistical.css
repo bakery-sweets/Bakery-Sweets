@@ -1,0 +1,93 @@
+/* Bảng báo cáo dài: cuộn trong khung, giữ tiêu đề và dòng tổng luôn thấy */
+.report-table-scroll {
+  max-height: 480px;
+  overflow: auto;
+}
+
+.report-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ffffff;
+}
+
+.report-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.report-table .muted {
+  color: #cbd5e1;
+}
+
+.report-table .neg {
+  color: #dc2626;
+}
+
+.report-table .strong {
+  font-weight: 800;
+  color: #de5d7c;
+}
+
+.report-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #1e293b;
+  background: #fff0f4;
+  border-top: 1px solid #f8bbd0;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-filter-row {
+  display: flex;
+  margin-bottom: 16px;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.report-filter-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.report-filter-row input[type="date"],
+.report-filter-row select {
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  background: #ffffff;
+}
+
+.report-filter-error {
+  align-self: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.report-group-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.report-group-tabs .tab-pill-btn {
+  padding: 6px 14px;
+  font-size: 12.5px;
+}
+
+.report-note {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #8c9ba5;
+}

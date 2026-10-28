@@ -44,10 +44,10 @@ export const adminUsersApi = {
 
 export const adminStatisticalApi = {
   getOverview: () => axiosClient.get("/admin/statistical/overview"),
-  // period: today | week | month | quarter | year
-  getReport: (period) => axiosClient.get("/admin/statistical/report", { params: { period } }),
+  // params: { from_date, to_date (YYYY-MM-DD), time_from_date, time_to_date (thu - chi theo ngày), time_year (thu - chi theo tháng / quý), group_by: day | month | quarter | year, customer_group_by: quarter | year }
+  getReport: (params) => axiosClient.get("/admin/statistical/report", { params }),
   // Báo cáo doanh thu dạng Excel (trả về Blob)
-  exportReport: (period) => axiosClient.get("/admin/statistical/report/export", { params: { period }, responseType: "blob" }),
+  exportReport: (params) => axiosClient.get("/admin/statistical/report/export", { params, responseType: "blob" }),
 };
 
 export const adminImportReceiptsApi = {

@@ -124,7 +124,7 @@ web/backend/
         │   ├── product_service.py       # Nghiệp vụ thêm, sửa, xóa món, điều chỉnh giá/kho
         │   ├── stats_service.py         # Nghiệp vụ tính toán doanh thu & top sản phẩm
         │   ├── user_service.py          # Nghiệp vụ cấp, sửa, khóa/mở khóa tài khoản
-        │   ├── report_service.py        # Báo cáo doanh thu theo kỳ (màn hình Thống kê + file Excel)
+        │   ├── report_service.py        # Báo cáo doanh thu từ ngày đến ngày: thu - chi - lợi nhuận, theo nhân viên / khách hàng / sản phẩm (màn hình + Excel)
         │   └── upload_service.py        # Kiểm tra & lưu ảnh sản phẩm vào thư mục uploads
         └── client/
             ├── __init__.py
