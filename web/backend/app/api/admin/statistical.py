@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_admin
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.services.admin.stats_service import AdminStatsService
 from app.schemas.admin.statistical import DashboardOverviewOut
 from app.schemas.common import ResponseBase

@@ -1,11 +1,10 @@
-import os
-import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_admin
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.services.admin.product_service import AdminProductService
+from app.services.admin.upload_service import AdminUploadService
 from app.schemas.admin.product import ProductCreate, ProductUpdate, AdminProductOut, ProductSizeOut
 from app.schemas.common import ResponseBase
 from app.services.realtime_service import RealtimeService
@@ -51,40 +50,9 @@ async def upload_product_image(
     file: UploadFile = File(...),
     admin: User = Depends(get_current_admin),
 ):
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"}
-    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
-    if ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Định dạng tệp không hợp lệ. Vui lòng chọn ảnh JPG, PNG, WEBP, GIF, SVG.",
-        )
-
-    # Đảm bảo thư mục uploads tồn tại
-    backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    upload_dir = os.path.join(backend_root, "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-
-    safe_name = f"cake_{uuid.uuid4().hex[:10]}{ext}"
-    file_path = os.path.join(upload_dir, safe_name)
-
     content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kích thước tệp quá lớn. Tối đa 10MB.",
-        )
-
-    with open(file_path, "wb") as f:
-        f.write(content)
-
-    return ResponseBase(
-        message="Tải ảnh thành công",
-        data={
-            "url": f"/uploads/{safe_name}",
-            "filename": safe_name,
-            "original_name": file.filename,
-        },
-    )
+    saved = AdminUploadService.save_product_image(file.filename, content)
+    return ResponseBase(message="Tải ảnh thành công", data=saved)
 
 @router.get("/{product_id}", response_model=ResponseBase[AdminProductOut], summary="Xem chi tiết sản phẩm")
 def get_product(

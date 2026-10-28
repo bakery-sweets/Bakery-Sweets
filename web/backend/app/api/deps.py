@@ -4,7 +4,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database.session import SessionLocal
 from app.core.security import decode_access_token
-from app.models.user import User
+from thesweets_common.models.user import User
+from app.services.auth_service import AuthService, BACKOFFICE_ROLES
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/client/auth/login", auto_error=False)
 
@@ -43,7 +44,7 @@ def get_current_user(
             detail="Token không chứa thông tin định danh",
         )
 
-    user = db.query(User).filter(User.phone == phone).first()
+    user = AuthService.get_user_by_phone(db, phone)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,8 +69,6 @@ def get_current_admin(
             detail="Bạn không có quyền quản trị để truy cập chức năng này",
         )
     return current_user
-
-BACKOFFICE_ROLES = ("admin", "staff")
 
 def get_current_staff(
     current_user: User = Depends(get_current_user)
@@ -106,7 +105,7 @@ def get_optional_current_user(
     phone: Optional[str] = payload.get("sub")
     if not phone:
         return None
-    user = db.query(User).filter(User.phone == phone).first()
+    user = AuthService.get_user_by_phone(db, phone)
     if not user or user.status == "locked":
         return None
     return user

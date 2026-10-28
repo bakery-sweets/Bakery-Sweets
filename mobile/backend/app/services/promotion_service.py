@@ -1,12 +1,12 @@
 from typing import Dict, List, Optional
 from datetime import datetime
 from decimal import Decimal
-from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.promotion import Promotion, InvoicePromotion
-from app.models.order import Order
+from app.core.exceptions import BadRequestError
+from thesweets_common.models.promotion import Promotion, InvoicePromotion
+from thesweets_common.models.order import Order
 from app.schemas.promotion import PromotionOut, InvoicePromotionOut
 
 class PromotionService:
@@ -102,13 +102,13 @@ class PromotionService:
         """Kiểm tra voucher có áp dụng được cho đơn hàng không và trả về số tiền được giảm"""
         promo = db.query(Promotion).filter(Promotion.promotion_id == promotion_id).first()
         if not promo or promo.status != "Active":
-            raise HTTPException(status_code=400, detail="Mã ưu đãi không hợp lệ hoặc đã hết hạn")
+            raise BadRequestError("Mã ưu đãi không hợp lệ hoặc đã hết hạn")
 
         now = datetime.now()
         if promo.start_date and promo.start_date > now:
-            raise HTTPException(status_code=400, detail="Chương trình ưu đãi chưa bắt đầu")
+            raise BadRequestError("Chương trình ưu đãi chưa bắt đầu")
         if promo.end_date and promo.end_date < now:
-            raise HTTPException(status_code=400, detail="Chương trình ưu đãi đã kết thúc")
+            raise BadRequestError("Chương trình ưu đãi đã kết thúc")
 
         # Kiểm tra giới hạn số lần sử dụng cho mỗi tài khoản
         limit_per_user = promo.usage_limit_per_user if promo.usage_limit_per_user is not None else 1
@@ -118,9 +118,8 @@ class PromotionService:
             Order.status != "Cancelled"
         ).count()
         if user_used_count >= limit_per_user:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Bạn đã sử dụng mã ưu đãi này rồi. Mỗi tài khoản chỉ được áp dụng tối đa {limit_per_user} lần!"
+            raise BadRequestError(
+                f"Bạn đã sử dụng mã ưu đãi này rồi. Mỗi tài khoản chỉ được áp dụng tối đa {limit_per_user} lần!"
             )
 
         # Kiểm tra tổng số lượt sử dụng toàn hệ thống (nếu có giới hạn)
@@ -130,9 +129,8 @@ class PromotionService:
                 Order.status != "Cancelled"
             ).count()
             if total_used_count >= promo.total_usage_limit:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Mã ưu đãi này đã hết lượt sử dụng trên hệ thống!"
+                raise BadRequestError(
+                    "Mã ưu đãi này đã hết lượt sử dụng trên hệ thống!"
                 )
 
         inv_promo = db.query(InvoicePromotion).filter(
@@ -141,9 +139,8 @@ class PromotionService:
         ).order_by(InvoicePromotion.min_order_value.desc()).first()
 
         if not inv_promo:
-            raise HTTPException(
-                status_code=400,
-                detail="Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã ưu đãi này"
+            raise BadRequestError(
+                "Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã ưu đãi này"
             )
 
         calculated_discount = total_cost * (inv_promo.discount_percentage / Decimal("100.0"))

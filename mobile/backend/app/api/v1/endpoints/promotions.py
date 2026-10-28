@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.api.deps import get_db, get_optional_current_user
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.schemas.promotion import PromotionOut
 from app.services.promotion_service import PromotionService
 

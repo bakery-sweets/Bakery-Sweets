@@ -1,7 +1,9 @@
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form
 
+from app.api.deps import require_staff
 from app.services.upload_service import UploadService
+from thesweets_common.models.user import User
 
 router = APIRouter(tags=["Media Upload"])
 
@@ -9,10 +11,11 @@ router = APIRouter(tags=["Media Upload"])
 async def upload_file(
     file: UploadFile = File(...),
     folder: Optional[str] = Form("products"),
+    staff: User = Depends(require_staff),
 ):
     """
-    API Upload hình ảnh dành cho Web Admin và Mobile Client.
-    Hỗ trợ upload ảnh sản phẩm, banner quảng cáo hoặc avatar.
+    API Upload hình ảnh (ảnh sản phẩm, banner quảng cáo), chỉ dành cho admin / staff.
     Lưu trữ file tập trung tại thư mục /uploads trên server và phục vụ qua HTTP Static Files.
     """
-    return await UploadService.save_image(file, folder)
+    content = await file.read()
+    return UploadService.save_image(file.filename, content, folder)

@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_admin
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.services.admin.promotion_service import AdminPromotionService
 from app.schemas.admin.promotion import PromotionInput, PromotionStatusUpdate, AdminPromotionOut, InvoiceTierOut
 from app.schemas.common import ResponseBase

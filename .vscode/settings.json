@@ -12,7 +12,7 @@
             "driver": "MySQL",
             "database": "thesweets_db",
             "username": "user",
-            "password": "123",
+            "askForPassword": true,
             "name": "thesweets_db"
         }
     ],

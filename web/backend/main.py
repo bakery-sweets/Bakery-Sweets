@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
+from app.api.errors import register_exception_handlers
 from app.database.session import engine, Base
 from app.api.admin import admin_router
 from app.api.client import client_router
@@ -27,6 +28,9 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Chuyển lỗi nghiệp vụ từ tầng Service thành HTTP response
+register_exception_handlers(app)
 
 # Cấu hình CORS để React Frontend (Vite port 3000) gọi được
 app.add_middleware(

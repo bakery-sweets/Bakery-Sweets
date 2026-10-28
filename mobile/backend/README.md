@@ -18,6 +18,8 @@ python -m venv venv
 venv\Scripts\activate       # Windows
 source venv/bin/activate    # Linux/Mac
 pip install -r requirements.txt
+pip install -e ../../common   # ORM models dùng chung
+cp .env.example .env          # điền DB_PASSWORD, SECRET_KEY, INTERNAL_API_KEY
 ```
 
 ## Chạy local
@@ -36,15 +38,15 @@ mobile/backend/
 ├── main.py              # Entry point FastAPI
 ├── requirements.txt
 ├── Dockerfile
-├── .env                 # Biến môi trường (DB, JWT secret...)
+├── .env.example         # Mẫu biến môi trường (.env thật không đưa lên git)
 ├── app/
 │   ├── core/            # config.py (settings, JWT secret), security.py (hash mật khẩu, JWT)
-│   ├── config/          # Kết nối DB (engine, session)
-│   ├── models/          # SQLAlchemy models (ánh xạ bảng DB)
+│   ├── database/        # Kết nối DB (engine, session)
 │   ├── schemas/         # Pydantic schemas (request/response)
 │   ├── api/
 │   │   ├── deps.py      # Dependency: get_db, get_current_user, get_current_customer, require_staff
+│   │   ├── errors.py    # Chuyển lỗi nghiệp vụ (app/core/exceptions.py) thành mã HTTP
 │   │   └── v1/endpoints/  # API routes (auth, products, cart, orders...) — chỉ nhận request & gọi service
-│   ├── services/        # Business logic (AuthService, OrderService, PromotionService...)
-│   └── websocket/       # Quản lý kết nối WebSocket realtime
+│   └── services/        # Business logic (AuthService, OrderService, PromotionService...)
+│                        # realtime_service.py gửi sự kiện sang Realtime Server riêng (realtime/, port 8001)
 ```

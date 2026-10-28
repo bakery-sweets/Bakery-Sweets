@@ -3,7 +3,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_optional_current_user
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.services.client.promotion_service import ClientPromotionService
 from app.schemas.client.promotion import (
     PromotionOut,

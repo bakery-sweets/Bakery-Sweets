@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.api.deps import get_db, get_current_customer
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.schemas.order import CartItemAdd, CartItemUpdate, CartItemOut
 from app.services.cart_service import CartService
 from app.services.realtime_service import RealtimeService

@@ -1,10 +1,10 @@
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models.order import Order, OrderDetail
-from app.models.product import Product, ProductSize
-from app.models.user import Customer
-from app.models.import_receipt import ImportReceipt, ImportReceiptDetail
+from thesweets_common.models.order import Order, OrderDetail
+from thesweets_common.models.product import Product, ProductSize
+from thesweets_common.models.user import Customer
+from thesweets_common.models.import_receipt import ImportReceipt, ImportReceiptDetail
 from app.schemas.admin.statistical import DashboardOverviewOut, HourlyStatItem, KitchenStockStats
 
 class AdminStatsService:

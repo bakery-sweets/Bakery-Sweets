@@ -1,9 +1,9 @@
 from typing import List, Optional
 from decimal import Decimal
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.models.order import Cart
-from app.models.product import ProductSize, Product, Size
+from app.core.exceptions import BadRequestError, NotFoundError
+from thesweets_common.models.order import Cart
+from thesweets_common.models.product import ProductSize, Product, Size
 from app.schemas.client.cart import CartItemAdd, CartItemOut, CartSummaryOut
 
 class ClientCartService:
@@ -53,10 +53,10 @@ class ClientCartService:
         ).first()
 
         if not ps:
-            raise HTTPException(status_code=404, detail="Sản phẩm hoặc kích cỡ không tồn tại")
+            raise NotFoundError("Sản phẩm hoặc kích cỡ không tồn tại")
 
         if ps.product and ps.product.status != "Available":
-            raise HTTPException(status_code=400, detail="Sản phẩm này hiện không còn khả dụng")
+            raise BadRequestError("Sản phẩm này hiện không còn khả dụng")
 
         existing = db.query(Cart).filter(
             Cart.customer_id == customer_id,
@@ -66,9 +66,8 @@ class ClientCartService:
 
         new_total_qty = (existing.quantity if existing else 0) + data.quantity
         if ps.stock_quantity < new_total_qty:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
+            raise BadRequestError(
+                f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
             )
 
         if existing:
@@ -92,7 +91,7 @@ class ClientCartService:
     def update_quantity(db: Session, customer_id: int, cart_id: int, quantity: int) -> Optional[Cart]:
         item = db.query(Cart).filter(Cart.cart_id == cart_id, Cart.customer_id == customer_id).first()
         if not item:
-            return None
+            raise NotFoundError("Món hàng không tồn tại trong giỏ")
 
         if quantity <= 0:
             db.delete(item)
@@ -104,9 +103,8 @@ class ClientCartService:
             ProductSize.size_id == item.size_id
         ).first()
         if ps and ps.stock_quantity < quantity:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
+            raise BadRequestError(
+                f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
             )
 
         item.quantity = quantity

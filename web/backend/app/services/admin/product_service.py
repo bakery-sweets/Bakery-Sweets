@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.models.product import Product, ProductSize, Category
-from app.models.order import Cart
+from thesweets_common.models.product import Product, ProductSize, Category
+from thesweets_common.models.order import Cart
 from app.schemas.admin.product import ProductCreate, ProductUpdate
 
 class AdminProductService:

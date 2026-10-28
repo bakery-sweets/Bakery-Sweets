@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_staff
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.services.admin.order_service import AdminOrderService, ALLOWED_TRANSITIONS
 from app.schemas.admin.order import (
     AdminOrderOut,

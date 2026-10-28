@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
-from app.models.product import Product, ProductSize, Category
+from thesweets_common.models.product import Product, ProductSize, Category
 
 class ClientProductService:
     @staticmethod
@@ -35,7 +35,7 @@ class ClientProductService:
 
     @staticmethod
     def get_best_sellers(db: Session, limit: int = 4) -> List[Product]:
-        from app.models.order import OrderDetail
+        from thesweets_common.models.order import OrderDetail
         from sqlalchemy import func
 
         sales_subq = (

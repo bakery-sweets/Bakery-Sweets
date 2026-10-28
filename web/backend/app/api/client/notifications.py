@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
-from app.models.promotion import Promotion
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.services.client.notification_service import ClientNotificationService
 from app.schemas.client.notification import NotificationOut, NotificationListOut
 from app.schemas.common import ResponseBase
@@ -17,10 +16,7 @@ def list_my_notifications(
 ):
     items, unread = ClientNotificationService.get_recent(db, current_user.phone, limit)
 
-    promo_ids = {n.reference_id for n in items if n.type == "promotion" and n.reference_id}
-    codes = dict(
-        db.query(Promotion.promotion_id, Promotion.promotion_code).filter(Promotion.promotion_id.in_(promo_ids)).all()
-    ) if promo_ids else {}
+    codes = ClientNotificationService.get_promotion_codes(db, items)
 
     return ResponseBase(data=NotificationListOut(
         items=[

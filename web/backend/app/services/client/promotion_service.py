@@ -1,12 +1,12 @@
 from typing import List, Optional, Tuple
 from datetime import datetime
 from decimal import Decimal
-from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from app.models.promotion import Promotion, InvoicePromotion, OrderPromotion
-from app.models.order import Order
-from app.models.user import User
+from app.core.exceptions import BadRequestError
+from thesweets_common.models.promotion import Promotion, InvoicePromotion, OrderPromotion
+from thesweets_common.models.order import Order
+from thesweets_common.models.user import User
 from app.schemas.client.promotion import PromotionOut, InvoicePromotionOut
 
 class ClientPromotionService:
@@ -122,13 +122,13 @@ class ClientPromotionService:
         )
 
         if not promo:
-            raise HTTPException(status_code=400, detail="Mã khuyến mãi không tồn tại hoặc đã hết hiệu lực")
+            raise BadRequestError("Mã khuyến mãi không tồn tại hoặc đã hết hiệu lực")
 
         if promo.start_date > now:
-            raise HTTPException(status_code=400, detail="Chương trình khuyến mãi chưa bắt đầu")
+            raise BadRequestError("Chương trình khuyến mãi chưa bắt đầu")
 
         if promo.end_date < now:
-            raise HTTPException(status_code=400, detail="Chương trình khuyến mãi đã kết thúc")
+            raise BadRequestError("Chương trình khuyến mãi đã kết thúc")
 
         # Kiểm tra tổng lượt dùng toàn hệ thống nếu có cấu hình
         if promo.total_usage_limit is not None:
@@ -138,7 +138,7 @@ class ClientPromotionService:
                 .scalar()
             ) or 0
             if total_used >= promo.total_usage_limit:
-                raise HTTPException(status_code=400, detail="Mã khuyến mãi đã hết lượt sử dụng trên hệ thống")
+                raise BadRequestError("Mã khuyến mãi đã hết lượt sử dụng trên hệ thống")
 
         # Kiểm tra số lượt dùng của khách hàng
         if customer_id and promo.usage_limit_per_user is not None:
@@ -152,9 +152,8 @@ class ClientPromotionService:
                 .scalar()
             ) or 0
             if user_used >= promo.usage_limit_per_user:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Bạn đã sử dụng tối đa ({promo.usage_limit_per_user} lần) cho mã khuyến mãi này",
+                raise BadRequestError(
+                    f"Bạn đã sử dụng tối đa ({promo.usage_limit_per_user} lần) cho mã khuyến mãi này",
                 )
 
         # Tính toán mức giảm theo các bậc hóa đơn trong invoice_promotions
@@ -167,9 +166,8 @@ class ClientPromotionService:
             ]
             if not applicable:
                 min_req = min(inv.min_order_value for inv in promo.invoice_promotions)
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Đơn hàng chưa đạt mức tối thiểu {min_req:,.0f}đ để áp dụng mã này",
+                raise BadRequestError(
+                    f"Đơn hàng chưa đạt mức tối thiểu {min_req:,.0f}đ để áp dụng mã này",
                 )
 
             # Lấy bậc có min_order_value lớn nhất

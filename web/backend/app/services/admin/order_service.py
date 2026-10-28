@@ -1,9 +1,9 @@
 from typing import List, Optional
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.models.order import Order, OrderStatusLog
-from app.models.product import ProductSize
-from app.models.notification import Notification
+from app.core.exceptions import BadRequestError
+from thesweets_common.models.order import Order, OrderStatusLog
+from thesweets_common.models.product import ProductSize
+from thesweets_common.models.notification import Notification
 from app.services.realtime_service import RealtimeService
 
 # Các bước chuyển trạng thái hợp lệ; Completed và Cancelled là trạng thái cuối
@@ -44,16 +44,15 @@ class AdminOrderService:
 
         old_status = order.status
         if new_status not in ALLOWED_TRANSITIONS.get(old_status, ()):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Không thể chuyển đơn hàng từ '{old_status}' sang '{new_status}'",
+            raise BadRequestError(
+                f"Không thể chuyển đơn hàng từ '{old_status}' sang '{new_status}'",
             )
 
         note = note.strip() if note else None
 
         if new_status == "Cancelled":
             if not note:
-                raise HTTPException(status_code=400, detail="Vui lòng nhập lý do hủy đơn hàng")
+                raise BadRequestError("Vui lòng nhập lý do hủy đơn hàng")
             # Hoàn lại tồn kho cho các sản phẩm trong đơn
             for detail in order.details:
                 ps = db.query(ProductSize).filter(
@@ -65,9 +64,8 @@ class AdminOrderService:
 
         if new_status == "Completed" and order.payment_status != "Paid":
             if order.payment_method != "COD":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Đơn hàng chưa được xác nhận thanh toán, không thể hoàn tất",
+                raise BadRequestError(
+                    "Đơn hàng chưa được xác nhận thanh toán, không thể hoàn tất",
                 )
             # Đơn COD: khách trả tiền mặt khi nhận bánh tại quầy
             order.payment_status = "Paid"
@@ -122,9 +120,9 @@ class AdminOrderService:
             return None
 
         if order.status == "Cancelled":
-            raise HTTPException(status_code=400, detail="Không thể xác nhận thanh toán cho đơn hàng đã hủy")
+            raise BadRequestError("Không thể xác nhận thanh toán cho đơn hàng đã hủy")
         if order.payment_status != "Unpaid":
-            raise HTTPException(status_code=400, detail=f"Đơn hàng đang ở trạng thái thanh toán '{order.payment_status}'")
+            raise BadRequestError(f"Đơn hàng đang ở trạng thái thanh toán '{order.payment_status}'")
 
         order.payment_status = "Paid"
         # Trạng thái đơn không đổi, ghi log để hiện trên timeline

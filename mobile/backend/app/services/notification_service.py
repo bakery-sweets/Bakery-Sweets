@@ -1,8 +1,8 @@
 from typing import List
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.notification import Notification
+from app.core.exceptions import NotFoundError
+from thesweets_common.models.notification import Notification
 
 class NotificationService:
     @staticmethod
@@ -19,7 +19,7 @@ class NotificationService:
         ).first()
 
         if not notif:
-            raise HTTPException(status_code=404, detail="Không tìm thấy thông báo")
+            raise NotFoundError("Không tìm thấy thông báo")
 
         notif.is_read = True
         db.commit()

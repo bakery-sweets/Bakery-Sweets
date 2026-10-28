@@ -1,8 +1,8 @@
 from typing import List, Optional
-from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.product import Product, Category, Size, ProductSize
+from app.core.exceptions import BadRequestError, NotFoundError
+from thesweets_common.models.product import Product, Category, Size, ProductSize
 from app.schemas.product import ProductOut, ProductSizeOut
 
 class ProductService:
@@ -82,12 +82,11 @@ class ProductService:
         return query.options(joinedload(ProductSize.product), joinedload(ProductSize.size)).first()
 
     @staticmethod
-    def out_of_stock_error(ps: ProductSize) -> HTTPException:
+    def out_of_stock_error(ps: ProductSize) -> BadRequestError:
         name = ps.product.product_name if ps.product else f"#{ps.product_id}"
         size = ps.size.size_name if ps.size else f"#{ps.size_id}"
-        return HTTPException(
-            status_code=400,
-            detail=f"Số lượng trong kho không đủ: '{name}' ({size}) chỉ còn {ps.stock_quantity} cái",
+        return BadRequestError(
+            f"Số lượng trong kho không đủ: '{name}' ({size}) chỉ còn {ps.stock_quantity} cái",
         )
 
     @staticmethod
@@ -95,12 +94,11 @@ class ProductService:
         """Biến thể còn kinh doanh và đủ tồn kho cho `quantity` cái — luật chung của giỏ hàng và đặt đơn"""
         ps = ProductService.get_size(db, product_id, size_id, lock=lock)
         if not ps:
-            raise HTTPException(status_code=404, detail="Sản phẩm hoặc kích cỡ không hợp lệ")
+            raise NotFoundError("Sản phẩm hoặc kích cỡ không hợp lệ")
 
         if ps.product and ps.product.status != "Available":
-            raise HTTPException(
-                status_code=400,
-                detail=f"Bánh '{ps.product.product_name}' hiện không còn kinh doanh, vui lòng xóa khỏi giỏ hàng",
+            raise BadRequestError(
+                f"Bánh '{ps.product.product_name}' hiện không còn kinh doanh, vui lòng xóa khỏi giỏ hàng",
             )
 
         if ps.stock_quantity < quantity:
@@ -112,6 +110,6 @@ class ProductService:
         p = ProductService._base_query(db).filter(Product.product_id == product_id).first()
 
         if not p:
-            raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm bánh này")
+            raise NotFoundError("Không tìm thấy sản phẩm bánh này")
 
         return ProductService.to_product_out(p)

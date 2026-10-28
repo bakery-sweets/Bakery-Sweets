@@ -6,21 +6,21 @@ from typing import Iterable, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.product import ProductSize
+from thesweets_common.models.product import ProductSize
 
 logger = logging.getLogger(__name__)
 
 class RealtimeService:
     """
-    Gửi sự kiện realtime sang trung tâm WebSocket (đặt ở Mobile Backend) qua API nội bộ,
+    Gửi sự kiện tới Realtime Server (WebSocket chạy riêng) qua API nội bộ,
     để App Flutter và Web React đang mở cùng nhận được.
-    Gửi ở thread nền ("bắn rồi quên"): trung tâm realtime không chạy cũng không làm hỏng nghiệp vụ.
+    Gửi ở thread nền ("bắn rồi quên"): Realtime Server không chạy cũng không làm hỏng nghiệp vụ.
     """
 
     @staticmethod
     def _post(payload: dict):
         req = urllib.request.Request(
-            f"{settings.REALTIME_HUB_URL.rstrip('/')}/api/v1/internal/events",
+            f"{settings.REALTIME_URL.rstrip('/')}/internal/events",
             data=json.dumps(payload, default=str).encode("utf-8"),
             headers={"Content-Type": "application/json", "X-Internal-Key": settings.INTERNAL_API_KEY},
             method="POST",

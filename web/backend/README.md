@@ -47,12 +47,6 @@ web/backend/
 │   ├── database/                 # Kết nối CSDL
 │   │   └── session.py            # SQLAlchemy Engine, SessionLocal, Base
 │   │
-│   ├── models/                   # SQLAlchemy ORM Models (Khớp DB MySQL)
-│   │   ├── user.py               # User, Customer
-│   │   ├── employee.py           # Department, Employee
-│   │   ├── product.py            # Category, Size, Product, ProductSize
-│   │   └── order.py              # Cart, Order, OrderDetail, OrderStatusLog
-│   │
 │   ├── schemas/                  # Pydantic Schemas (Request / Response DTOs)
 │   │   ├── common.py             # ResponseBase, phân trang
 │   │   ├── admin/                # Schemas cho Admin
@@ -85,15 +79,16 @@ web/backend/
    source venv/bin/activate
    ```
 
-2. **Cài đặt thư viện:**
+2. **Cài đặt thư viện** (kèm package ORM models dùng chung ở `common/`):
    ```bash
    pip install -r requirements.txt
+   pip install -e ../../common
    ```
 
-3. **Cấu hình file `.env`:**
+3. **Cấu hình file `.env`** (bắt buộc: `DB_PASSWORD`, `SECRET_KEY`, `INTERNAL_API_KEY` không có giá trị mặc định):
    ```bash
    cp .env.example .env
-   # Chỉnh sửa thông số kết nối MySQL nếu cần
+   # Điền mật khẩu DB và khóa bí mật (giống với mobile/backend và realtime)
    ```
 
 4. **Khởi chạy Server:**

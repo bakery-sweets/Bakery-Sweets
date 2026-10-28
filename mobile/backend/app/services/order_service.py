@@ -2,12 +2,13 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import random
-from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.user import User
-from app.models.order import Order, OrderDetail, OrderPromotion, OrderStatusLog, Cart
-from app.models.notification import Notification
+from app.core.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from thesweets_common.models.user import User
+from thesweets_common.models.order import Order, OrderDetail, OrderStatusLog, Cart
+from thesweets_common.models.promotion import OrderPromotion
+from thesweets_common.models.notification import Notification
 from app.schemas.order import OrderCreate, OrderOut, OrderDetailOut, OrderStatusLogOut
 from app.services.product_service import ProductService
 from app.services.promotion_service import PromotionService
@@ -27,9 +28,9 @@ def _validate_pickup_time(pickup_time: Optional[datetime]) -> Optional[datetime]
         pickup_time = pickup_time.astimezone(VN_TZ).replace(tzinfo=None)
     now = datetime.now(VN_TZ).replace(tzinfo=None)
     if pickup_time < now - PICKUP_CLOCK_SKEW:
-        raise HTTPException(status_code=400, detail="Giờ lấy bánh phải ở thời điểm sau hiện tại")
+        raise BadRequestError("Giờ lấy bánh phải ở thời điểm sau hiện tại")
     if pickup_time > now + PICKUP_MAX_AHEAD:
-        raise HTTPException(status_code=400, detail="Chỉ nhận đặt bánh trước tối đa 30 ngày")
+        raise BadRequestError("Chỉ nhận đặt bánh trước tối đa 30 ngày")
     return pickup_time
 
 def _merge_items(req: OrderCreate) -> Dict[Tuple[int, int], dict]:
@@ -119,11 +120,11 @@ class OrderService:
         o = OrderService._base_query(db).filter(Order.order_id == order_id).first()
 
         if not o:
-            raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+            raise NotFoundError("Không tìm thấy đơn hàng")
 
         if user.role == "customer":
             if not user.customer or o.customer_id != user.customer.customer_id:
-                raise HTTPException(status_code=403, detail="Bạn không có quyền xem đơn hàng này")
+                raise ForbiddenError("Bạn không có quyền xem đơn hàng này")
 
         return OrderService.to_order_out(o)
 
@@ -133,7 +134,7 @@ class OrderService:
         pickup_time = _validate_pickup_time(req.pickup_time)
         merged = _merge_items(req)
         if not merged:
-            raise HTTPException(status_code=400, detail="Đơn hàng phải có ít nhất 1 sản phẩm bánh")
+            raise BadRequestError("Đơn hàng phải có ít nhất 1 sản phẩm bánh")
 
         total_cost = Decimal("0.0")
         total_quantity = 0
@@ -242,14 +243,13 @@ class OrderService:
     @staticmethod
     def update_status(db: Session, user: User, order_id: int, new_status: str, note: str = "") -> None:
         if new_status not in VALID_STATUSES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Trạng thái không hợp lệ. Các trạng thái hợp lệ: {', '.join(VALID_STATUSES)}"
+            raise BadRequestError(
+                f"Trạng thái không hợp lệ. Các trạng thái hợp lệ: {', '.join(VALID_STATUSES)}"
             )
 
         o = db.query(Order).filter(Order.order_id == order_id).first()
         if not o:
-            raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+            raise NotFoundError("Không tìm thấy đơn hàng")
 
         old_status = o.status
         o.status = new_status

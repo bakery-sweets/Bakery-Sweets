@@ -1,9 +1,9 @@
 from typing import List, Optional
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.order import Cart
-from app.models.product import ProductSize
+from app.core.exceptions import NotFoundError
+from thesweets_common.models.order import Cart
+from thesweets_common.models.product import ProductSize
 from app.schemas.order import CartItemAdd, CartItemOut
 from app.services.product_service import ProductService
 
@@ -32,7 +32,7 @@ class CartService:
         ).first()
 
         if not cart_item:
-            raise HTTPException(status_code=404, detail="Không tìm thấy mục trong giỏ hàng")
+            raise NotFoundError("Không tìm thấy mục trong giỏ hàng")
         return cart_item
 
     @staticmethod

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.api.deps import get_db, get_current_user
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.schemas.notification import NotificationOut
 from app.services.notification_service import NotificationService
 

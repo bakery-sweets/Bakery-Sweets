@@ -1,10 +1,10 @@
 import re
 from decimal import Decimal
 from typing import List, Optional
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.models.import_receipt import Supplier, ImportReceipt, ImportReceiptDetail
-from app.models.product import ProductSize
+from app.core.exceptions import BadRequestError, NotFoundError
+from thesweets_common.models.import_receipt import Supplier, ImportReceipt, ImportReceiptDetail
+from thesweets_common.models.product import ProductSize
 from app.schemas.admin.import_receipt import ImportReceiptCreate
 
 class AdminImportReceiptService:
@@ -41,29 +41,29 @@ class AdminImportReceiptService:
                 ProductSize.size_id == d.size_id,
             ).with_for_update().first()
             if not ps:
-                raise HTTPException(status_code=400, detail=f"Sản phẩm #{d.product_id} không còn kích cỡ này để nhập kho")
+                raise BadRequestError(f"Sản phẩm #{d.product_id} không còn kích cỡ này để nhập kho")
             ps.stock_quantity += d.quantity
 
     @staticmethod
     def create(db: Session, data: ImportReceiptCreate) -> ImportReceipt:
         supplier = db.query(Supplier).filter(Supplier.supplier_id == data.supplier_id).first()
         if not supplier:
-            raise HTTPException(status_code=404, detail="Không tìm thấy nhà cung cấp")
+            raise NotFoundError("Không tìm thấy nhà cung cấp")
         if supplier.status != "Active":
-            raise HTTPException(status_code=400, detail="Nhà cung cấp đang ngừng hợp tác")
+            raise BadRequestError("Nhà cung cấp đang ngừng hợp tác")
 
         seen = set()
         for d in data.details:
             key = (d.product_id, d.size_id)
             if key in seen:
-                raise HTTPException(status_code=400, detail="Một bánh cùng kích cỡ chỉ được nhập một dòng trong phiếu")
+                raise BadRequestError("Một bánh cùng kích cỡ chỉ được nhập một dòng trong phiếu")
             seen.add(key)
             exists = db.query(ProductSize.id).filter(
                 ProductSize.product_id == d.product_id,
                 ProductSize.size_id == d.size_id,
             ).first()
             if not exists:
-                raise HTTPException(status_code=400, detail=f"Sản phẩm #{d.product_id} không có kích cỡ đã chọn")
+                raise BadRequestError(f"Sản phẩm #{d.product_id} không có kích cỡ đã chọn")
 
         receipt = ImportReceipt(
             import_code=AdminImportReceiptService._next_code(db),
@@ -103,7 +103,7 @@ class AdminImportReceiptService:
 
         # Chỉ phiếu tạm mới đổi được trạng thái; phiếu đã nhập kho hoặc đã hủy là trạng thái cuối
         if receipt.status != "Pending":
-            raise HTTPException(status_code=400, detail="Chỉ phiếu đang chờ nhập kho mới được xác nhận hoặc hủy")
+            raise BadRequestError("Chỉ phiếu đang chờ nhập kho mới được xác nhận hoặc hủy")
 
         if new_status == "Completed":
             AdminImportReceiptService._add_stock(db, receipt)

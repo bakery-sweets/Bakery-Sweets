@@ -1,36 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_staff, BACKOFFICE_ROLES
-from app.core.security import verify_password, create_access_token
-from app.models.user import User
+from app.api.deps import get_db, get_current_staff
+from thesweets_common.models.user import User
 from app.schemas.admin.auth import AdminLoginRequest, AdminTokenResponse, AdminProfileOut
 from app.schemas.common import ResponseBase
+from app.services.auth_service import AuthService
 
 router = APIRouter()
 
 @router.post("/login", response_model=AdminTokenResponse, summary="Đăng nhập tài khoản Quản trị viên")
 def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(or_(User.phone == data.username, User.email == data.username)).first()
-    if not user or not verify_password(data.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tài khoản hoặc mật khẩu quản trị không chính xác",
-        )
-
-    if user.role not in BACKOFFICE_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản không có quyền truy cập hệ thống Quản trị",
-        )
-
-    if user.status == "locked":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản quản trị này đã bị khóa",
-        )
-
-    token = create_access_token({"sub": user.phone, "role": user.role})
+    user, token = AuthService.login_backoffice(db, data.username, data.password)
     return AdminTokenResponse(
         access_token=token,
         role=user.role,

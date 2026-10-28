@@ -5,9 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-from app.config.database import engine, Base
+from app.database.session import engine, Base
 from app.api.v1.api import api_router
-from app.api.v1.endpoints.websocket import router as ws_root_router
+from app.api.errors import register_exception_handlers
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,14 +20,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="The Sweets — Mobile API",
-    description="API Backend phục vụ ứng dụng Mobile Flutter & Real-time WebSockets của Tiệm Bánh The Sweets",
+    description="API Backend phục vụ ứng dụng Mobile Flutter của Tiệm Bánh The Sweets",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
 )
 
-# Cấu hình CORS để Flutter Mobile & React Web đều gọi được
+# Chuyển lỗi nghiệp vụ từ tầng Service thành HTTP response
+register_exception_handlers(app)
+
+# Cấu hình CORS để Flutter (bản chạy trên trình duyệt) gọi được
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,9 +46,6 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Đăng ký tập hợp router chính từ folder api/v1
 app.include_router(api_router, prefix="/api/v1")
-
-# Hỗ trợ thêm alias /ws không cần tiền tố /api/v1 để tiện kết nối socket trực tiếp
-app.include_router(ws_root_router)
 
 @app.get("/", tags=["Health Check"])
 def root():

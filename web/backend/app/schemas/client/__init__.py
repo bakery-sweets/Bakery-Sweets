@@ -3,6 +3,7 @@ from .product import ClientProductOut, ClientSizeOut, ClientCategoryOut, ClientP
 from .cart import CartItemAdd, CartItemUpdate, CartItemOut, CartSummaryOut
 from .order import CheckoutRequest, CheckoutOrderItem, ClientOrderOut, ClientOrderDetailOut, CancelOrderRequest
 from .promotion import PromotionOut, InvoicePromotionOut, ApplyPromotionRequest, ApplyPromotionResponse
+from .profile import ProfileUpdateRequest, ChangePasswordRequest
 
 __all__ = [
     "ClientRegisterRequest",
@@ -26,4 +27,6 @@ __all__ = [
     "InvoicePromotionOut",
     "ApplyPromotionRequest",
     "ApplyPromotionResponse",
+    "ProfileUpdateRequest",
+    "ChangePasswordRequest",
 ]

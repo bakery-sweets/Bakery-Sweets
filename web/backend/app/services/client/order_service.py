@@ -2,11 +2,11 @@ import uuid
 from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.models.order import Order, OrderDetail, Cart, OrderStatusLog
-from app.models.product import ProductSize
-from app.models.promotion import OrderPromotion
+from app.core.exceptions import BadRequestError, NotFoundError
+from thesweets_common.models.order import Order, OrderDetail, Cart, OrderStatusLog
+from thesweets_common.models.product import ProductSize
+from thesweets_common.models.promotion import OrderPromotion
 from app.schemas.client.order import CheckoutRequest
 from app.services.client.promotion_service import ClientPromotionService
 from app.services.realtime_service import RealtimeService
@@ -23,9 +23,9 @@ def _validate_pickup_time(pickup_time: Optional[datetime]) -> Optional[datetime]
         pickup_time = pickup_time.astimezone(VN_TZ).replace(tzinfo=None)
     now = datetime.now(VN_TZ).replace(tzinfo=None)
     if pickup_time < now - PICKUP_CLOCK_SKEW:
-        raise HTTPException(status_code=400, detail="Giờ lấy bánh phải ở thời điểm sau hiện tại")
+        raise BadRequestError("Giờ lấy bánh phải ở thời điểm sau hiện tại")
     if pickup_time > now + PICKUP_MAX_AHEAD:
-        raise HTTPException(status_code=400, detail="Chỉ nhận đặt bánh trước tối đa 30 ngày")
+        raise BadRequestError("Chỉ nhận đặt bánh trước tối đa 30 ngày")
     return pickup_time
 
 class ClientOrderService:
@@ -46,7 +46,7 @@ class ClientOrderService:
             merged[key] = merged.get(key, 0) + item.quantity
 
         if not merged:
-            raise HTTPException(status_code=400, detail="Giỏ hàng đang trống")
+            raise BadRequestError("Giỏ hàng đang trống")
 
         total_quantity = 0
         total_cost = Decimal("0.00")
@@ -61,20 +61,18 @@ class ClientOrderService:
                 ProductSize.size_id == size_id
             ).with_for_update().first()
             if not ps:
-                raise HTTPException(status_code=400, detail=f"Sản phẩm #{product_id} không có kích cỡ #{size_id}")
+                raise BadRequestError(f"Sản phẩm #{product_id} không có kích cỡ #{size_id}")
 
             if ps.product and ps.product.status != "Available":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Sản phẩm '{ps.product.product_name}' hiện không còn kinh doanh, vui lòng xóa khỏi giỏ hàng",
+                raise BadRequestError(
+                    f"Sản phẩm '{ps.product.product_name}' hiện không còn kinh doanh, vui lòng xóa khỏi giỏ hàng",
                 )
 
             if ps.stock_quantity < quantity:
                 p_name = ps.product.product_name if ps.product else f"#{product_id}"
                 s_name = ps.size.size_name if ps.size else f"#{size_id}"
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Sản phẩm '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái trong kho, không đủ số lượng yêu cầu ({quantity})",
+                raise BadRequestError(
+                    f"Sản phẩm '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái trong kho, không đủ số lượng yêu cầu ({quantity})",
                 )
 
             total_quantity += quantity
@@ -191,12 +189,11 @@ class ClientOrderService:
             Order.order_id == order_id, Order.customer_id == customer_id
         ).with_for_update().first()
         if not order:
-            raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng này")
+            raise NotFoundError("Không tìm thấy đơn hàng này")
 
         if order.status != "Pending":
-            raise HTTPException(
-                status_code=400,
-                detail=f"Không thể hủy đơn hàng ở trạng thái '{order.status}'. Chỉ có thể hủy đơn khi đang chờ xử lý (Pending)",
+            raise BadRequestError(
+                f"Không thể hủy đơn hàng ở trạng thái '{order.status}'. Chỉ có thể hủy đơn khi đang chờ xử lý (Pending)",
             )
 
         old_status = order.status

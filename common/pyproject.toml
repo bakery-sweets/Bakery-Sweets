@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thesweets-common"
+version = "1.0.0"
+description = "ORM models dùng chung cho Web Backend, Mobile Backend và Realtime Server của The Sweets"
+requires-python = ">=3.11"
+dependencies = ["sqlalchemy>=2.0"]
+
+[tool.setuptools.packages.find]
+include = ["thesweets_common*"]

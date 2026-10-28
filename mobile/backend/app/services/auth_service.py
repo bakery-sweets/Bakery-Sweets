@@ -1,8 +1,8 @@
 from typing import Optional
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.user import User, Customer
+from app.core.exceptions import AppError, BadRequestError, ForbiddenError, UnauthorizedError
+from thesweets_common.models.user import User, Customer
 from app.schemas.auth import RegisterRequest, TokenResponse, UserProfileOut, UpdateProfileRequest
 from app.core.security import verify_password, get_password_hash, create_access_token
 
@@ -45,15 +45,13 @@ class AuthService:
         user = AuthService.get_user_by_identifier(db, identifier.strip())
 
         if not user or not verify_password(password, user.password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Số điện thoại / email hoặc mật khẩu không chính xác",
+            raise UnauthorizedError(
+                "Số điện thoại / email hoặc mật khẩu không chính xác",
             )
 
         if user.status != "active":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Tài khoản của bạn đã bị khóa",
+            raise ForbiddenError(
+                "Tài khoản của bạn đã bị khóa",
             )
         return user
 
@@ -61,21 +59,18 @@ class AuthService:
     def register(db: Session, req: RegisterRequest) -> User:
         phone_key = (req.phone or req.user_name).strip()
         if not phone_key:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Vui lòng cung cấp số điện thoại",
+            raise BadRequestError(
+                "Vui lòng cung cấp số điện thoại",
             )
 
         if db.query(User).filter(User.phone == phone_key).first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Số điện thoại này đã được sử dụng",
+            raise BadRequestError(
+                "Số điện thoại này đã được sử dụng",
             )
 
         if db.query(User).filter(User.email == req.email.strip()).first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email này đã được sử dụng",
+            raise BadRequestError(
+                "Email này đã được sử dụng",
             )
 
         try:
@@ -99,9 +94,8 @@ class AuthService:
             db.refresh(new_user)
         except Exception as e:
             db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Lỗi tạo tài khoản: {str(e)}",
+            raise AppError(
+                f"Lỗi tạo tài khoản: {str(e)}",
             )
         return new_user
 
@@ -113,9 +107,8 @@ class AuthService:
                 User.phone != user.phone,
             ).first()
             if existing_email:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email này đã được sử dụng bởi tài khoản khác",
+                raise BadRequestError(
+                    "Email này đã được sử dụng bởi tài khoản khác",
                 )
             user.email = req.email.strip()
 

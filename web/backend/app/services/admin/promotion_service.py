@@ -1,9 +1,9 @@
 from typing import Dict, List, Optional
-from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.models.order import Order
-from app.models.promotion import Promotion, InvoicePromotion
+from app.core.exceptions import BadRequestError
+from thesweets_common.models.order import Order
+from thesweets_common.models.promotion import Promotion, InvoicePromotion
 from app.schemas.admin.promotion import PromotionInput
 
 # Voucher không có chức năng xóa: voucher gắn với hóa đơn (orders.promotion_id, order_promotions),
@@ -32,17 +32,17 @@ class AdminPromotionService:
     def _validate(db: Session, data: PromotionInput, promotion_id: Optional[int] = None) -> str:
         code = data.promotion_code.strip().upper()
         if not code:
-            raise HTTPException(status_code=400, detail="Vui lòng nhập mã voucher")
+            raise BadRequestError("Vui lòng nhập mã voucher")
         query = db.query(Promotion.promotion_id).filter(func.upper(Promotion.promotion_code) == code)
         if promotion_id:
             query = query.filter(Promotion.promotion_id != promotion_id)
         if query.first():
-            raise HTTPException(status_code=400, detail=f"Mã voucher '{code}' đã tồn tại")
+            raise BadRequestError(f"Mã voucher '{code}' đã tồn tại")
         if data.end_date <= data.start_date:
-            raise HTTPException(status_code=400, detail="Ngày kết thúc phải sau ngày bắt đầu")
+            raise BadRequestError("Ngày kết thúc phải sau ngày bắt đầu")
         mins = [t.min_order_value for t in data.tiers]
         if len(set(mins)) != len(mins):
-            raise HTTPException(status_code=400, detail="Các mức giảm không được trùng giá trị đơn tối thiểu")
+            raise BadRequestError("Các mức giảm không được trùng giá trị đơn tối thiểu")
         return code
 
     @staticmethod

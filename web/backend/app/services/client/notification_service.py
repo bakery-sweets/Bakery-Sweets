@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 from sqlalchemy.orm import Session
-from app.models.notification import Notification
-from app.models.promotion import Promotion
-from app.models.user import User
+from thesweets_common.models.notification import Notification
+from thesweets_common.models.promotion import Promotion
+from thesweets_common.models.user import User
 
 def _money(v) -> str:
     return f"{int(v):,}".replace(",", ".") + "đ"
@@ -27,6 +27,16 @@ class ClientNotificationService:
         )
         unread = db.query(Notification).filter(Notification.phone == phone, Notification.is_read.is_(False)).count()
         return items, unread
+
+    @staticmethod
+    def get_promotion_codes(db: Session, items: List[Notification]) -> Dict[int, str]:
+        """Mã voucher tương ứng các thông báo loại promotion (promotion_id -> promotion_code)"""
+        promo_ids = {n.reference_id for n in items if n.type == "promotion" and n.reference_id}
+        if not promo_ids:
+            return {}
+        return dict(
+            db.query(Promotion.promotion_id, Promotion.promotion_code).filter(Promotion.promotion_id.in_(promo_ids)).all()
+        )
 
     @staticmethod
     def mark_all_read(db: Session, phone: str) -> None:

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.api.deps import get_db, get_current_user, get_current_customer, require_staff
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.schemas.order import OrderCreate, OrderOut
 from app.services.order_service import OrderService
 

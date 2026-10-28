@@ -31,7 +31,13 @@
 Backend được thiết kế theo mô hình **3 lớp phân tách trách nhiệm (Layered Clean Architecture)**:
 1. **API Router / Controller (`app/api/`)**: Tiếp nhận HTTP request từ React frontend, xác thực quyền (Admin / Customer) qua `deps.py`, kiểm định tham số đầu vào qua Pydantic Schema và trả về JSON chuẩn.
 2. **Business Service Layer (`app/services/`)**: Chứa toàn bộ logic nghiệp vụ (tính toán tiền, giảm giá voucher, trừ tồn kho, cập nhật lịch sử trạng thái đơn hàng, thống kê số liệu).
-3. **Data Access / ORM Layer (`app/models/` & `app/database/`)**: Khai báo ánh xạ các bảng CSDL MySQL/MariaDB qua SQLAlchemy ORM và quản lý vòng đời Session kết nối.
+3. **Data Access / ORM Layer (`thesweets_common.models` & `app/database/`)**: Khai báo ánh xạ các bảng CSDL MySQL/MariaDB qua SQLAlchemy ORM và quản lý vòng đời Session kết nối. ORM models nằm ở package dùng chung `common/thesweets_common/models/` để Web Backend, Mobile Backend và Realtime Server không định nghĩa lặp lại cùng một bảng.
+
+Quy tắc phụ thuộc giữa các tầng (chỉ gọi tầng ngay bên dưới):
+- Router **không** truy vấn CSDL trực tiếp (`db.query`, `db.add`, `db.commit`...), mọi thao tác dữ liệu đều qua `app/services/`.
+- Service **không** import FastAPI. Khi vi phạm quy tắc nghiệp vụ, service ném lỗi trong `app/core/exceptions.py` (`BadRequestError`, `ForbiddenError`, `NotFoundError`...); `app/api/errors.py` chuyển chúng thành mã HTTP tương ứng (400, 403, 404...).
+- Schema (Pydantic DTO) đặt trong `app/schemas/`, không khai báo trong file router.
+- Sự kiện realtime được gửi sang **Realtime Server** riêng (`realtime/`, port 8001) qua `app/services/realtime_service.py`.
 
 Hệ thống được chia tách rành mạch thành **2 phân hệ riêng biệt**:
 - `/api/admin/*`: Dành riêng cho trang Quản trị (Admin Portal).
@@ -54,6 +60,7 @@ web/backend/
     ├── api/
     │   ├── __init__.py
     │   ├── deps.py                      # Xác thực JWT Token & Phân quyền User/Admin
+    │   ├── errors.py                    # Chuyển lỗi nghiệp vụ (AppError) thành HTTP response
     │   ├── admin/                       # Các Endpoint cho trang Admin Dashboard
     │   │   ├── __init__.py
     │   │   ├── api.py                   # Gom nhóm router admin (/api/admin)
@@ -76,18 +83,12 @@ web/backend/
     ├── core/                            # Cấu hình hệ thống & cơ chế bảo mật
     │   ├── __init__.py
     │   ├── config.py                    # Đọc biến môi trường (.env), CORS, Database URL
+    │   ├── exceptions.py                # Lỗi nghiệp vụ dùng ở tầng Service (không phụ thuộc HTTP)
     │   └── security.py                  # Bcrypt mã hóa mật khẩu & xử lý JWT Token
     │
     ├── database/                        # Kết nối cơ sở dữ liệu
     │   ├── __init__.py
     │   └── session.py                   # SQLAlchemy Engine, SessionLocal, Base model
-    │
-    ├── models/                          # Khai báo các Entity ORM (SQLAlchemy)
-    │   ├── __init__.py
-    │   ├── user.py                      # Bảng users & customers
-    │   ├── product.py                   # Bảng category, size, product, product_sizes
-    │   ├── order.py                     # Bảng cart, orders, order_detail, order_status_logs
-    │   └── promotion.py                 # Bảng promotions, invoice_promotions, order_promotions
     │
     ├── schemas/                         # Pydantic Schemas (Request/Response DTO)
     │   ├── __init__.py
@@ -97,27 +98,35 @@ web/backend/
     │   │   ├── auth.py                  # Request/Response đăng nhập admin
     │   │   ├── order.py                 # DTO xem đơn & cập nhật trạng thái
     │   │   ├── product.py               # DTO tạo/sửa bánh, size, danh mục
-    │   │   └── statistical.py           # DTO số liệu biểu đồ & doanh thu
+    │   │   ├── statistical.py           # DTO số liệu biểu đồ & doanh thu
+    │   │   └── user.py                  # DTO danh sách, cấp mới, cập nhật & khóa tài khoản
     │   └── client/                      # Schemas định dạng dữ liệu cho Khách hàng
     │       ├── __init__.py
     │       ├── auth.py                  # DTO đăng ký, đăng nhập, thông tin tài khoản
     │       ├── cart.py                  # DTO thêm giỏ hàng, cập nhật giỏ
     │       ├── order.py                 # DTO tạo đơn checkout, danh sách hóa đơn
     │       ├── product.py               # DTO danh sách món, chi tiết món kèm size
+    │       ├── profile.py               # DTO cập nhật hồ sơ & đổi mật khẩu
     │       └── promotion.py             # DTO kiểm tra mã voucher & giảm giá
     │
     └── services/                        # Logic nghiệp vụ (Truy vấn CSDL & Xử lý)
         ├── __init__.py
+        ├── auth_service.py              # Đăng nhập Admin/Khách, đăng ký, tra cứu user cho deps.py
+        ├── realtime_service.py          # Gửi sự kiện sang Realtime Server (port 8001)
         ├── admin/
         │   ├── __init__.py
         │   ├── order_service.py         # Nghiệp vụ duyệt đơn & ghi log trạng thái
         │   ├── product_service.py       # Nghiệp vụ thêm, sửa, xóa món, điều chỉnh giá/kho
-        │   └── stats_service.py         # Nghiệp vụ tính toán doanh thu & top sản phẩm
+        │   ├── stats_service.py         # Nghiệp vụ tính toán doanh thu & top sản phẩm
+        │   ├── user_service.py          # Nghiệp vụ cấp, sửa, khóa/mở khóa tài khoản
+        │   └── upload_service.py        # Kiểm tra & lưu ảnh sản phẩm vào thư mục uploads
         └── client/
             ├── __init__.py
             ├── cart_service.py          # Nghiệp vụ đồng bộ giỏ hàng khách
             ├── order_service.py         # Nghiệp vụ checkout, sinh mã đơn, tính tổng tiền
             ├── product_service.py       # Nghiệp vụ tìm kiếm, lọc phân loại bánh
+            ├── profile_service.py       # Nghiệp vụ cập nhật hồ sơ & đổi mật khẩu
+            ├── notification_service.py  # Nghiệp vụ thông báo & tra mã voucher kèm thông báo
             └── promotion_service.py     # Nghiệp vụ kiểm tra điều kiện & tính tiền voucher
 ```
 
@@ -157,9 +166,9 @@ Quản lý việc kết nối và cung cấp phiên làm việc với MariaDB / 
 
 ---
 
-## 6. Thư mục `app/models/` (ORM Models CSDL)
+## 6. ORM Models CSDL (`common/thesweets_common/models/`)
 
-Chứa các class SQLAlchemy tương ứng 1-1 với cấu trúc các bảng trong cơ sở dữ liệu (`database/createTable.sql`).
+Package dùng chung cho cả 3 server Python (import bằng `from thesweets_common.models.user import User`). Trong Docker được nạp qua `additional_contexts` + volume `/common`; chạy local thì `pip install -e ../../common`. Chứa các class SQLAlchemy tương ứng 1-1 với cấu trúc các bảng trong cơ sở dữ liệu (`database/createTable.sql`).
 
 | File | Entity / Class Model | Chức năng & Quan hệ CSDL |
 | :--- | :--- | :--- |
@@ -266,6 +275,8 @@ Tách biệt hoàn toàn việc truy vấn CSDL và tính toán logic khỏi cá
 | `product_service.py` | `AdminProductService` | • Truy vấn danh sách bánh trong kho kèm các kích cỡ.<br>• Thêm mới bánh vào bảng `product` và sinh bản ghi tương ứng trong `product_sizes`.<br>• Cập nhật thông tin bánh, đồng bộ giá tiền & số lượng kho cho từng size.<br>• Ẩn hoặc xóa bánh. |
 | `order_service.py` | `AdminOrderService` | • Lấy danh sách toàn bộ đơn hàng của tiệm, lọc theo trạng thái (`Pending`, `Processing`, v.v.).<br>• Lấy chi tiết đơn hàng kèm danh sách món con.<br>• Chuyển đổi trạng thái đơn hàng và **tự động lưu vết** vào bảng `order_status_logs` (ghi lại ai là người đổi, trạng thái cũ, trạng thái mới và thời gian). |
 | `stats_service.py` | `AdminStatsService` | • Tính toán các số liệu tổng quan trên Dashboard (tổng đơn, tổng tiền, khách hàng mới).<br>• Thống kê doanh thu theo khoảng thời gian.<br>• Truy vấn danh sách các món bánh bán chạy nhất dựa trên tổng số lượng đã hoàn thành trong bảng `order_detail`. |
+| `user_service.py` | `AdminUserService` | • Danh sách tài khoản, lọc theo vai trò.<br>• Cấp tài khoản mới kèm hồ sơ `customers`.<br>• Cập nhật email, vai trò, trạng thái, họ tên; chặn admin tự hạ quyền / tự khóa.<br>• Khóa / mở khóa tài khoản và đăng xuất ngay thiết bị đang mở qua Realtime Server. |
+| `upload_service.py` | `AdminUploadService` | • Kiểm tra định dạng & kích thước ảnh (tối đa 10MB), lưu vào `uploads/` với tên ngẫu nhiên. |
 
 ---
 
@@ -276,6 +287,7 @@ Tách biệt hoàn toàn việc truy vấn CSDL và tính toán logic khỏi cá
 | `product_service.py` | `ClientProductService` | • Lấy danh sách sản phẩm hiển thị ra ngoài cửa hàng (chỉ lấy các sản phẩm có trạng thái `Available`).<br>• Xử lý tìm kiếm theo tên bánh, lọc theo danh mục (`category_id`) và sắp xếp theo giá tăng/giảm.<br>• Lấy chi tiết thông tin món bánh kèm danh sách size để khách chọn. |
 | `cart_service.py` | `ClientCartService` | • Quản lý các món hàng trong giỏ của khách hàng đã đăng nhập.<br>• Kiểm tra nếu món + size đã có trong giỏ thì cộng dồn số lượng; nếu chưa có thì thêm mới bản ghi vào bảng `cart`.<br>• Cập nhật lại số lượng hoặc xóa món khỏi giỏ hàng. |
 | `order_service.py` | `ClientOrderService` | • **Nghiệp vụ tạo đơn hàng (Checkout):**<br>&nbsp;&nbsp;1. Sinh mã đơn hàng tự động định dạng `DHxxxxxx`.<br>&nbsp;&nbsp;2. Lấy danh sách món từ giỏ hàng hoặc từ request gửi lên.<br>&nbsp;&nbsp;3. Kiểm tra tính hợp lệ của mã voucher (nếu có) và tính số tiền chiết khấu.<br>&nbsp;&nbsp;4. Tính toán tổng số lượng món (`total_quantity`), tổng chi phí (`total_cost`) và số tiền thực thu (`final_cost`).<br>&nbsp;&nbsp;5. Lưu bản ghi vào bảng `orders`, `order_detail` và `order_promotions`.<br>&nbsp;&nbsp;6. Tự động dọn sạch giỏ hàng của khách sau khi đặt thành công.<br>• **Lấy lịch sử hóa đơn khách hàng:** Truy vấn danh sách đơn hàng của chính khách đó, sắp xếp theo thời gian mới nhất để hiển thị tại trang `/receipt`.<br>• **Hủy đơn hàng:** Cho phép khách tự hủy đơn nếu tiệm chưa chuyển sang trạng thái chế biến (`Processing`). |
+| `profile_service.py` | `ClientProfileService` | • Cập nhật họ tên, email (kiểm tra trùng email).<br>• Đổi mật khẩu (kiểm tra mật khẩu cũ, mật khẩu mới phải khác). |
 | `promotion_service.py` | `ClientPromotionService` | • Lấy danh sách các voucher còn hạn và trạng thái `Active`.<br>• Kiểm tra điều kiện áp dụng của voucher: thời hạn (start_date <= hiện tại <= end_date), giá trị đơn hàng có đạt mức tối thiểu (`min_order_value`) hay không.<br>• Tính số tiền giảm giá chính xác theo % chiết khấu và chặn ở mức giảm tối đa (`max_discount_value`). |
 
 ---

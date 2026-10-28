@@ -1,70 +1,70 @@
+import json
+import logging
+import threading
+import urllib.request
 from typing import Iterable, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
-from app.config.database import SessionLocal
-from app.core.security import decode_access_token
-from app.services.auth_service import AuthService, STAFF_ROLES
+from app.core.config import settings
 from app.services.product_service import ProductService
-from app.websocket.manager import manager
+
+logger = logging.getLogger(__name__)
 
 class RealtimeService:
     """
-    Phát sự kiện realtime tới App & Web. Mọi hàm đều đồng bộ và "bắn rồi quên",
-    gọi được cả trong endpoint sync lẫn async; lỗi gửi tin không ảnh hưởng nghiệp vụ.
+    Gửi sự kiện tới Realtime Server (WebSocket chạy riêng) qua API nội bộ,
+    để App Flutter và Web React đang mở cùng nhận được.
+    Gửi ở thread nền ("bắn rồi quên"): Realtime Server không chạy cũng không làm hỏng nghiệp vụ.
     """
 
     @staticmethod
-    def resolve_identity(token: Optional[str]) -> Tuple[Optional[str], bool]:
-        """Xác định (số điện thoại, là staff?) từ JWT; token thiếu / sai / tài khoản bị khóa => khách vãng lai"""
-        if not token:
-            return None, False
-        payload = decode_access_token(token)
-        identifier = payload.get("sub") if payload else None
-        if not identifier:
-            return None, False
-
-        with SessionLocal() as db:
-            user = AuthService.get_user_by_identifier(db, identifier)
-            if not user or user.status != "active":
-                return None, False
-            return user.phone, user.role in STAFF_ROLES
+    def _post(payload: dict):
+        req = urllib.request.Request(
+            f"{settings.REALTIME_URL.rstrip('/')}/internal/events",
+            data=json.dumps(payload, default=str).encode("utf-8"),
+            headers={"Content-Type": "application/json", "X-Internal-Key": settings.INTERNAL_API_KEY},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req, timeout=3).close()
+        except Exception as e:
+            logger.warning("[Realtime] Không gửi được sự kiện '%s': %s", payload.get("event"), e)
 
     @staticmethod
-    def _message(event: str, data: Optional[dict]) -> dict:
-        return {"event": event, **(data or {})}
+    def _publish(target: str, event: str, data: Optional[dict] = None, phone: Optional[str] = None, disconnect: bool = False):
+        payload = {
+            "target": target,
+            "phone": phone,
+            "event": event,
+            "data": data or {},
+            "disconnect": disconnect,
+        }
+        threading.Thread(target=RealtimeService._post, args=(payload,), daemon=True).start()
 
     @staticmethod
     def to_user(phone: str, event: str, data: Optional[dict] = None):
-        manager.dispatch(manager.send_to_user(phone, RealtimeService._message(event, data)))
+        RealtimeService._publish("user", event, data, phone=phone)
 
     @staticmethod
     def to_staff(event: str, data: Optional[dict] = None):
-        manager.dispatch(manager.send_to_staff(RealtimeService._message(event, data)))
+        RealtimeService._publish("staff", event, data)
 
     @staticmethod
     def broadcast(event: str, data: Optional[dict] = None):
-        manager.dispatch(manager.broadcast(RealtimeService._message(event, data)))
+        RealtimeService._publish("all", event, data)
 
     @staticmethod
     def kick_user(phone: str, event: str, data: Optional[dict] = None):
-        manager.dispatch(manager.kick_user(phone, RealtimeService._message(event, data)))
-
-    @staticmethod
-    def stock_snapshot(db: Session, pairs: Iterable[Tuple[int, int]]) -> List[dict]:
-        """Tồn kho hiện tại của các cặp (product_id, size_id) để gửi kèm sự kiện stock_updated"""
-        result = []
-        for product_id, size_id in set(pairs):
-            ps = ProductService.get_size(db, product_id, size_id)
-            if ps:
-                result.append({
-                    "product_id": product_id,
-                    "size_id": size_id,
-                    "stock_quantity": ps.stock_quantity,
-                })
-        return result
+        """Gửi sự kiện rồi đóng mọi kết nối realtime của user (dùng khi khóa tài khoản)"""
+        RealtimeService._publish("user", event, data, phone=phone, disconnect=True)
 
     @staticmethod
     def stock_changed(db: Session, pairs: Iterable[Tuple[int, int]]):
-        items = RealtimeService.stock_snapshot(db, pairs)
+        """Phát tồn kho mới của các cặp (product_id, size_id) tới mọi người đang xem sản phẩm / giỏ hàng"""
+        items: List[dict] = []
+        for product_id, size_id in set(pairs):
+            ps = ProductService.get_size(db, product_id, size_id)
+            if ps:
+                items.append({"product_id": product_id, "size_id": size_id, "stock_quantity": ps.stock_quantity})
         if items:
             RealtimeService.broadcast("stock_updated", {"items": items})

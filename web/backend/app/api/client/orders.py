@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_customer
-from app.models.user import User
+from thesweets_common.models.user import User
 from app.services.client.order_service import ClientOrderService
 from app.schemas.client.order import (
     CheckoutRequest,
