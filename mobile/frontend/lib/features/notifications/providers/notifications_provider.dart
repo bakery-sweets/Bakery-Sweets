@@ -76,7 +76,11 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       final response = await ApiClient().dio.get('/notifications');
       if (response.statusCode == 200) {
         final list = response.data as List<dynamic>;
-        final notifs = list.map((j) => NotificationModel.fromJson(j as Map<String, dynamic>)).toList();
+        // App chỉ hiện thông báo trạng thái đơn hàng, bỏ thông báo voucher
+        final notifs = list
+            .map((j) => NotificationModel.fromJson(j as Map<String, dynamic>))
+            .where((n) => n.type == 'order')
+            .toList();
         state = state.copyWith(notifications: notifs, isLoading: false);
       } else {
         state = state.copyWith(isLoading: false);

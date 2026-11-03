@@ -2,10 +2,20 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_admin
+from app.api.files import file_response, read_upload, XLSX
 from thesweets_common.models.user import User
 from app.services.admin.product_service import AdminProductService
 from app.services.admin.upload_service import AdminUploadService
-from app.schemas.admin.product import ProductCreate, ProductUpdate, AdminProductOut, ProductSizeOut
+from app.services.excel_import import PRICE_TEMPLATE
+from app.services.export.excel_service import ExcelExportService
+from app.schemas.admin.product import (
+    ProductCreate,
+    ProductUpdate,
+    AdminProductOut,
+    ProductSizeOut,
+    PriceExcelPreviewOut,
+    PriceBulkUpdate,
+)
 from app.schemas.common import ResponseBase
 from app.services.realtime_service import RealtimeService
 
@@ -53,6 +63,42 @@ async def upload_product_image(
     content = await file.read()
     saved = AdminUploadService.save_product_image(file.filename, content)
     return ResponseBase(message="Tải ảnh thành công", data=saved)
+
+# Các route cập nhật giá hàng loạt phải khai báo trước "/{product_id}" để không bị bắt nhầm thành mã sản phẩm
+@router.get("/prices/excel/template", summary="Tải file Excel mẫu để cập nhật giá bán hàng loạt")
+def download_price_template(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    content = ExcelExportService.input_template(PRICE_TEMPLATE, AdminProductService.price_template_rows(db))
+    return file_response(content, PRICE_TEMPLATE.filename, XLSX)
+
+@router.post("/prices/excel/preview", response_model=ResponseBase[PriceExcelPreviewOut], summary="Đọc file Excel giá bán (chỉ so sánh, chưa lưu)")
+async def preview_price_excel(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    content = await read_upload(file)
+    preview = AdminProductService.preview_price_excel(db, content, file.filename)
+    message = f"Có {len(preview.changes)} giá thay đổi"
+    if preview.errors:
+        message += f", {len(preview.errors)} lỗi cần sửa"
+    return ResponseBase(message=message, data=preview)
+
+@router.patch("/prices", response_model=ResponseBase[dict], summary="Cập nhật giá bán nhiều bánh cùng lúc")
+def bulk_update_prices(
+    data: PriceBulkUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    changed = AdminProductService.apply_prices(db, data.items)
+    for product_id in changed:
+        RealtimeService.products_changed(product_id, "updated")
+    return ResponseBase(
+        message=f"Đã cập nhật giá cho {len(data.items)} kích cỡ của {len(changed)} bánh",
+        data={"updated_products": len(changed), "updated_items": len(data.items)},
+    )
 
 @router.get("/{product_id}", response_model=ResponseBase[AdminProductOut], summary="Xem chi tiết sản phẩm")
 def get_product(

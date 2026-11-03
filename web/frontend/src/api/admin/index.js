@@ -1,5 +1,15 @@
 import axiosClient from "../axiosClient";
 
+// Gửi file Excel lên endpoint xem trước (chỉ đọc & kiểm tra, chưa ghi CSDL)
+const uploadExcel = (url, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return axiosClient.post(url, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 30000,
+  });
+};
+
 export const adminAuthApi = {
   // credentials: { username: số điện thoại hoặc email, password }
   login: (credentials) => axiosClient.post("/admin/auth/login", credentials),
@@ -24,6 +34,11 @@ export const adminProductsApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+  // Cập nhật giá bán hàng loạt từ Excel: tải mẫu (Blob) -> xem trước thay đổi -> áp dụng
+  downloadPriceTemplate: () => axiosClient.get("/admin/products/prices/excel/template", { responseType: "blob" }),
+  previewPriceExcel: (file) => uploadExcel("/admin/products/prices/excel/preview", file),
+  // items: [{ product_id, size_id, price, old_price }]
+  bulkUpdatePrices: (items) => axiosClient.patch("/admin/products/prices", { items }),
 };
 
 export const adminOrdersApi = {
@@ -57,6 +72,9 @@ export const adminImportReceiptsApi = {
   updateStatus: (id, status) => axiosClient.patch(`/admin/import-receipts/${id}/status`, { status }),
   // Phiếu nhập kho PDF (trả về Blob)
   exportPdf: (id) => axiosClient.get(`/admin/import-receipts/${id}/pdf`, { responseType: "blob" }),
+  // Nhập phiếu từ Excel: tải mẫu (Blob) -> đọc file thành các dòng để điền vào form tạo phiếu
+  downloadExcelTemplate: () => axiosClient.get("/admin/import-receipts/excel/template", { responseType: "blob" }),
+  previewExcel: (file) => uploadExcel("/admin/import-receipts/excel/preview", file),
 };
 
 export const adminPromotionsApi = {

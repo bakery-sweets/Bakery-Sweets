@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
-import { cheapestAvailableSize } from '../../utils/stock';
+import { cheapestAvailableSize, productStock, isLowStock } from '../../utils/stock';
 import popup from '../../utils/popup';
 import './ProductCard.css';
 
@@ -13,6 +13,7 @@ export default function ProductCard({ product }) {
   // Thêm nhanh dùng size rẻ nhất còn hàng; không còn size nào thì món đã hết hàng
   const quickSize = cheapestAvailableSize(product);
   const soldOut = !quickSize;
+  const totalStock = productStock(product);
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -60,7 +61,14 @@ export default function ProductCard({ product }) {
             )}
           </div>
           <div className="home-product-footer-block">
-            {soldOut && <p className="home-product-stock out-of-stock">Tạm hết hàng</p>}
+            {soldOut ? (
+              <p className="home-product-stock out-of-stock">Tạm hết hàng</p>
+            ) : isLowStock(totalStock) ? (
+              <p className="home-product-stock low-stock">
+                <ion-icon name="flame-outline"></ion-icon>
+                Sắp hết · còn {totalStock} bánh
+              </p>
+            ) : null}
             <div className="product-card-bottom">
               <p className="home-product-price">{formatVND(product.min_price)}</p>
               <button

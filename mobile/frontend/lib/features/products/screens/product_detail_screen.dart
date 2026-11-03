@@ -20,6 +20,7 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   int _selectedSizeIndex = 0;
   int _quantity = 1;
+  bool _sizeInitialized = false;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +36,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
 
     final sizes = product.sizes;
+    // Lần đầu mở: chọn sẵn size đầu tiên còn hàng
+    if (!_sizeInitialized && sizes.isNotEmpty) {
+      _sizeInitialized = true;
+      final firstInStock = sizes.indexWhere((s) => s.stockQuantity > 0);
+      if (firstInStock > 0) _selectedSizeIndex = firstInStock;
+    }
     final selectedSize = sizes.isNotEmpty
         ? sizes[_selectedSizeIndex.clamp(0, sizes.length - 1)]
         : ProductSizeModel(
@@ -42,10 +49,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             sizeId: 0,
             sizeName: 'Tiêu chuẩn',
             price: product.defaultPrice,
-            stockQuantity: 10,
+            stockQuantity: 0,
           );
 
     final currentPrice = selectedSize.price;
+    final currentStock = selectedSize.stockQuantity;
+    final canAdd = currentStock > 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -122,7 +131,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     ),
                     errorWidget: Container(
                       color: AppColors.primaryLight,
-                      child: const Center(child: Text('🧁', style: TextStyle(fontSize: 60))),
+                      child: const Center(child: Icon(Icons.cake_outlined, size: 60, color: AppColors.primary)),
                     ),
                   ),
                 ),
@@ -170,6 +179,30 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       color: AppColors.primary,
                     ),
                   ),
+                  const SizedBox(height: 10),
+
+                  // Cảnh báo tồn kho (không hiện số tồn thật, chỉ báo khi sắp hết / hết hàng)
+                  if (product.isSoldOut)
+                    const _StockAlert(
+                      icon: Icons.remove_shopping_cart_outlined,
+                      text: 'Tạm hết hàng',
+                      color: AppColors.danger,
+                      background: AppColors.dangerBg,
+                    )
+                  else if (!canAdd)
+                    const _StockAlert(
+                      icon: Icons.info_outline,
+                      text: 'Size này tạm hết hàng, bạn chọn size khác nhé',
+                      color: AppColors.danger,
+                      background: AppColors.dangerBg,
+                    )
+                  else if (isLowStock(currentStock))
+                    _StockAlert(
+                      icon: Icons.local_fire_department_outlined,
+                      text: 'Sắp hết hàng, chỉ còn $currentStock bánh',
+                      color: const Color(0xFFD97706),
+                      background: const Color(0xFFFEF3C7),
+                    ),
                   const SizedBox(height: 12),
 
                   // Mô tả sản phẩm
@@ -197,9 +230,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       children: List.generate(sizes.length, (idx) {
                         final size = sizes[idx];
                         final isSelected = _selectedSizeIndex == idx;
+                        final sizeSoldOut = size.stockQuantity <= 0;
                         return GestureDetector(
                           onTap: () {
-                            setState(() => _selectedSizeIndex = idx);
+                            setState(() {
+                              _selectedSizeIndex = idx;
+                              _quantity = 1;
+                            });
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -234,11 +271,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  AppTheme.formatCurrency(size.price),
+                                  sizeSoldOut ? 'Hết hàng' : AppTheme.formatCurrency(size.price),
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                    color: isSelected ? AppColors.primaryDark : AppColors.textSecondary,
+                                    color: sizeSoldOut
+                                        ? AppColors.danger
+                                        : (isSelected ? AppColors.primaryDark : AppColors.textSecondary),
                                   ),
                                 ),
                               ],
@@ -286,9 +325,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.add, size: 18),
-                              onPressed: () {
-                                setState(() => _quantity++);
-                              },
+                              onPressed: _quantity < currentStock
+                                  ? () => setState(() => _quantity++)
+                                  : null,
                               constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
                               padding: EdgeInsets.zero,
                             ),
@@ -320,7 +359,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         elevation: 4,
                         shadowColor: AppColors.primary.withValues(alpha: 0.4),
                       ),
-                      onPressed: () async {
+                      onPressed: !canAdd ? null : () async {
                         final messenger = ScaffoldMessenger.of(context);
                         try {
                           await ref.read(cartProvider.notifier).addToCart(
@@ -362,11 +401,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.shopping_bag_outlined, size: 20),
-                          SizedBox(width: 8),
+                        children: [
+                          const Icon(Icons.shopping_bag_outlined, size: 20),
+                          const SizedBox(width: 8),
                           Text(
-                            'Thêm vào giỏ hàng',
+                            canAdd ? 'Thêm vào giỏ hàng' : 'Tạm hết hàng',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 16,
@@ -441,14 +480,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: const [
-                      Text(
-                        'Gợi ý cho bạn 🍰',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.auto_awesome_outlined, size: 18, color: AppColors.primary),
+                          SizedBox(width: 6),
+                          Text(
+                            'Gợi ý cho bạn',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         'Có thể bạn thích',
@@ -505,7 +550,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                     placeholder: Container(color: AppColors.surfaceVariant),
                                     errorWidget: Container(
                                       color: AppColors.primaryLight,
-                                      child: const Center(child: Text('🍰')),
+                                      child: const Center(child: Icon(Icons.cake_outlined, size: 22, color: AppColors.primary)),
                                     ),
                                   ),
                                 ),
@@ -550,6 +595,34 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             const SizedBox(height: 30),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Dòng cảnh báo tồn kho ở trang chi tiết
+class _StockAlert extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color color;
+  final Color background;
+
+  const _StockAlert({required this.icon, required this.text, required this.color, required this.background});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(8)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(text, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: color)),
+          ),
+        ],
       ),
     );
   }

@@ -7,6 +7,7 @@ from app.schemas.client.auth import ClientProfileOut
 from app.schemas.client.profile import ProfileUpdateRequest, ChangePasswordRequest
 from app.schemas.common import ResponseBase
 from app.services.client.profile_service import ClientProfileService
+from app.services.realtime_service import RealtimeService
 
 router = APIRouter()
 
@@ -17,6 +18,8 @@ def update_profile(
     user: User = Depends(get_current_user),
 ):
     user = ClientProfileService.update_profile(db, user, data)
+    # Báo các thiết bị khác của tài khoản (App / tab khác) tải lại thông tin cá nhân
+    RealtimeService.to_user(user.phone, "profile_updated")
     return ResponseBase(message="Cập nhật thông tin thành công", data=to_profile_out(user))
 
 @router.post("/change-password", response_model=ResponseBase, summary="Đổi mật khẩu")

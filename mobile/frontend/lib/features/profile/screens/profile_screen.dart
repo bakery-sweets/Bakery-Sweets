@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_modal.dart';
-import '../../promotions/screens/promotions_screen.dart';
 import 'edit_profile_modal.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -120,17 +119,6 @@ class ProfileScreen extends ConsumerWidget {
                 } else if (user != null) {
                   EditProfileModal.show(context, user);
                 }
-              },
-            ),
-            _buildSectionTile(
-              icon: Icons.confirmation_num_outlined,
-              title: 'Kho Voucher & Ưu đãi',
-              subtitle: 'Xem các mã giảm giá áp dụng khi đặt bánh',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PromotionsScreen()),
-                );
               },
             ),
             _buildSectionTile(

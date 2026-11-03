@@ -198,6 +198,17 @@
   color: #ffffff;
 }
 
+.pickup-hours-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.pickup-hours-note.error {
+  color: #dc2626;
+  font-weight: 600;
+}
+
 /* BỘ CHỌN HÌNH THỨC NGƯỜI NHẬN (TÔI TỰ NHẬN / NGƯỜI KHÁC NHẬN DÙM) */
 .recipient-mode-selector {
   display: grid;
@@ -466,148 +477,6 @@
   display: block;
   font-size: 11.5px;
   color: #64748b;
-}
-
-/* BOX THÔNG TIN CHUYỂN KHOẢN CỦA CHỦ TIỆM */
-.shop-bank-card {
-  margin-top: 14px;
-  background: #f8fafc;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 12px;
-  padding: 16px 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-}
-
-.bank-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-}
-
-.bank-title-area {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #1a2639;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.bank-title-area svg {
-  color: #007042;
-}
-
-.bank-tag {
-  background: #007042;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 4px;
-  letter-spacing: 0.3px;
-}
-
-.bank-details-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.bank-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-}
-
-.info-label {
-  color: #64748b;
-  font-weight: 500;
-}
-
-.info-val {
-  color: var(--color-navy);
-  font-weight: 600;
-}
-
-.info-val.highlight {
-  font-weight: 700;
-  color: #1a2639;
-}
-
-.info-val.amount {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--color-pink);
-}
-
-.stk-copy-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.stk-number {
-  font-size: 14px;
-  font-weight: 800;
-  color: #007042;
-  letter-spacing: 0.5px;
-}
-
-.copy-btn {
-  background: #e2e8f0;
-  border: none;
-  border-radius: 4px;
-  padding: 2px 7px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #334155;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.copy-btn:hover {
-  background: #cbd5e1;
-}
-
-.transfer-syntax {
-  background: var(--color-blue-soft);
-  color: var(--color-navy);
-  padding: 2px 8px;
-  border-radius: 5px;
-  font-weight: 700;
-  font-family: monospace;
-  font-size: 12px;
-}
-
-.bank-qr-box {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px;
-}
-
-.bank-qr-img {
-  width: 90px;
-  height: 90px;
-  border-radius: 6px;
-  border: 1px solid #f1f5f9;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.qr-hint p {
-  margin: 0;
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.4;
 }
 
 /* CỘT PHẢI: SUMMARY CARD */

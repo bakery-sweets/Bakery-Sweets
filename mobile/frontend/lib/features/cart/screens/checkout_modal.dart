@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/date_format_utils.dart';
+import '../../../core/utils/opening_hours.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_modal.dart';
 import '../../orders/providers/orders_provider.dart';
@@ -85,17 +86,21 @@ class CheckoutModal extends ConsumerStatefulWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('📍 Địa chỉ: The Sweets Bakery', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.navy)),
+                    const _InfoLine(icon: Icons.location_on_outlined, text: 'Địa chỉ: The Sweets Bakery', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.navy)),
                     const SizedBox(height: 4),
-                    Text('🕒 Giờ nhận: $pickupDisplay', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    _InfoLine(icon: Icons.access_time_rounded, text: 'Giờ nhận: $pickupDisplay', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     const SizedBox(height: 4),
-                    Text('💳 Hình thức: ${paymentMethod == 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản ngân hàng'}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    _InfoLine(icon: Icons.credit_card_outlined, text: 'Hình thức: ${paymentMethod == 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản ngân hàng'}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    if (paymentMethod == 'Banking') ...[
+                      const SizedBox(height: 4),
+                      const _InfoLine(icon: Icons.verified_outlined, text: 'Đã thanh toán chuyển khoản thành công', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.success)),
+                    ],
                     if (discountAmount > 0) ...[
                       const SizedBox(height: 4),
-                      Text('🎟️ Giảm giá voucher: -${AppTheme.formatCurrency(discountAmount)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      _InfoLine(icon: Icons.confirmation_num_outlined, text: 'Giảm giá voucher: -${AppTheme.formatCurrency(discountAmount)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
                     ],
                     const SizedBox(height: 4),
-                    Text('💰 Thanh toán: ${AppTheme.formatCurrency(finalAmount)}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.navy)),
+                    _InfoLine(icon: Icons.payments_outlined, text: 'Thanh toán: ${AppTheme.formatCurrency(finalAmount)}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.navy)),
                   ],
                 ),
               ),
@@ -172,7 +177,7 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
   final _notesController = TextEditingController();
 
   String _paymentMethod = 'COD'; // 'COD' hoặc 'Banking'
-  DateTime _pickupTime = DateTime.now().add(const Duration(minutes: 45));
+  DateTime _pickupTime = OpeningHours.nextValid(DateTime.now().add(const Duration(minutes: 45)));
   PromotionModel? _selectedPromotion;
   bool _isSubmitting = false;
 
@@ -225,11 +230,12 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
   /// 1. CHỌN NGÀY & THỨ BẰNG BẢNG LỊCH (Material Calendar Grid)
   Future<void> _selectDateFromCalendar({bool autoOpenScrollTime = false}) async {
     final now = DateTime.now();
-    final initialDate = _pickupTime.isBefore(now) ? now : _pickupTime;
+    final firstDate = now.isAfter(OpeningHours.closeOn(now)) ? now.add(const Duration(days: 1)) : now;
+    final initialDate = _pickupTime.isBefore(firstDate) ? firstDate : _pickupTime;
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: now,
+      firstDate: DateUtils.dateOnly(firstDate),
       lastDate: now.add(const Duration(days: 30)),
       locale: const Locale('vi', 'VN'),
       helpText: 'CHỌN NGÀY VÀ THỨ NHẬN BÁNH',
@@ -268,7 +274,14 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
 
   /// 2. CUỘN CHỌN GIỜ BẰNG BÁNH XE SCROLL (Cupertino Time Scroll Picker)
   Future<void> _selectTimeFromScroll() async {
-    DateTime tempTime = _pickupTime;
+    final minTime = OpeningHours.openOn(_pickupTime);
+    final maxTime = OpeningHours.closeOn(_pickupTime);
+    // Bỏ phần giây để giờ ban đầu nằm đúng trong khoảng cho phép của bánh xe cuộn
+    DateTime tempTime = DateTime(
+      _pickupTime.year, _pickupTime.month, _pickupTime.day, _pickupTime.hour, _pickupTime.minute,
+    );
+    if (tempTime.isBefore(minTime)) tempTime = minTime;
+    if (tempTime.isAfter(maxTime)) tempTime = maxTime;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -291,8 +304,8 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
                       child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
                     ),
                     Column(
-                      children: const [
-                        Text(
+                      children: [
+                        const Text(
                           'Cuộn chọn giờ nhận bánh',
                           style: TextStyle(
                             fontFamily: 'Poppins',
@@ -301,9 +314,9 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
                             color: AppColors.navy,
                           ),
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Giờ mở cửa tiệm: 07:30 - 21:30',
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Giờ mở cửa tiệm: ${OpeningHours.label}',
                           style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                         ),
                       ],
@@ -331,6 +344,8 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
                   mode: CupertinoDatePickerMode.time,
                   use24hFormat: true,
                   initialDateTime: tempTime,
+                  minimumDate: minTime,
+                  maximumDate: maxTime,
                   onDateTimeChanged: (newDateTime) {
                     tempTime = DateTime(
                       _pickupTime.year,
@@ -380,6 +395,14 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập số điện thoại liên hệ nhận bánh')),
+      );
+      return;
+    }
+
+    final pickupError = OpeningHours.validatePickup(_pickupTime);
+    if (pickupError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(backgroundColor: Colors.red.shade700, content: Text(pickupError)),
       );
       return;
     }
@@ -613,6 +636,19 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
                           _buildQuickTimeChip('Sau 2 tiếng', 120),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      Builder(builder: (context) {
+                        final error = OpeningHours.validatePickup(_pickupTime);
+                        return _InfoLine(
+                          icon: error != null ? Icons.error_outline_rounded : Icons.schedule_rounded,
+                          text: error ?? 'Giờ mở cửa tiệm: ${OpeningHours.label} (tất cả các ngày)',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: error != null ? FontWeight.w600 : FontWeight.w400,
+                            color: error != null ? AppColors.danger : AppColors.textSecondary,
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -635,34 +671,9 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
                 _buildPaymentOption(
                   value: 'Banking',
                   title: 'Chuyển khoản ngân hàng (Banking)',
-                  subtitle: 'Quét mã QR hoặc chuyển khoản qua STK The Sweets',
+                  subtitle: 'Thanh toán ngay khi đặt, không cần trả tiền khi nhận bánh',
                   icon: Icons.account_balance_outlined,
                 ),
-
-                // Box thông tin STK ngân hàng khi chọn Banking
-                if (_paymentMethod == 'Banking') ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('💳 THÔNG TIN TÀI KHOẢN TIỆM BÁNH:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navy)),
-                        SizedBox(height: 6),
-                        Text('• Ngân hàng: Vietcombank (CN TP.HCM)', style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary)),
-                        Text('• Số tài khoản: 0123 4567 8999', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                        Text('• Chủ tài khoản: TIEM BANH THE SWEETS', style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary)),
-                        SizedBox(height: 4),
-                        Text('• Nội dung CK: [SĐT của bạn] - Dat banh Sweets', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
-                      ],
-                    ),
-                  ),
-                ],
 
                 const SizedBox(height: 22),
 
@@ -894,9 +905,14 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
   Widget _buildQuickTimeChip(String label, int minutesToAdd) {
     return InkWell(
       onTap: () {
-        setState(() {
-          _pickupTime = DateTime.now().add(Duration(minutes: minutesToAdd));
-        });
+        final target = DateTime.now().add(Duration(minutes: minutesToAdd));
+        if (!OpeningHours.isWithin(target)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lúc đó tiệm đã đóng cửa (giờ mở cửa ${OpeningHours.label}), bạn chọn giờ khác nhé')),
+          );
+          return;
+        }
+        setState(() => _pickupTime = target);
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
@@ -982,6 +998,30 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Một dòng thông tin có icon đứng trước (thay cho emoji để đồng bộ bộ icon của app)
+class _InfoLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final TextStyle style;
+
+  const _InfoLine({required this.icon, required this.text, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, size: 15, color: style.color ?? AppColors.navy),
+        ),
+        const SizedBox(width: 6),
+        Expanded(child: Text(text, style: style)),
+      ],
     );
   }
 }

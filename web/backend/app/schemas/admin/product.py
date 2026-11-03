@@ -1,6 +1,7 @@
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from decimal import Decimal
+from app.schemas.common import ExcelRowError
 
 class ProductSizeInput(BaseModel):
     size_id: int
@@ -45,3 +46,30 @@ class AdminProductOut(BaseModel):
     storage_instructions: Optional[str] = None
     image: Optional[str] = None
     sizes: List[ProductSizeOut] = []
+
+# ===== Cập nhật giá bán hàng loạt từ file Excel =====
+
+class PriceChangeOut(BaseModel):
+    """Một dòng đổi giá đọc từ file Excel (giá cũ lấy từ CSDL lúc đọc file)"""
+    row: int
+    product_id: int
+    product_name: str
+    size_id: int
+    size_name: str
+    old_price: Decimal
+    new_price: Decimal
+
+class PriceExcelPreviewOut(BaseModel):
+    changes: List[PriceChangeOut] = []
+    unchanged: int = 0  # Số dòng điền giá mới nhưng trùng giá hiện tại
+    errors: List[ExcelRowError] = []
+
+class PriceUpdateItem(BaseModel):
+    product_id: int
+    size_id: int
+    price: Decimal = Field(..., ge=0, lt=Decimal("1e13"))
+    # Giá lúc xem trước: khác giá hiện tại nghĩa là đã có người sửa giá trong lúc đó
+    old_price: Optional[Decimal] = None
+
+class PriceBulkUpdate(BaseModel):
+    items: List[PriceUpdateItem] = Field(..., min_length=1, max_length=5000)

@@ -68,6 +68,17 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Tải lại thông tin cá nhân (VD: vừa sửa bên Web); lỗi mạng thì giữ nguyên phiên đăng nhập
+  Future<void> refreshProfile() async {
+    if (!state.isAuthenticated) return;
+    try {
+      final response = await ApiClient().dio.get('/auth/me');
+      if (response.statusCode == 200 && response.data != null) {
+        state = state.copyWith(user: UserModel.fromJson(response.data as Map<String, dynamic>));
+      }
+    } catch (_) {}
+  }
+
   Future<bool> login(String username, String password) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {

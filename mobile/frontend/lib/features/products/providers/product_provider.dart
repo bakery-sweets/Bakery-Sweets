@@ -13,7 +13,7 @@ final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
           .map((c) => CategoryModel.fromJson(c as Map<String, dynamic>))
           .toList();
       if (kDebugMode) {
-        debugPrint('✅ [API Categories] Đã tải thành công ${list.length} danh mục từ Backend');
+        debugPrint('[API Categories] Đã tải thành công ${list.length} danh mục từ Backend');
       }
       return [
         const CategoryModel(categoryId: 0, categoryName: 'Tất cả'),
@@ -23,7 +23,7 @@ final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
     return const [CategoryModel(categoryId: 0, categoryName: 'Tất cả')];
   } catch (err) {
     if (kDebugMode) {
-      debugPrint('⚠️ [API Categories Error] $err');
+      debugPrint('[API Categories Error] $err');
     }
     rethrow;
   }
@@ -148,14 +148,14 @@ final productsProvider = FutureProvider<List<ProductModel>>((ref) async {
           .map((p) => ProductModel.fromJson(p as Map<String, dynamic>))
           .toList();
       if (kDebugMode) {
-        debugPrint('✅ [API Products] Đã tải thành công ${list.length} sản phẩm từ Backend');
+        debugPrint('[API Products] Đã tải thành công ${list.length} sản phẩm từ Backend');
       }
       return list;
     }
     return [];
   } catch (err) {
     if (kDebugMode) {
-      debugPrint('⚠️ [API Products Error] $err');
+      debugPrint('[API Products Error] $err');
     }
     rethrow;
   }

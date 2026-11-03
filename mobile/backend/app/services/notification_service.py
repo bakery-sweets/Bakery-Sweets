@@ -7,8 +7,10 @@ from thesweets_common.models.notification import Notification
 class NotificationService:
     @staticmethod
     def get_notifications(db: Session, phone: str) -> List[Notification]:
+        # App chỉ hiện thông báo trạng thái đơn hàng, thông báo voucher chỉ dành cho Web
         return db.query(Notification).filter(
-            Notification.phone == phone
+            Notification.phone == phone,
+            Notification.type == "order",
         ).order_by(Notification.created_at.desc()).all()
 
     @staticmethod
@@ -26,8 +28,10 @@ class NotificationService:
 
     @staticmethod
     def mark_all_as_read(db: Session, phone: str) -> None:
+        # Chỉ đánh dấu thông báo đơn hàng để không ảnh hưởng thông báo voucher bên Web
         db.query(Notification).filter(
             Notification.phone == phone,
+            Notification.type == "order",
             Notification.is_read == False
         ).update({"is_read": True})
         db.commit()

@@ -127,8 +127,8 @@ INSERT INTO suppliers (supplier_id, supplier_code, supplier_name, contact_name, 
 
 -- 8. Phiếu nhập hàng
 INSERT INTO import_receipts (import_id, import_code, supplier_id, total_amount, import_date, status, notes) VALUES
-(1, 'PN001', 1, 3500000.00, '2026-10-01 08:30:00', 'Completed', 'Nhập bánh Mousse tươi các vị cho tuần đầu tháng 10'),
-(2, 'PN002', 2, 2100000.00, '2026-10-03 09:00:00', 'Completed', 'Nhập mẻ bánh Croissant bơ Pháp mới nướng');
+(1, 'PN001', 1, 2525000.00, '2026-10-01 08:30:00', 'Completed', 'Nhập bánh Mousse tươi các vị cho tuần đầu tháng 10'),
+(2, 'PN002', 2, 1800000.00, '2026-10-03 09:00:00', 'Completed', 'Nhập mẻ bánh Croissant bơ Pháp mới nướng');
 
 -- 9. Chi tiết phiếu nhập hàng
 INSERT INTO import_receipt_details (import_id, product_id, size_id, quantity, import_price, total_price, note) VALUES

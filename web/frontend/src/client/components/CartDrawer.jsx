@@ -58,7 +58,11 @@ export default function CartDrawer() {
                     <ion-icon name="add-outline"></ion-icon>
                   </button>
                 </div>
-                <p>{formatVND(item.price * item.quantity)}</p>
+                {/* Thành tiền của dòng (đổi theo số lượng) + đơn giá để khách biết giá 1 cái */}
+                <div className="cart-item-price">
+                  <span className="cart-item-unit">{formatVND(item.price)} × {item.quantity}</span>
+                  <strong className="cart-item-total">{formatVND(item.price * item.quantity)}</strong>
+                </div>
               </div>
               <button className="remove-btn" onClick={() => run(() => removeItem(item.product_id, item.size_id))}>
                 <ion-icon name="trash-outline"></ion-icon>

@@ -72,6 +72,24 @@
   color: #1e293b;
 }
 
+.cart-item-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cart-item-unit {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.cart-item-total {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
 .qty-controls {
   display: inline-flex;
   align-items: center;

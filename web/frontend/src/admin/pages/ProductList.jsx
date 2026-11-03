@@ -1,13 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
+import { ExcelImportButtons, ExcelErrorTable } from "../components/ExcelImport";
 import { Link } from "react-router-dom";
 import { adminProductsApi } from "../../api/admin";
 import { clientProductsApi } from "../../api/client";
 import { formatVND, imageUrl, apiErrorMessage, PRODUCT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
 import { useRealtimeEvent } from "../../realtime/useRealtime";
+import "./OrderList.css";
+import "./AdminModal.css";
 
 const PAGE_SIZE = 10;
+
+// Giá mới gấp đôi trở lên hoặc còn một nửa trở xuống: dễ là gõ thừa / thiếu số 0, tô vàng để người dùng để ý
+const isBigChange = (c) => {
+  const ratio = Number(c.new_price) / Number(c.old_price || 1);
+  return ratio >= 2 || ratio <= 0.5;
+};
+
+const formatPercent = (c) => {
+  const pct = ((Number(c.new_price) - Number(c.old_price)) / Number(c.old_price || 1)) * 100;
+  return `${pct > 0 ? "+" : ""}${pct.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
+};
 
 export default function ProductList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,6 +31,10 @@ export default function ProductList() {
   const [apiCategories, setApiCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [priceBusy, setPriceBusy] = useState(false);
+  // Xem trước file giá: { fileName, changes, unchanged, errors }
+  const [pricePreview, setPricePreview] = useState(null);
+  const [applyingPrices, setApplyingPrices] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -90,6 +108,48 @@ export default function ProductList() {
     }
   };
 
+  // ===== Cập nhật giá hàng loạt từ Excel: đọc file -> bảng so sánh giá cũ / mới -> xác nhận mới ghi =====
+  const handlePriceFile = async (file) => {
+    setPriceBusy(true);
+    try {
+      const res = await adminProductsApi.previewPriceExcel(file);
+      setPricePreview({ fileName: file.name, ...res.data });
+    } catch (err) {
+      popup.error(apiErrorMessage(err, "Không đọc được file Excel"));
+    } finally {
+      setPriceBusy(false);
+    }
+  };
+
+  const handleApplyPrices = async () => {
+    const { changes, errors } = pricePreview;
+    const confirmed = await popup.confirm({
+      title: "Áp dụng giá bán mới?",
+      message: `Đổi giá ${changes.length} kích cỡ bánh theo file "${pricePreview.fileName}"`,
+      subtitle: `Giá mới có hiệu lực ngay trên menu của khách. Đơn đã đặt trước đó giữ nguyên giá cũ.${
+        errors.length ? ` ${errors.length} dòng lỗi sẽ bị bỏ qua.` : ""
+      }`,
+      confirmText: "Áp dụng",
+      cancelText: "Quay lại",
+      type: "success",
+    });
+    if (!confirmed) return;
+
+    setApplyingPrices(true);
+    try {
+      const res = await adminProductsApi.bulkUpdatePrices(
+        changes.map((c) => ({ product_id: c.product_id, size_id: c.size_id, price: c.new_price, old_price: c.old_price }))
+      );
+      popup.success(res.message);
+      setPricePreview(null);
+      await loadData();
+    } catch (err) {
+      popup.error(apiErrorMessage(err, "Không cập nhật được giá bán"));
+    } finally {
+      setApplyingPrices(false);
+    }
+  };
+
   return (
     <>
       <AdminHeader />
@@ -103,10 +163,14 @@ export default function ProductList() {
           </div>
 
           <div className="admin-page-actions">
-            <button className="btn-pill-outline" type="button">
-              <ion-icon name="download-outline"></ion-icon>
-              <span>Xuất Menu</span>
-            </button>
+            <ExcelImportButtons
+              downloadTemplate={adminProductsApi.downloadPriceTemplate}
+              templateFilename="mau-cap-nhat-gia.xlsx"
+              onFile={handlePriceFile}
+              importLabel="Cập Nhật Giá Từ Excel"
+              busy={priceBusy}
+              disabled={loading}
+            />
             <Link to="/admin/products/add" className="btn-pill-primary">
               <ion-icon name="add"></ion-icon>
               <span>Thêm Bánh Mới</span>
@@ -325,6 +389,97 @@ export default function ProductList() {
             </div>
           </div>
         </div>
+
+        {/* Modal xem trước cập nhật giá từ Excel */}
+        {pricePreview && (
+          <div className="order-modal-overlay">
+            <div className="order-modal" role="dialog" aria-modal="true" aria-labelledby="price-preview-title" style={{ maxWidth: "860px" }}>
+              <div className="order-modal-header">
+                <div>
+                  <span className="order-modal-eyebrow">CẬP NHẬT GIÁ TỪ EXCEL</span>
+                  <h3 id="price-preview-title" className="order-modal-title">Kiểm tra giá trước khi áp dụng</h3>
+                </div>
+                <button type="button" className="order-modal-close" aria-label="Đóng" disabled={applyingPrices} onClick={() => setPricePreview(null)}>
+                  <ion-icon name="close-outline"></ion-icon>
+                </button>
+              </div>
+
+              <div className="excel-summary">
+                <span>File: {pricePreview.fileName}</span>
+                <span>{pricePreview.changes.length} giá thay đổi</span>
+                {pricePreview.unchanged > 0 && <span>{pricePreview.unchanged} dòng giữ nguyên giá</span>}
+                {pricePreview.errors.length > 0 && <span style={{ color: "#be123c" }}>{pricePreview.errors.length} dòng lỗi</span>}
+              </div>
+
+              {pricePreview.changes.length > 0 && (
+                <>
+                  {pricePreview.changes.some(isBigChange) && (
+                    <p className="excel-hint">
+                      Dòng nền vàng có giá mới chênh lệch từ 2 lần trở lên so với giá cũ, hãy kiểm tra xem có gõ thừa / thiếu số 0 không.
+                    </p>
+                  )}
+                  <div className="excel-table-scroll" style={{ marginBottom: "14px" }}>
+                    <table className="excel-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "56px" }}>Dòng</th>
+                          <th>Bánh</th>
+                          <th>Kích cỡ</th>
+                          <th className="num">Giá cũ</th>
+                          <th className="num">Giá mới</th>
+                          <th className="num">Chênh lệch</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pricePreview.changes.map((c) => {
+                          const up = Number(c.new_price) > Number(c.old_price);
+                          return (
+                            <tr key={`${c.product_id}-${c.size_id}`} className={isBigChange(c) ? "excel-big-change" : ""}>
+                              <td className="excel-row-no">{c.row}</td>
+                              <td style={{ fontWeight: 600 }}>{c.product_name}</td>
+                              <td>{c.size_name}</td>
+                              <td className="num" style={{ color: "#64748b" }}>{formatVND(c.old_price, " đ")}</td>
+                              <td className="num" style={{ fontWeight: 700 }}>{formatVND(c.new_price, " đ")}</td>
+                              <td className={`num ${up ? "excel-up" : "excel-down"}`}>{formatPercent(c)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              <ExcelErrorTable errors={pricePreview.errors} />
+              {pricePreview.errors.length > 0 && (
+                <p className="excel-hint" style={{ marginTop: "10px" }}>
+                  {pricePreview.changes.length > 0
+                    ? "Có thể bỏ qua các dòng lỗi và áp dụng những giá hợp lệ, hoặc đóng lại để sửa file rồi chọn lại."
+                    : "Chưa có giá hợp lệ để áp dụng. Hãy sửa file rồi chọn lại."}
+                </p>
+              )}
+
+              <div className="order-modal-footer">
+                <div className="order-modal-footer-actions">
+                  <button type="button" className="order-btn-secondary" disabled={applyingPrices} onClick={() => setPricePreview(null)}>
+                    <ion-icon name="close-outline"></ion-icon>
+                    <span>Hủy</span>
+                  </button>
+                  {pricePreview.changes.length > 0 && (
+                    <button type="button" className="btn-pill-primary order-btn-primary" disabled={applyingPrices} onClick={handleApplyPrices}>
+                      <ion-icon name={applyingPrices ? "hourglass-outline" : "checkmark-done-outline"}></ion-icon>
+                      <span>
+                        {applyingPrices
+                          ? "Đang cập nhật..."
+                          : `${pricePreview.errors.length ? "Bỏ Qua Dòng Lỗi & " : ""}Áp Dụng ${pricePreview.changes.length} Giá Mới`}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

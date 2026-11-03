@@ -8,6 +8,7 @@ import '../../products/models/product_model.dart';
 import '../../products/providers/product_provider.dart';
 import '../../products/screens/product_detail_screen.dart';
 import '../../notifications/providers/notifications_provider.dart';
+import '../../orders/screens/order_detail_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   final Function(int)? onNavigateTab;
@@ -89,7 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       color: AppColors.primaryLight,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Text('🧁', style: TextStyle(fontSize: 20)),
+                    child: const Icon(Icons.cake_outlined, size: 20, color: AppColors.primary),
                   ),
                   const SizedBox(width: 10),
                   const Text(
@@ -276,13 +277,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ),
                                       ),
                                       SizedBox(height: 2),
-                                      Text(
-                                        'Bánh tươi nướng mỗi ngày 🥖',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Bánh tươi nướng mỗi ngày',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 6),
+                                          Icon(Icons.bakery_dining_outlined, size: 18, color: Colors.white),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -1191,14 +1198,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   if (!item.isRead) {
                                     ref.read(notificationsProvider.notifier).markAsRead(item.notificationId);
                                   }
-                                  if (item.type == 'order') {
-                                    Navigator.pop(ctx);
+                                  Navigator.pop(ctx);
+                                  final orderId = item.referenceId;
+                                  if (orderId != null) {
+                                    OrderDetailScreen.open(context, orderId);
+                                  } else {
                                     widget.onNavigateTab?.call(2);
                                   }
                                 },
                                 borderRadius: BorderRadius.circular(14),
                                 child: _buildNotificationItem(
-                                  icon: item.type == 'order' ? Icons.cake_outlined : Icons.notifications_outlined,
+                                  icon: Icons.receipt_long_outlined,
                                   title: item.title,
                                   content: item.message,
                                   time: AppDateFormat.short(item.createdAt),
@@ -1343,7 +1353,7 @@ class _ProductCard extends StatelessWidget {
                       ),
                       errorWidget: Container(
                         color: AppColors.primaryLight,
-                        child: const Center(child: Text('🧁', style: TextStyle(fontSize: 32))),
+                        child: const Center(child: Icon(Icons.cake_outlined, size: 32, color: AppColors.primary)),
                       ),
                     ),
                     // Badge Danh mục nhỏ góc trên
@@ -1366,6 +1376,16 @@ class _ProductCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                      ),
+                    // Hết hàng: phủ mờ ảnh để khách nhận ra ngay
+                    if (product.isSoldOut)
+                      Container(color: Colors.white.withValues(alpha: 0.45)),
+                    // Badge tồn kho (chỉ báo khi sắp hết / hết hàng, đồng bộ với Web)
+                    if (product.isSoldOut || isLowStock(product.totalStock))
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: _StockBadge(soldOut: product.isSoldOut, stock: product.totalStock),
                       ),
                   ],
                 ),
@@ -1405,6 +1425,41 @@ class _ProductCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Badge "Sắp hết · còn N" / "Tạm hết hàng" trên ảnh card sản phẩm
+class _StockBadge extends StatelessWidget {
+  final bool soldOut;
+  final int stock;
+  const _StockBadge({required this.soldOut, required this.stock});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = soldOut ? AppColors.textSecondary : const Color(0xFFD97706);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: soldOut ? Colors.white : const Color(0xFFFEF3C7),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            soldOut ? Icons.remove_shopping_cart_outlined : Icons.local_fire_department_outlined,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            soldOut ? 'Tạm hết hàng' : 'Sắp hết · còn $stock',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+          ),
+        ],
       ),
     );
   }

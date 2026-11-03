@@ -96,7 +96,7 @@ class AppImage extends StatelessWidget {
       height: height,
       color: AppColors.primaryLight,
       child: const Center(
-        child: Text('🧁', style: TextStyle(fontSize: 28)),
+        child: Icon(Icons.cake_outlined, size: 28, color: AppColors.primary),
       ),
     );
   }

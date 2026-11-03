@@ -1,7 +1,7 @@
 import uuid
 from typing import List, Optional
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
 from sqlalchemy.orm import Session
 from app.core.exceptions import BadRequestError, NotFoundError
 from thesweets_common.models.order import Order, OrderDetail, Cart, OrderStatusLog
@@ -15,6 +15,9 @@ from app.services.realtime_service import RealtimeService
 VN_TZ = timezone(timedelta(hours=7))
 PICKUP_CLOCK_SKEW = timedelta(minutes=5)
 PICKUP_MAX_AHEAD = timedelta(days=30)
+# Giờ mở cửa của tiệm: giờ lấy bánh phải nằm trong khoảng này (đồng bộ với Web & App)
+OPEN_TIME = time(7, 30)
+CLOSE_TIME = time(21, 30)
 
 def _validate_pickup_time(pickup_time: Optional[datetime]) -> Optional[datetime]:
     if pickup_time is None:
@@ -26,6 +29,10 @@ def _validate_pickup_time(pickup_time: Optional[datetime]) -> Optional[datetime]
         raise BadRequestError("Giờ lấy bánh phải ở thời điểm sau hiện tại")
     if pickup_time > now + PICKUP_MAX_AHEAD:
         raise BadRequestError("Chỉ nhận đặt bánh trước tối đa 30 ngày")
+    if not (OPEN_TIME <= pickup_time.time() <= CLOSE_TIME):
+        raise BadRequestError(
+            f"Giờ lấy bánh phải trong giờ mở cửa của tiệm ({OPEN_TIME:%H:%M} - {CLOSE_TIME:%H:%M})"
+        )
     return pickup_time
 
 class ClientOrderService:
@@ -111,7 +118,8 @@ class ClientOrderService:
             total_cost=total_cost,
             final_cost=final_cost,
             payment_method=data.payment_method,
-            payment_status="Unpaid",
+            # Chuyển khoản là thanh toán mô phỏng: chọn là coi như đã thanh toán thành công
+            payment_status="Paid" if data.payment_method == "Banking" else "Unpaid",
             status="Pending",
         )
         db.add(order)
@@ -172,6 +180,7 @@ class ClientOrderService:
         })
         if order.customer:
             RealtimeService.to_user(order.customer.phone, "cart_updated")
+            RealtimeService.to_user(order.customer.phone, "order_updated", {"order_id": order.order_id})
         RealtimeService.stock_changed(db, merged.keys())
         return order
 
@@ -221,5 +230,7 @@ class ClientOrderService:
         db.refresh(order)
 
         RealtimeService.to_staff("order_updated", {"order_id": order.order_id, "status": order.status})
+        if order.customer:
+            RealtimeService.to_user(order.customer.phone, "order_updated", {"order_id": order.order_id})
         RealtimeService.stock_changed(db, [(d.product_id, d.size_id) for d in order.details])
         return order

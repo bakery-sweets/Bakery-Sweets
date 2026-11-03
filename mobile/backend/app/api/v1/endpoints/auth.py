@@ -5,6 +5,7 @@ from app.api.deps import get_db, get_current_user
 from thesweets_common.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserProfileOut, UpdateProfileRequest
 from app.services.auth_service import AuthService
+from app.services.realtime_service import RealtimeService
 
 router = APIRouter()
 
@@ -29,5 +30,9 @@ def update_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    old_phone = current_user.phone
     user = AuthService.update_profile(db, current_user, req)
+    # Báo các thiết bị khác của tài khoản (Web / App khác) tải lại thông tin cá nhân
+    for phone in {old_phone, user.phone}:
+        RealtimeService.to_user(phone, "profile_updated")
     return AuthService.build_profile(user)

@@ -18,3 +18,9 @@ class PaginatedResponse(BaseModel, Generic[T]):
     page: int
     page_size: int
     total_pages: int
+
+class ExcelRowError(BaseModel):
+    """Lỗi của một ô / dòng khi đọc file Excel nhập liệu hàng loạt"""
+    row: int = Field(..., description="Số dòng trên Excel")
+    column: Optional[str] = Field(None, description="Tên cột bị lỗi")
+    message: str

@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import CartDrawer from "../components/CartDrawer";
 import useAuthStore from "../../store/authStore";
 import useCartStore from "../../store/cartStore";
+import { clientAuthApi } from "../../api/client";
 import { useRealtimeConnection, useRealtimeEvent } from "../../realtime/useRealtime";
 import popup from "../../utils/popup";
 
@@ -27,6 +28,16 @@ export default function ClientLayout() {
   });
 
   useRealtimeEvent("stock_updated", (e) => useCartStore.getState().applyStock(e.items));
+
+  // Thông tin cá nhân vừa sửa trên App hoặc tab khác
+  useRealtimeEvent("profile_updated", () => {
+    const { token: current, setUser } = useAuthStore.getState();
+    if (!current) return;
+    clientAuthApi
+      .getProfile()
+      .then((me) => setUser(me.data, current))
+      .catch(() => {});
+  });
 
   useRealtimeEvent("order_status_updated", (e) => {
     popup.info(e.message, { title: e.title, duration: 6000 });

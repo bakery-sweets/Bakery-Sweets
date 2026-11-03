@@ -1,0 +1,113 @@
+/* ===== Modal form dùng chung của trang quản trị (tạo phiếu nhập, tạo / sửa voucher) =====
+   Trang đơn hàng đã chuyển sang side panel nên modal không còn nằm trong OrderList.css */
+.order-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.order-modal {
+  width: 100%;
+  max-width: 616px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.order-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f2f4;
+}
+
+.order-modal-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--admin-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.order-modal-title {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--admin-text);
+}
+
+.order-modal-close {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 1px solid var(--admin-border);
+  border-radius: 50%;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.order-modal-close:hover {
+  background: #f1f2f4;
+  color: var(--admin-text);
+}
+
+.order-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #f1f2f4;
+  flex-wrap: wrap;
+}
+
+.order-modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto; /* Luôn ép cụm nút lưu sang góc phải */
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .order-modal {
+    padding: 20px;
+  }
+
+  .order-modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .order-modal-footer-actions {
+    width: 100%;
+    flex-direction: column;
+    margin-left: 0;
+  }
+
+  .order-modal-footer-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}

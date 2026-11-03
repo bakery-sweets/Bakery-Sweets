@@ -8,6 +8,7 @@ import '../../cart/screens/cart_screen.dart';
 import '../../orders/screens/orders_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../cart/providers/cart_provider.dart';
+import '../../orders/providers/orders_provider.dart';
 
 class NavigationIndexNotifier extends Notifier<int> {
   @override
@@ -88,6 +89,7 @@ class MainNavigationScreen extends ConsumerWidget {
             ref.read(navigationIndexProvider.notifier).setIndex(index);
             // Mở tab giỏ hàng thì tải lại để thấy thay đổi từ Web
             if (index == 1) ref.read(cartProvider.notifier).fetchCart();
+            if (index == 2) ref.read(ordersProvider.notifier).fetchOrders();
           },
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textMuted,

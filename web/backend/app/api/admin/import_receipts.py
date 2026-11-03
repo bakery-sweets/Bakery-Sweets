@@ -1,17 +1,20 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_admin
-from app.api.files import file_response, PDF
+from app.api.files import file_response, read_upload, PDF, XLSX
 from thesweets_common.models.user import User
 from app.services.admin.import_receipt_service import AdminImportReceiptService
 from app.services.export.pdf_service import PdfExportService
+from app.services.export.excel_service import ExcelExportService
+from app.services.excel_import import IMPORT_RECEIPT_TEMPLATE
 from app.schemas.admin.import_receipt import (
     SupplierOut,
     ImportReceiptCreate,
     ImportReceiptStatusUpdate,
     ImportReceiptOut,
     ImportDetailOut,
+    ImportExcelPreviewOut,
 )
 from app.schemas.common import ResponseBase
 from app.services.realtime_service import RealtimeService
@@ -62,6 +65,28 @@ def list_receipts(
 ):
     receipts = AdminImportReceiptService.get_all(db, status=status)
     return ResponseBase(data=[_to_receipt_out(r) for r in receipts])
+
+# Hai route Excel phải khai báo trước "/{import_id}" để không bị bắt nhầm thành mã phiếu
+@router.get("/excel/template", summary="Tải file Excel mẫu để nhập phiếu hàng loạt")
+def download_excel_template(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    content = ExcelExportService.input_template(IMPORT_RECEIPT_TEMPLATE, AdminImportReceiptService.excel_template_rows(db))
+    return file_response(content, IMPORT_RECEIPT_TEMPLATE.filename, XLSX)
+
+@router.post("/excel/preview", response_model=ResponseBase[ImportExcelPreviewOut], summary="Đọc file Excel phiếu nhập (chỉ kiểm tra, chưa lưu)")
+async def preview_excel(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    content = await read_upload(file)
+    preview = AdminImportReceiptService.preview_excel(db, content, file.filename)
+    message = f"Đọc được {len(preview.lines)} dòng hợp lệ"
+    if preview.errors:
+        message += f", {len(preview.errors)} lỗi cần sửa"
+    return ResponseBase(message=message, data=preview)
 
 @router.get("/{import_id}", response_model=ResponseBase[ImportReceiptOut], summary="Xem chi tiết phiếu nhập")
 def get_receipt(

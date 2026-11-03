@@ -4,6 +4,7 @@ import { adminPromotionsApi } from "../../api/admin";
 import { formatVND, formatDate, apiErrorMessage, PROMO_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
 import "./OrderList.css";
+import "./AdminModal.css";
 
 const PAGE_SIZE = 10;
 

@@ -169,7 +169,7 @@ class CartScreen extends ConsumerWidget {
                                     placeholder: Container(color: AppColors.surfaceVariant),
                                     errorWidget: Container(
                                       color: AppColors.primaryLight,
-                                      child: const Center(child: Text('🧁', style: TextStyle(fontSize: 24))),
+                                      child: const Center(child: Icon(Icons.cake_outlined, size: 26, color: AppColors.primary)),
                                     ),
                                   ),
                                 ),
@@ -209,13 +209,21 @@ class CartScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     const SizedBox(height: 4),
+                                    // Thành tiền của dòng (đổi theo số lượng) + đơn giá để khách biết giá 1 cái
                                     Text(
-                                      AppTheme.formatCurrency(item.price),
+                                      AppTheme.formatCurrency(item.subtotal),
                                       style: const TextStyle(
                                         fontFamily: 'Poppins',
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.primary,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${AppTheme.formatCurrency(item.price)} × ${item.quantity}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: AppColors.textSecondary,
                                       ),
                                     ),
                                   ],
@@ -413,7 +421,7 @@ class _EmptyCartView extends StatelessWidget {
                 color: AppColors.primaryLight,
                 shape: BoxShape.circle,
               ),
-              child: const Text('🧁', style: TextStyle(fontSize: 64)),
+              child: const Icon(Icons.shopping_bag_outlined, size: 56, color: AppColors.primary),
             ),
             const SizedBox(height: 20),
             const Text(

@@ -128,3 +128,14 @@ class OrdersNotifier extends Notifier<OrdersState> {
 }
 
 final ordersProvider = NotifierProvider<OrdersNotifier, OrdersState>(OrdersNotifier.new);
+
+/// Lấy một đơn theo id từ API, dùng khi đơn chưa có trong danh sách đã tải
+/// (VD: mở từ thông báo lúc danh sách chưa tải xong)
+final orderDetailProvider = FutureProvider.autoDispose.family<OrderModel, int>((ref, orderId) async {
+  try {
+    final response = await ApiClient().dio.get('/orders/$orderId');
+    return OrderModel.fromJson(response.data as Map<String, dynamic>);
+  } catch (e) {
+    throw ApiException.from(e, 'Không tải được thông tin đơn hàng');
+  }
+});

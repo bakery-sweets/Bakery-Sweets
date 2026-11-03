@@ -2,6 +2,7 @@ from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 from decimal import Decimal
+from app.schemas.common import ExcelRowError
 
 class SupplierOut(BaseModel):
     supplier_id: int
@@ -54,3 +55,19 @@ class ImportReceiptOut(BaseModel):
     notes: Optional[str] = None
     created_at: Optional[datetime] = None
     details: List[ImportDetailOut] = []
+
+class ImportExcelLineOut(BaseModel):
+    """Một dòng hợp lệ đọc từ file Excel, dùng để điền sẵn form tạo phiếu nhập"""
+    row: int
+    product_id: int
+    product_name: str
+    size_id: int
+    size_name: str
+    stock_quantity: int
+    quantity: int
+    import_price: Decimal
+    note: Optional[str] = None
+
+class ImportExcelPreviewOut(BaseModel):
+    lines: List[ImportExcelLineOut] = []
+    errors: List[ExcelRowError] = []

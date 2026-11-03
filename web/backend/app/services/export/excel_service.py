@@ -4,12 +4,14 @@ from typing import Callable, List, Optional, Sequence
 
 from openpyxl import Workbook
 from openpyxl.chart import BarChart, Reference
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.core.labels import PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS
 from app.schemas.admin.report import PivotTableOut, RevenueReportOut
+from app.services.excel_import import DATA_SHEET, FIRST_ROW, GUIDE_SHEET, HEADER_ROW, META_SHEET, TemplateSpec
 from app.services.export.text import date_only
 from thesweets_common.models.order import Order
 
@@ -31,6 +33,10 @@ THIN = Side(style="thin", color=LINE)
 HEADER_FILL = PatternFill("solid", fgColor=PINK)
 SOFT_FILL = PatternFill("solid", fgColor=PINK_SOFT)
 ZEBRA_FILL = PatternFill("solid", fgColor=ZEBRA)
+# Ô người dùng cần điền trong file mẫu nhập liệu
+INPUT_FILL = PatternFill("solid", fgColor="FFF7D6")
+INPUT_HEADER_FILL = PatternFill("solid", fgColor="E0A100")
+KIND_FORMATS = {"text": None, "int": INTEGER, "money": MONEY}
 
 def _font(size: float = 11, bold: bool = False, color: str = INK, italic: bool = False) -> Font:
     return Font(name="Calibri", size=size, bold=bold, color=color, italic=italic)
@@ -151,6 +157,79 @@ def _pivot_sheet(
     _setup_print(ws, freeze="D7")
 
 class ExcelExportService:
+    @staticmethod
+    def input_template(spec: TemplateSpec, rows: Sequence[Sequence]) -> bytes:
+        """
+        File mẫu nhập liệu hàng loạt: sheet "Nhập liệu" điền sẵn dữ liệu hệ thống, chỉ mở khóa các cột nhập (nền vàng),
+        sheet "Hướng dẫn", và sheet ẩn _meta ghi mã mẫu để lúc đọc lại nhận ra đúng file.
+        `rows`: giá trị theo thứ tự spec.columns.
+        """
+        wb = Workbook()
+        cols = spec.columns
+        n = len(cols)
+
+        ws = wb.active
+        ws.title = DATA_SHEET
+        _widths(ws, [c.width for c in cols])
+        _title(ws, spec.title, spec.subtitle, n)
+        ws.cell(row=HEADER_ROW - 1, column=1, value=(
+            "Ô nền vàng là ô cần điền. Các cột còn lại bị khóa để tránh sửa nhầm. "
+            "Xem sheet \"Hướng dẫn\" trước khi điền."
+        )).font = _font(9.5, color=MUTED, italic=True)
+
+        last = _table(ws, HEADER_ROW, [c.header for c in cols], rows, [KIND_FORMATS[c.kind] for c in cols])
+        last = max(last, HEADER_ROW)
+        for idx, col in enumerate(cols, start=1):
+            if not col.input:
+                continue
+            ws.cell(row=HEADER_ROW, column=idx).fill = INPUT_HEADER_FILL
+            for r in range(FIRST_ROW, last + 1):
+                cell = ws.cell(row=r, column=idx)
+                cell.fill = INPUT_FILL
+                cell.protection = Protection(locked=False)
+            if col.kind in ("int", "money") and last >= FIRST_ROW:
+                is_int = col.kind == "int"
+                dv = DataValidation(
+                    type="whole" if is_int else "decimal",
+                    operator="greaterThanOrEqual",
+                    formula1=str(col.min_value or 0),
+                    allow_blank=True,
+                    showErrorMessage=True,
+                    errorTitle="Giá trị không hợp lệ",
+                    error=(f"{col.header}: nhập số nguyên ≥ {col.min_value or 0}" if is_int else f"{col.header}: nhập số tiền ≥ 0"),
+                )
+                letter = get_column_letter(idx)
+                dv.add(f"{letter}{FIRST_ROW}:{letter}{last}")
+                ws.add_data_validation(dv)
+
+        if last >= FIRST_ROW:
+            ws.auto_filter.ref = f"A{HEADER_ROW}:{get_column_letter(n)}{last}"
+        else:
+            ws.cell(row=FIRST_ROW, column=1, value="Chưa có bánh nào để điền.").font = _font(10, color=MUTED, italic=True)
+        _setup_print(ws, freeze=f"C{FIRST_ROW}")
+        # Khóa sheet (không mật khẩu, chỉ chống sửa nhầm); vẫn cho lọc, chỉnh độ rộng cột / dòng
+        ws.protection.sheet = True
+        ws.protection.autoFilter = False
+        ws.protection.formatColumns = False
+        ws.protection.formatRows = False
+
+        guide = wb.create_sheet(GUIDE_SHEET)
+        _widths(guide, [118, 4])
+        _title(guide, "HƯỚNG DẪN ĐIỀN FILE MẪU", spec.title.capitalize(), 2)
+        for i, line in enumerate(spec.guide):
+            guide.cell(row=5 + i, column=1, value=line).font = _font(11)
+        guide.sheet_view.showGridLines = False
+
+        meta = wb.create_sheet(META_SHEET)
+        meta["A1"], meta["B1"] = "template", spec.code
+        meta["A2"], meta["B2"] = "created_at", datetime.now().isoformat(timespec="seconds")
+        meta.sheet_state = "hidden"
+
+        wb.active = 0
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        return buffer.getvalue()
+
     @staticmethod
     def revenue_report(report: RevenueReportOut, orders: List[Order]) -> bytes:
         wb = Workbook()

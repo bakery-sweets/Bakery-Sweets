@@ -8,6 +8,37 @@ import popup from '../../utils/popup';
 import { voucherDescription, voucherMinOrder, calcVoucherDiscount } from '../../utils/voucher';
 import './Pay.css';
 
+// Giờ mở cửa của tiệm (đồng bộ với App & Backend): giờ lấy bánh phải nằm trong khoảng này
+const OPEN_TIME = '07:30';
+const CLOSE_TIME = '21:30';
+const OPENING_HOURS_LABEL = `${OPEN_TIME} - ${CLOSE_TIME}`;
+
+const toTimeInput = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+// Chuỗi "HH:mm" so sánh được trực tiếp
+const isWithinOpeningHours = (timeStr) => timeStr >= OPEN_TIME && timeStr <= CLOSE_TIME;
+
+// Thời điểm hợp lệ gần nhất: trước giờ mở thì lùi tới giờ mở, sau giờ đóng thì sang giờ mở hôm sau
+const nextValidPickup = (d) => {
+  const timeStr = toTimeInput(d);
+  if (timeStr < OPEN_TIME) return { dateStr: toLocalDateInput(d), timeStr: OPEN_TIME };
+  if (timeStr > CLOSE_TIME) {
+    const tomorrow = new Date(d);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return { dateStr: toLocalDateInput(tomorrow), timeStr: OPEN_TIME };
+  }
+  return { dateStr: toLocalDateInput(d), timeStr };
+};
+
+// Câu báo lỗi nếu giờ lấy bánh không hợp lệ, hợp lệ thì trả null
+const pickupError = (dateStr, timeStr) => {
+  const pickupAt = new Date(`${dateStr}T${timeStr}`);
+  if (!dateStr || !timeStr || Number.isNaN(pickupAt.getTime())) return 'Vui lòng chọn ngày và giờ lấy bánh!';
+  if (pickupAt < new Date()) return 'Giờ lấy bánh phải ở thời điểm sau hiện tại!';
+  if (!isWithinOpeningHours(timeStr)) return `Giờ lấy bánh phải trong giờ mở cửa của tiệm (${OPENING_HOURS_LABEL})!`;
+  return null;
+};
+
 // Đổi voucher từ API /client/promotions sang dạng dùng trong trang thanh toán
 const toVoucher = (p) => ({
   code: p.promotion_code,
@@ -24,12 +55,8 @@ export default function Pay() {
   const navigate = useNavigate();
 
   // Tính giờ mặc định sau 45 phút giống bên Mobile
-  const getDefaultPickup = () => {
-    const d = new Date(Date.now() + 45 * 60000);
-    const dateStr = toLocalDateInput(d);
-    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    return { dateStr, timeStr };
-  };
+  // Rơi ngoài giờ mở cửa thì dời tới giờ mở cửa gần nhất
+  const getDefaultPickup = () => nextValidPickup(new Date(Date.now() + 45 * 60000));
 
   const defaultPickup = getDefaultPickup();
 
@@ -55,7 +82,6 @@ export default function Pay() {
   const [customVoucherCode, setCustomVoucherCode] = useState('');
   // Chỉ gồm mã khách còn dùng được (server đã lọc mã hết hạn, tạm dừng, đã dùng hết lượt)
   const [vouchers, setVouchers] = useState([]);
-  const [copiedStk, setCopiedStk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderSuccessModal, setOrderSuccessModal] = useState(null);
 
@@ -76,18 +102,16 @@ export default function Pay() {
   const setQuickPickupTime = (minutes) => {
     const target = new Date(Date.now() + minutes * 60000);
     const dateStr = toLocalDateInput(target);
-    const timeStr = `${String(target.getHours()).padStart(2, '0')}:${String(target.getMinutes()).padStart(2, '0')}`;
+    const timeStr = toTimeInput(target);
+    if (!isWithinOpeningHours(timeStr)) {
+      popup.warning(`Lúc đó tiệm đã đóng cửa (giờ mở cửa ${OPENING_HOURS_LABEL}), bạn chọn giờ khác nhé!`);
+      return;
+    }
     setShippingInfo({
       ...shippingInfo,
       pickupDate: dateStr,
       pickupTime: timeStr
     });
-  };
-
-  const handleCopyStk = () => {
-    navigator.clipboard.writeText("012345678999");
-    setCopiedStk(true);
-    setTimeout(() => setCopiedStk(false), 2000);
   };
 
   const handleSelectVoucher = (voucher) => {
@@ -146,9 +170,9 @@ export default function Pay() {
       }
     }
 
-    const pickupAt = new Date(`${shippingInfo.pickupDate}T${shippingInfo.pickupTime}`);
-    if (Number.isNaN(pickupAt.getTime()) || pickupAt < new Date()) {
-      popup.warning("Giờ lấy bánh phải ở thời điểm sau hiện tại!");
+    const pickupMessage = pickupError(shippingInfo.pickupDate, shippingInfo.pickupTime);
+    if (pickupMessage) {
+      popup.warning(pickupMessage);
       return;
     }
 
@@ -194,7 +218,9 @@ export default function Pay() {
         recipient_desc: recipientDesc,
         store_address: 'The Sweets Bakery (120 Hai Bà Trưng, Quận 1)',
         pickup_time: `${shippingInfo.pickupTime} ngày ${shippingInfo.pickupDate}`,
-        payment_method_label: shippingInfo.paymentMethod === 'COD' ? 'Tiền mặt khi nhận bánh' : 'Chuyển khoản Vietcombank',
+        payment_method_label: shippingInfo.paymentMethod === 'COD'
+          ? 'Tiền mặt khi nhận bánh'
+          : 'Chuyển khoản ngân hàng · Đã thanh toán thành công',
         final_cost: order.final_cost,
       });
       await fetchCart();
@@ -205,10 +231,8 @@ export default function Pay() {
     }
   };
 
-  const transferContent = `${currentRecipientPhone ? currentRecipientPhone : 'SDT'} - Dat banh Sweets`;
-  const qrUrl = `https://img.vietqr.io/image/970436-012345678999-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent(transferContent)}&accountName=TIEM%20BANH%20THE%20SWEETS`;
-
   const eligibleVouchersCount = vouchers.filter(v => total >= v.minOrder).length;
+  const pickupMessage = pickupError(shippingInfo.pickupDate, shippingInfo.pickupTime);
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -277,6 +301,8 @@ export default function Pay() {
                     <input 
                       type="time" 
                       required 
+                      min={OPEN_TIME}
+                      max={CLOSE_TIME}
                       value={shippingInfo.pickupTime}
                       onChange={e => setShippingInfo({...shippingInfo, pickupTime: e.target.value})}
                     />
@@ -296,6 +322,12 @@ export default function Pay() {
                     + Sau 2 tiếng
                   </button>
                 </div>
+
+                {pickupMessage ? (
+                  <p className="pickup-hours-note error">{pickupMessage}</p>
+                ) : (
+                  <p className="pickup-hours-note">Giờ mở cửa tiệm: {OPENING_HOURS_LABEL} (tất cả các ngày)</p>
+                )}
               </div>
             </div>
 
@@ -489,68 +521,11 @@ export default function Pay() {
                   />
                   <div className="method-info">
                     <strong>Chuyển khoản ngân hàng (Banking)</strong>
-                    <span>Quét mã QR hoặc chuyển khoản qua STK The Sweets</span>
+                    <span>Thanh toán ngay khi đặt, không cần trả tiền khi nhận bánh</span>
                   </div>
                 </label>
               </div>
 
-              {/* BOX THÔNG TIN CHUYỂN KHOẢN CỦA CHỦ TIỆM BÊN MOBILE */}
-              {shippingInfo.paymentMethod === 'Banking' && (
-                <div className="shop-bank-card">
-                  <div className="bank-card-header">
-                    <div className="bank-title-area">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
-                      <strong>THÔNG TIN TÀI KHOẢN TIỆM BÁNH</strong>
-                    </div>
-                    <span className="bank-tag">Vietcombank</span>
-                  </div>
-
-                  <div className="bank-details-grid">
-                    <div className="bank-info-row">
-                      <span className="info-label">Ngân hàng:</span>
-                      <span className="info-val">Vietcombank (CN TP.HCM)</span>
-                    </div>
-
-                    <div className="bank-info-row stk-row">
-                      <span className="info-label">Số tài khoản:</span>
-                      <div className="stk-copy-box">
-                        <span className="stk-number">0123 4567 8999</span>
-                        <button type="button" onClick={handleCopyStk} className="copy-btn">
-                          {copiedStk ? '✓ Đã chép' : 'Sao chép'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="bank-info-row">
-                      <span className="info-label">Chủ tài khoản:</span>
-                      <span className="info-val highlight">TIEM BANH THE SWEETS</span>
-                    </div>
-
-                    <div className="bank-info-row">
-                      <span className="info-label">Số tiền:</span>
-                      <span className="info-val amount">{finalTotal.toLocaleString('vi-VN')}₫</span>
-                    </div>
-
-                    <div className="bank-info-row content-row">
-                      <span className="info-label">Nội dung CK:</span>
-                      <span className="info-val transfer-syntax">{transferContent}</span>
-                    </div>
-                  </div>
-
-                  {/* Mã QR quét tự động */}
-                  <div className="bank-qr-box">
-                    <img 
-                      src={qrUrl} 
-                      alt="Mã QR Chuyển khoản The Sweets" 
-                      className="bank-qr-img"
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
-                    <div className="qr-hint">
-                      <p>Quét mã QR bằng ứng dụng ngân hàng bất kỳ để thanh toán nhanh chóng và chính xác số tiền.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
           </div>

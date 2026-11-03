@@ -37,6 +37,11 @@ class ProductSizeModel {
   }
 }
 
+/// Dưới ngưỡng này mới báo "sắp hết" cho khách (đồng bộ với Web: utils/stock.js)
+const int lowStockThreshold = 10;
+
+bool isLowStock(int stock) => stock > 0 && stock < lowStockThreshold;
+
 class ProductModel {
   final int productId;
   final String productName;
@@ -78,6 +83,12 @@ class ProductModel {
     if (sizes.isEmpty) return 0.0;
     return sizes.map((s) => s.price).reduce((a, b) => a > b ? a : b);
   }
+
+  /// Tổng tồn kho của mọi size
+  int get totalStock => sizes.fold(0, (sum, s) => sum + s.stockQuantity);
+
+  /// Không còn size nào có hàng
+  bool get isSoldOut => totalStock <= 0;
 
   bool hasSize(String sizeQuery) {
     if (sizes.isEmpty) return true;

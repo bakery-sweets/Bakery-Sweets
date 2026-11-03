@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import AdminHeader from "../components/AdminHeader";
 import { adminOrdersApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
@@ -137,7 +136,6 @@ export default function OrderList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [printAll, setPrintAll] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -200,19 +198,11 @@ export default function OrderList() {
   // Có đơn mới hoặc đơn vừa được cập nhật (khách hủy, nhân viên khác đổi trạng thái): tải lại ngay
   useRealtimeEvent(["new_order", "order_updated"], () => loadOrders());
 
-  // Khi in bảng đối soát, hiển thị toàn bộ đơn đang lọc thay vì chỉ trang hiện tại
+  // In phiếu thu xong thì bỏ chế độ in riêng phiếu để trang hiển thị lại bình thường
   useEffect(() => {
-    const showAll = () => flushSync(() => setPrintAll(true));
-    const restore = () => {
-      setPrintAll(false);
-      document.body.classList.remove("print-order-receipt");
-    };
-    window.addEventListener("beforeprint", showAll);
+    const restore = () => document.body.classList.remove("print-order-receipt");
     window.addEventListener("afterprint", restore);
-    return () => {
-      window.removeEventListener("beforeprint", showAll);
-      window.removeEventListener("afterprint", restore);
-    };
+    return () => window.removeEventListener("afterprint", restore);
   }, []);
 
   const handleRefresh = () => {
@@ -366,7 +356,7 @@ export default function OrderList() {
   const filteredOrders = activeTab === "all" ? searched : searched.filter((o) => o.status === activeTab);
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const page = Math.min(currentPage, totalPages);
-  const visibleOrders = printAll ? filteredOrders : filteredOrders.slice((page - 1) * pageSize, page * pageSize);
+  const visibleOrders = filteredOrders.slice((page - 1) * pageSize, page * pageSize);
 
   const lastUpdatedText = lastUpdated?.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
   const showSkeleton = loading && orders.length === 0;
@@ -468,10 +458,6 @@ export default function OrderList() {
           </div>
 
           <div className="admin-page-actions">
-            <button className="btn-pill-outline" type="button" onClick={() => window.print()}>
-              <ion-icon name="print-outline"></ion-icon>
-              <span>In Bảng Đối Soát</span>
-            </button>
             <button className={`btn-pill-primary ${loading ? "is-spinning" : ""}`} type="button" disabled={loading} onClick={handleRefresh}>
               <ion-icon name="refresh-outline"></ion-icon>
               <span>Làm Mới (Live)</span>
