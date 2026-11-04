@@ -17,6 +17,44 @@
   box-sizing: border-box;
 }
 
+/* THANH TRÊN CÙNG: NÚT "TIẾP TỤC MUA HÀNG" */
+.product-detail-topbar {
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 20px;
+}
+
+.product-detail-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px 8px 14px;
+  background: #ffffff;
+  color: var(--color-navy);
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.product-detail-back-btn ion-icon {
+  font-size: 17px;
+  transition: transform 0.2s ease;
+}
+
+.product-detail-back-btn:hover {
+  background: var(--color-pink-soft);
+  color: var(--color-pink-hover);
+  border-color: var(--color-pink);
+}
+
+.product-detail-back-btn:hover ion-icon {
+  transform: translateX(-3px);
+}
+
 /* HÌNH ẢNH */
 .product-detail-img-box {
   flex: 1;
@@ -217,12 +255,47 @@
 }
 
 /* ACTION BUTTONS: THÊM GIỎ HÀNG & MUA NGAY */
+.product-detail-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 30px;
+}
+
 .product-detail-actions-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 30px;
   flex-wrap: wrap;
+}
+
+/* NÚT "TIẾP TỤC CHỌN BÁNH" (dưới cụm hành động) */
+.product-detail-continue-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #ffffff;
+  color: var(--color-navy);
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.product-detail-continue-btn ion-icon {
+  font-size: 17px;
+}
+
+.product-detail-continue-btn:hover {
+  background: var(--color-pink-soft);
+  color: var(--color-pink-hover);
+  border-color: var(--color-pink);
+  border-style: solid;
 }
 
 .product-detail-add-btn {
@@ -332,6 +405,15 @@
     min-width: 85px;
     padding: 8px;
     font-size: 12px;
+  }
+
+  .product-detail-topbar {
+    margin-bottom: 14px;
+  }
+
+  .product-detail-actions {
+    align-items: stretch;
+    gap: 10px;
   }
 
   .product-detail-actions-row {

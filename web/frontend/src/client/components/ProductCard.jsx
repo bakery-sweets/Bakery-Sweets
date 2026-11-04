@@ -6,8 +6,10 @@ import { cheapestAvailableSize, productStock, isLowStock } from '../../utils/sto
 import popup from '../../utils/popup';
 import './ProductCard.css';
 
-// Thẻ bánh dùng chung cho trang chủ & trang sản phẩm
-export default function ProductCard({ product }) {
+// Thẻ bánh dùng chung cho trang chủ & trang sản phẩm.
+// onOpenDetail: chỉ trang danh sách truyền vào, để lưu ngữ cảnh trước khi sang trang chi tiết
+// (nút "Tiếp tục mua hàng" / Back sẽ cuộn về đúng thẻ này).
+export default function ProductCard({ product, onOpenDetail }) {
   const { addItem } = useCartStore();
   const [added, setAdded] = useState(false);
   // Thêm nhanh dùng size rẻ nhất còn hàng; không còn size nào thì món đã hết hàng
@@ -37,9 +39,23 @@ export default function ProductCard({ product }) {
     }
   };
 
+  // Ctrl/Cmd/Shift/Alt + click mở tab mới, trang danh sách vẫn ở nguyên chỗ nên không lưu ngữ cảnh
+  const handleOpenDetail = (e) => {
+    if (!onOpenDetail || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    onOpenDetail(product);
+  };
+
   return (
-    <div className="home-product-card">
-      <Link to={`/product/${product.product_id}`} className="home-product-link">
+    <div
+      className="home-product-card"
+      id={onOpenDetail ? `product-card-${product.product_id}` : undefined}
+    >
+      <Link
+        to={`/product/${product.product_id}`}
+        className="home-product-link"
+        state={onOpenDetail ? { fromProducts: true } : undefined}
+        onClick={handleOpenDetail}
+      >
         <div className="home-product-img-wrap">
           <img
             src={imageUrl(product.image)}

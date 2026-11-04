@@ -1,14 +1,33 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams, useLocation, useNavigationType } from 'react-router-dom';
 import { clientProductsApi } from '../../api/client';
 import ProductCard from '../components/ProductCard';
 import { formatVND, apiErrorMessage } from '../../utils/format';
 import { useRealtimeVersion } from '../../realtime/useRealtime';
+import { saveProductsReturn, readProductsReturn, clearProductsReturn } from '../../utils/productsReturn';
 import './Products.css';
 
 const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
+const HIGHLIGHT_MS = 1500;
 
 export default function Products() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  // Ngữ cảnh quay lại từ trang chi tiết: chỉ dùng khi về bằng nút Back / "Tiếp tục mua hàng"
+  // và đúng URL danh sách lúc rời đi. Vào /products bằng menu thì bỏ qua, mở trang như mới.
+  const [restoreCtx] = useState(() => {
+    const ctx = readProductsReturn();
+    if (!ctx) return null;
+    const isReturn = navigationType === 'POP' || location.state?.restoreScroll;
+    return isReturn && ctx.search === location.search ? ctx : null;
+  });
+  const restorePendingRef = useRef(Boolean(restoreCtx));
+
+  // Ngữ cảnh chỉ dùng một lần: xóa ngay để F5 hay lần vào sau không bị cuộn bất ngờ
+  useEffect(() => {
+    clearProductsReturn();
+  }, []);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
   // Danh mục lấy từ URL (?category=id) để trang chủ có thể dẫn thẳng tới một danh mục
@@ -46,12 +65,13 @@ export default function Products() {
   // Filter states
   const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [searchInput, setSearchInput] = useState(urlSearch);
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [sortBy, setSortBy] = useState('default');
+  // Khoảng giá, sắp xếp, trang không nằm trên URL nên lấy lại từ ngữ cảnh quay lại (nếu có)
+  const [minPrice, setMinPrice] = useState(restoreCtx?.minPrice ?? '');
+  const [maxPrice, setMaxPrice] = useState(restoreCtx?.maxPrice ?? '');
+  const [sortBy, setSortBy] = useState(restoreCtx?.sortBy ?? 'default');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(restoreCtx?.page ?? 1);
   const ITEMS_PER_PAGE = 8; // 4 sản phẩm / hàng x 2 hàng = 8 sản phẩm mỗi trang
 
   // Sync search input if URL search param changes
@@ -86,6 +106,52 @@ export default function Products() {
     const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
     return filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredProducts, validPage]);
+
+  // Lưu bộ lọc + trang + bánh vừa bấm trước khi sang trang chi tiết
+  const handleOpenDetail = (product) =>
+    saveProductsReturn({
+      productId: product.product_id,
+      search: location.search,
+      minPrice,
+      maxPrice,
+      sortBy,
+      page: validPage,
+    });
+
+  // Quay lại từ trang chi tiết: chuyển tới trang phân trang chứa bánh vừa xem,
+  // rồi cuộn mượt tới giữa thẻ bánh đó và nháy viền để khách nhận ra ngay.
+  useEffect(() => {
+    if (!restorePendingRef.current || loading) return;
+    if (loadError) {
+      restorePendingRef.current = false;
+      return;
+    }
+    const targetIndex = filteredProducts.findIndex((p) => p.product_id === restoreCtx.productId);
+    if (targetIndex !== -1) {
+      const targetPage = Math.floor(targetIndex / ITEMS_PER_PAGE) + 1;
+      if (targetPage !== validPage) {
+        setPage(targetPage); // effect chạy lại sau khi trang mới render xong
+        return;
+      }
+    }
+    // Đợi lưới bánh vẽ xong mới cuộn
+    const timer = setTimeout(() => {
+      restorePendingRef.current = false;
+      const card = document.getElementById(`product-card-${restoreCtx.productId}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Nháy viền sau một nhịp để thẻ đã cuộn vào tầm mắt khi hiệu ứng chạy
+        setTimeout(() => {
+          card.classList.add('product-card-highlight');
+          setTimeout(() => card.classList.remove('product-card-highlight'), HIGHLIGHT_MS);
+        }, 300);
+      } else if (restoreCtx.scrollY > 0) {
+        // Bánh không còn trong danh sách (đã bị ẩn/xóa): về lại vị trí cuộn cũ
+        window.scrollTo({ top: restoreCtx.scrollY, behavior: 'smooth' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [loading, loadError, filteredProducts, validPage, restoreCtx]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || newPage === validPage) return;
@@ -432,7 +498,11 @@ export default function Products() {
               <>
                 <div className="home-product-grid">
                   {paginatedProducts.map((product) => (
-                    <ProductCard key={product.product_id} product={product} />
+                    <ProductCard
+                      key={product.product_id}
+                      product={product}
+                      onOpenDetail={handleOpenDetail}
+                    />
                   ))}
                 </div>
 

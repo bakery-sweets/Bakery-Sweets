@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useCartStore from '../../store/cartStore';
 import { clientProductsApi } from '../../api/client';
@@ -7,11 +7,13 @@ import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
 import { sizeStock, productStock, isLowStock, cheapestAvailableSize } from '../../utils/stock';
 import popup from '../../utils/popup';
 import { useRealtimeEvent } from '../../realtime/useRealtime';
+import { readProductsReturn } from '../../utils/productsReturn';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const addToCart = useCartStore(state => state.addItem);
   const quantityInCart = useCartStore(state => state.quantityInCart);
@@ -106,6 +108,19 @@ export default function ProductDetail() {
     }
   };
 
+  // "Tiếp tục mua hàng": về lại danh sách đúng chỗ khách đang xem.
+  // Vừa bấm từ trang /products sang thì lùi một bước lịch sử (giữ nguyên URL lọc, như nút Back);
+  // còn lại (đã đi tiếp qua bánh gợi ý, mở link trực tiếp...) thì mở /products với bộ lọc đã lưu.
+  const handleContinueShopping = () => {
+    if (location.state?.fromProducts) {
+      navigate(-1);
+      return;
+    }
+    const ctx = readProductsReturn();
+    if (ctx) navigate(`/products${ctx.search}`, { state: { restoreScroll: true } });
+    else navigate('/products');
+  };
+
   // Thêm nhanh vào giỏ hàng từ thẻ gợi ý
   const handleQuickAddToCart = async (e, item) => {
     e.preventDefault();
@@ -167,6 +182,13 @@ export default function ProductDetail() {
 
   return (
     <div className="product-detail-page">
+      <div className="product-detail-topbar">
+        <button type="button" className="product-detail-back-btn" onClick={handleContinueShopping}>
+          <ion-icon name="arrow-back-outline"></ion-icon>
+          <span>Tiếp tục mua hàng</span>
+        </button>
+      </div>
+
       <div className="product-detail-container">
 
         {/* HÌNH ẢNH SẢN PHẨM */}
@@ -257,25 +279,32 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* NÚT HÀNH ĐỘNG: THÊM GIỎ HÀNG & MUA NGAY */}
-          <div className="product-detail-actions-row">
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              className="product-detail-add-btn"
-              disabled={!canAdd}
-            >
-              <ion-icon name="cart-outline" style={{ fontSize: '20px' }}></ion-icon>
-              <span>Thêm vào giỏ hàng</span>
-            </button>
+          {/* NÚT HÀNH ĐỘNG: THÊM GIỎ HÀNG & MUA NGAY, bên dưới là tiếp tục chọn bánh */}
+          <div className="product-detail-actions">
+            <div className="product-detail-actions-row">
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className="product-detail-add-btn"
+                disabled={!canAdd}
+              >
+                <ion-icon name="cart-outline" style={{ fontSize: '20px' }}></ion-icon>
+                <span>Thêm vào giỏ hàng</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={handleBuyNow}
-              className="product-detail-buy-now-btn"
-              disabled={!currentSizeObj || currentStock <= 0}
-            >
-              <span>Mua ngay</span>
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                className="product-detail-buy-now-btn"
+                disabled={!currentSizeObj || currentStock <= 0}
+              >
+                <span>Mua ngay</span>
+              </button>
+            </div>
+
+            <button type="button" className="product-detail-continue-btn" onClick={handleContinueShopping}>
+              <ion-icon name="bag-outline"></ion-icon>
+              <span>Tiếp tục chọn bánh</span>
             </button>
           </div>
 
