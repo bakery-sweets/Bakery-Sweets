@@ -68,7 +68,7 @@ def _to_order_out(o) -> AdminOrderOut:
         promotion_name=promo.promotion_name if promo else None,
         total_quantity=o.total_quantity,
         total_cost=o.total_cost,
-        discount_amount=o.discount_amount or 0,
+        discount_amount=o.discount_amount or Decimal("0"),
         final_cost=o.final_cost,
         status=o.status,
         payment_method=o.payment_method,

@@ -16,5 +16,7 @@
             "name": "thesweets_db"
         }
     ],
-    "java.compile.nullAnalysis.mode": "automatic"
+    "java.compile.nullAnalysis.mode": "automatic",
+    // ORM models dùng chung (thesweets_common) nằm ở common/; trong Docker được nạp qua PYTHONPATH=/common
+    "python.analysis.extraPaths": ["./common"]
 }
