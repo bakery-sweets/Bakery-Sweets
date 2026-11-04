@@ -17,8 +17,10 @@ export default function AdminLayout() {
   useRealtimeConnection(token);
 
   useRealtimeEvent("new_order", (e) => {
+    // Đơn do chính nhân viên này vừa nhận qua điện thoại: máy của họ không cần chuông / thông báo
+    if (e.created_by && e.created_by === useAdminAuthStore.getState().user?.phone) return;
     playNotificationSound();
-    const source = e.source === "mobile" ? " · đặt từ App" : "";
+    const source = e.source === "mobile" ? " · đặt từ App" : e.source === "phone" ? " · qua điện thoại" : "";
     popup.info(`#${e.order_code} · ${e.recipient_name} · ${formatVND(e.final_cost)}${source}`, {
       title: "Có đơn hàng mới",
       duration: 8000,
