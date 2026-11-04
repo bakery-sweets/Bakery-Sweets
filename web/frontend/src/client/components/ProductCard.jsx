@@ -7,9 +7,9 @@ import popup from '../../utils/popup';
 import './ProductCard.css';
 
 // Thẻ bánh dùng chung cho trang chủ & trang sản phẩm.
-// onOpenDetail: chỉ trang danh sách truyền vào, để lưu ngữ cảnh trước khi sang trang chi tiết
-// (nút "Tiếp tục mua hàng" / Back sẽ cuộn về đúng thẻ này).
-export default function ProductCard({ product, onOpenDetail }) {
+// anchorId + onOpenDetail(anchorId, product): trang danh sách truyền vào để lưu ngữ cảnh trước khi
+// sang trang chi tiết (nút "Tiếp tục mua hàng" / Back sẽ cuộn về đúng thẻ có id = anchorId).
+export default function ProductCard({ product, anchorId, onOpenDetail }) {
   const { addItem } = useCartStore();
   const [added, setAdded] = useState(false);
   // Thêm nhanh dùng size rẻ nhất còn hàng; không còn size nào thì món đã hết hàng
@@ -42,18 +42,15 @@ export default function ProductCard({ product, onOpenDetail }) {
   // Ctrl/Cmd/Shift/Alt + click mở tab mới, trang danh sách vẫn ở nguyên chỗ nên không lưu ngữ cảnh
   const handleOpenDetail = (e) => {
     if (!onOpenDetail || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-    onOpenDetail(product);
+    onOpenDetail(anchorId, product);
   };
 
   return (
-    <div
-      className="home-product-card"
-      id={onOpenDetail ? `product-card-${product.product_id}` : undefined}
-    >
+    <div className="home-product-card" id={anchorId}>
       <Link
         to={`/product/${product.product_id}`}
         className="home-product-link"
-        state={onOpenDetail ? { fromProducts: true } : undefined}
+        state={onOpenDetail ? { fromList: true } : undefined}
         onClick={handleOpenDetail}
       >
         <div className="home-product-img-wrap">

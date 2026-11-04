@@ -4,6 +4,7 @@ import { clientProductsApi } from '../../api/client';
 import ProductCard from '../components/ProductCard';
 import { imageUrl, apiErrorMessage } from '../../utils/format';
 import { useRealtimeVersion } from '../../realtime/useRealtime';
+import { useListReturn, useScrollToReturnAnchor } from '../hooks/useListReturn';
 import './Home.css';
 
 const BANNERS = ['/assets/Img/banner1.jpg', '/assets/Img/banner2.jpg'];
@@ -38,6 +39,10 @@ export default function Home() {
   const [currentBanner, setCurrentBanner] = useState(0);
   // Tồn kho / sản phẩm thay đổi: tải lại để nhãn "hết hàng", bánh mới... luôn đúng
   const realtimeVersion = useRealtimeVersion(['stock_updated', 'products_changed']);
+  // Quay lại từ trang chi tiết (Back / "Tiếp tục mua hàng"): cuộn về đúng thẻ bánh vừa xem
+  const { restoreCtx, saveReturn } = useListReturn();
+  useScrollToReturnAnchor(restoreCtx, !loading);
+  const handleOpenDetail = (anchorId) => saveReturn(anchorId);
 
   useEffect(() => {
     Promise.all([
@@ -173,7 +178,12 @@ export default function Home() {
           </div>
           <div className="home-bestsellers-grid">
             {bestSellers.map((product) => (
-              <ProductCard key={product.product_id} product={product} />
+              <ProductCard
+                key={product.product_id}
+                product={product}
+                anchorId={`home-best-${product.product_id}`}
+                onOpenDetail={handleOpenDetail}
+              />
             ))}
           </div>
         </section>
@@ -192,8 +202,14 @@ export default function Home() {
             </Link>
           </div>
           <div className="home-bestsellers-grid">
+            {/* Một bánh có thể vừa bán chạy vừa là món mới: anchor tách theo khu vực để về đúng thẻ đã bấm */}
             {newProducts.map((product) => (
-              <ProductCard key={product.product_id} product={product} />
+              <ProductCard
+                key={product.product_id}
+                product={product}
+                anchorId={`home-new-${product.product_id}`}
+                onOpenDetail={handleOpenDetail}
+              />
             ))}
           </div>
         </section>

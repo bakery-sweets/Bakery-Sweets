@@ -7,7 +7,7 @@ import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
 import { sizeStock, productStock, isLowStock, cheapestAvailableSize } from '../../utils/stock';
 import popup from '../../utils/popup';
 import { useRealtimeEvent } from '../../realtime/useRealtime';
-import { readProductsReturn } from '../../utils/productsReturn';
+import { readListReturn } from '../hooks/useListReturn';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
@@ -108,16 +108,16 @@ export default function ProductDetail() {
     }
   };
 
-  // "Tiếp tục mua hàng": về lại danh sách đúng chỗ khách đang xem.
-  // Vừa bấm từ trang /products sang thì lùi một bước lịch sử (giữ nguyên URL lọc, như nút Back);
-  // còn lại (đã đi tiếp qua bánh gợi ý, mở link trực tiếp...) thì mở /products với bộ lọc đã lưu.
+  // "Tiếp tục mua hàng": về lại trang danh sách (trang chủ hoặc /products) đúng chỗ khách đang xem.
+  // Vừa bấm thẻ bánh từ danh sách sang thì lùi một bước lịch sử (giữ nguyên URL lọc, như nút Back);
+  // đã đi tiếp qua bánh gợi ý thì mở lại trang danh sách đã lưu; không có ngữ cảnh thì về /products.
   const handleContinueShopping = () => {
-    if (location.state?.fromProducts) {
+    if (location.state?.fromList) {
       navigate(-1);
       return;
     }
-    const ctx = readProductsReturn();
-    if (ctx) navigate(`/products${ctx.search}`, { state: { restoreScroll: true } });
+    const ctx = readListReturn();
+    if (ctx) navigate(ctx.path, { state: { restoreScroll: true } });
     else navigate('/products');
   };
 

@@ -1,32 +1,17 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams, useLocation, useNavigationType } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { clientProductsApi } from '../../api/client';
 import ProductCard from '../components/ProductCard';
 import { formatVND, apiErrorMessage } from '../../utils/format';
 import { useRealtimeVersion } from '../../realtime/useRealtime';
-import { saveProductsReturn, readProductsReturn, clearProductsReturn } from '../../utils/productsReturn';
+import { useListReturn, useScrollToReturnAnchor } from '../hooks/useListReturn';
 import './Products.css';
 
 const CATEGORY_ICONS = ['ice-cream-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline'];
-const HIGHLIGHT_MS = 1500;
 
 export default function Products() {
-  const location = useLocation();
-  const navigationType = useNavigationType();
-  // Ngữ cảnh quay lại từ trang chi tiết: chỉ dùng khi về bằng nút Back / "Tiếp tục mua hàng"
-  // và đúng URL danh sách lúc rời đi. Vào /products bằng menu thì bỏ qua, mở trang như mới.
-  const [restoreCtx] = useState(() => {
-    const ctx = readProductsReturn();
-    if (!ctx) return null;
-    const isReturn = navigationType === 'POP' || location.state?.restoreScroll;
-    return isReturn && ctx.search === location.search ? ctx : null;
-  });
-  const restorePendingRef = useRef(Boolean(restoreCtx));
-
-  // Ngữ cảnh chỉ dùng một lần: xóa ngay để F5 hay lần vào sau không bị cuộn bất ngờ
-  useEffect(() => {
-    clearProductsReturn();
-  }, []);
+  // Quay lại từ trang chi tiết: khôi phục bộ lọc, trang và cuộn về thẻ bánh vừa xem
+  const { restoreCtx, saveReturn } = useListReturn();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
@@ -108,50 +93,31 @@ export default function Products() {
   }, [filteredProducts, validPage]);
 
   // Lưu bộ lọc + trang + bánh vừa bấm trước khi sang trang chi tiết
-  const handleOpenDetail = (product) =>
-    saveProductsReturn({
+  const handleOpenDetail = (anchorId, product) =>
+    saveReturn(anchorId, {
       productId: product.product_id,
-      search: location.search,
       minPrice,
       maxPrice,
       sortBy,
       page: validPage,
     });
 
-  // Quay lại từ trang chi tiết: chuyển tới trang phân trang chứa bánh vừa xem,
-  // rồi cuộn mượt tới giữa thẻ bánh đó và nháy viền để khách nhận ra ngay.
-  useEffect(() => {
-    if (!restorePendingRef.current || loading) return;
-    if (loadError) {
-      restorePendingRef.current = false;
-      return;
-    }
-    const targetIndex = filteredProducts.findIndex((p) => p.product_id === restoreCtx.productId);
-    if (targetIndex !== -1) {
-      const targetPage = Math.floor(targetIndex / ITEMS_PER_PAGE) + 1;
-      if (targetPage !== validPage) {
-        setPage(targetPage); // effect chạy lại sau khi trang mới render xong
-        return;
-      }
-    }
-    // Đợi lưới bánh vẽ xong mới cuộn
-    const timer = setTimeout(() => {
-      restorePendingRef.current = false;
-      const card = document.getElementById(`product-card-${restoreCtx.productId}`);
-      if (card) {
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Nháy viền sau một nhịp để thẻ đã cuộn vào tầm mắt khi hiệu ứng chạy
-        setTimeout(() => {
-          card.classList.add('product-card-highlight');
-          setTimeout(() => card.classList.remove('product-card-highlight'), HIGHLIGHT_MS);
-        }, 300);
-      } else if (restoreCtx.scrollY > 0) {
-        // Bánh không còn trong danh sách (đã bị ẩn/xóa): về lại vị trí cuộn cũ
-        window.scrollTo({ top: restoreCtx.scrollY, behavior: 'smooth' });
-      }
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [loading, loadError, filteredProducts, validPage, restoreCtx]);
+  // Quay lại từ trang chi tiết: bánh vừa xem nằm ở trang phân trang nào (dữ liệu có thể đã đổi từ lúc rời đi)
+  const restoreTargetPage = useMemo(() => {
+    if (!restoreCtx || loading) return null;
+    const idx = filteredProducts.findIndex((p) => p.product_id === restoreCtx.productId);
+    return idx === -1 ? null : Math.floor(idx / ITEMS_PER_PAGE) + 1;
+  }, [restoreCtx, loading, filteredProducts]);
+
+  // Chỉ cuộn khi đã đứng đúng trang chứa thẻ bánh
+  const restoring = useScrollToReturnAnchor(
+    restoreCtx,
+    !loading && (restoreTargetPage === null || restoreTargetPage === validPage)
+  );
+  // Chuyển ngay tới trang đó trong lúc render (React render lại trước khi vẽ, không nháy trang cũ)
+  if (restoring && restoreTargetPage !== null && restoreTargetPage !== page) {
+    setPage(restoreTargetPage);
+  }
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || newPage === validPage) return;
@@ -501,6 +467,7 @@ export default function Products() {
                     <ProductCard
                       key={product.product_id}
                       product={product}
+                      anchorId={`product-card-${product.product_id}`}
                       onOpenDetail={handleOpenDetail}
                     />
                   ))}
