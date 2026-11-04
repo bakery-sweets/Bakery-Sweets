@@ -203,7 +203,7 @@ export default function Dashboard() {
               <ion-icon name="cloud-upload-outline"></ion-icon>
               <span>Xuất Dữ Liệu</span>
             </button>
-            <Link to="/admin/products/add" className="btn-pill-primary">
+            <Link to="/admin/orders?create=true" className="btn-pill-primary">
               <ion-icon name="add"></ion-icon>
               <span>Tạo Đơn Nhanh</span>
             </Link>

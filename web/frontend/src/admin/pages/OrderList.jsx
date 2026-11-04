@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AdminHeader from "../components/AdminHeader";
+import CreateOrderModal from "../components/CreateOrderModal";
 import { adminOrdersApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
@@ -142,8 +144,20 @@ export default function OrderList() {
   const [cancelReason, setCancelReason] = useState("");
   const [activeDropdownOrderId, setActiveDropdownOrderId] = useState(null);
   const [rowLoadingId, setRowLoadingId] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   // Tăng mỗi lần tải/thao tác: phản hồi danh sách về muộn (VD: auto-refresh chạy song song lúc đổi trạng thái) sẽ bị bỏ qua
   const loadSeq = useRef(0);
+
+  // Mở modal tạo đơn khi đi từ nút "Tạo Đơn Nhanh" ở Dashboard (/admin/orders?create=true),
+  // rồi xóa param khỏi URL để tải lại trang không bị mở lại
+  useEffect(() => {
+    if (searchParams.get("create") === "true") {
+      setIsCreateModalOpen(true);
+      navigate("/admin/orders", { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Đóng popover đổi trạng thái khi bấm ra ngoài hoặc nhấn phím Escape
   useEffect(() => {
@@ -232,6 +246,20 @@ export default function OrderList() {
   };
 
   const closePanel = () => setSelectedOrder(null);
+
+  // Đơn vừa tạo tại quầy: đưa lên đầu danh sách, mở ngay chi tiết để nhân viên đối soát, rồi tải lại từ server
+  const handleOrderCreated = (order) => {
+    setIsCreateModalOpen(false);
+    loadSeq.current++;
+    setOrders((prev) => [order, ...prev.filter((o) => o.order_id !== order.order_id)]);
+    setActiveTab("all");
+    setSearch("");
+    setCurrentPage(1);
+    setSelectedOrder(order);
+    setCancelMode(false);
+    setCancelReason("");
+    loadOrders();
+  };
 
   // In riêng phiếu thu của đơn đang mở (CSS @media print ẩn phần còn lại của trang)
   const printReceipt = () => {
@@ -385,8 +413,8 @@ export default function OrderList() {
   useEffect(() => {
     if (!selectedOrder) return;
     const handleKeyDown = (e) => {
-      // Nhường phím cho hộp thoại xác nhận và popover đổi trạng thái nếu đang mở
-      if (usePopupStore.getState().dialog.isOpen || activeDropdownOrderId) return;
+      // Nhường phím cho hộp thoại xác nhận, popover đổi trạng thái và modal tạo đơn nếu đang mở
+      if (usePopupStore.getState().dialog.isOpen || activeDropdownOrderId || isCreateModalOpen) return;
       const typing = e.target.closest?.("input, textarea, select");
       if (e.key === "Escape") {
         if (cancelMode) {
@@ -456,6 +484,10 @@ export default function OrderList() {
             <button className="btn-pill-outline" type="button" onClick={() => window.print()}>
               <ion-icon name="print-outline"></ion-icon>
               <span>In Bảng Đối Soát</span>
+            </button>
+            <button className="btn-pill-primary" type="button" onClick={() => setIsCreateModalOpen(true)}>
+              <ion-icon name="add-circle-outline"></ion-icon>
+              <span>Tạo Đơn Hàng</span>
             </button>
             <button className={`btn-pill-primary ${loading ? "is-spinning" : ""}`} type="button" disabled={loading} onClick={handleRefresh}>
               <ion-icon name="refresh-outline"></ion-icon>
@@ -1049,6 +1081,10 @@ export default function OrderList() {
             </div>
           </aside>
         </>
+      )}
+
+      {isCreateModalOpen && (
+        <CreateOrderModal onClose={() => setIsCreateModalOpen(false)} onCreated={handleOrderCreated} />
       )}
     </div>
   );

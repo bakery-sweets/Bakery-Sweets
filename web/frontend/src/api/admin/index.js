@@ -31,6 +31,11 @@ export const adminOrdersApi = {
   getById: (id) => axiosClient.get(`/admin/orders/${id}`),
   updateStatus: (id, status, note) => axiosClient.patch(`/admin/orders/${id}/status`, { status, note }),
   confirmPayment: (id, note) => axiosClient.patch(`/admin/orders/${id}/payment`, { note }),
+  // Tạo đơn tại quầy (POS) cho nhân viên & admin
+  create: (data) => axiosClient.post("/admin/orders", data),
+  lookupCustomer: (phone) => axiosClient.get("/admin/orders/customer-lookup", { params: { phone } }),
+  getCatalog: () => axiosClient.get("/admin/orders/catalog"),
+  checkVoucher: (data) => axiosClient.post("/admin/orders/voucher-check", data),
 };
 
 export const adminUsersApi = {
