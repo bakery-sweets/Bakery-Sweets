@@ -11,6 +11,7 @@ from app.schemas.admin.report import (
     GroupBy,
     PivotRowOut,
     PivotTableOut,
+    ProductSaleOut,
     ReportFilter,
     ReportSummaryOut,
     RevenueReportOut,
@@ -185,6 +186,20 @@ class AdminReportService:
             profit=revenue - expense,
         )
 
+        # Doanh thu từng sản phẩm trong khoảng ngày (biểu đồ)
+        sales: Dict[Hashable, dict] = {}
+        for o in orders:
+            for d in o.details:
+                row = sales.setdefault(d.product_id, {
+                    "name": d.product.product_name if d.product else f"#{d.product_id}",
+                    "category": d.product.category.category_name if d.product and d.product.category else "Khác",
+                    "quantity": 0,
+                    "amount": ZERO,
+                })
+                row["quantity"] += d.quantity
+                row["amount"] += d.price * d.quantity
+        product_sales = sorted((ProductSaleOut(**r) for r in sales.values()), key=lambda r: r.amount, reverse=True)
+
         # b) Thu - chi - lợi nhuận: theo ngày trong khoảng ngày, theo tháng / quý trong một năm, theo năm trên mọi năm
         if f.group_by == "day":
             t_from, t_to = f.time_from_date, f.time_to_date
@@ -211,25 +226,30 @@ class AdminReportService:
             for p, b in buckets.items()
         ]
 
-        # c) Nhân viên x năm, d) khách hàng x quý/năm, e) sản phẩm x quý — trên mọi quý / năm
-        staff_of = AdminReportService._staff_of_orders(db, all_start, all_end)
+        # c) Nhân viên, d) khách hàng, e) sản phẩm — trong khoảng ngày riêng, mỗi cột một ngày / tháng / quý / năm
+        d_group = f.detail_group_by
+        d_start = datetime.combine(f.detail_from_date, time.min)
+        d_end = datetime.combine(f.detail_to_date + timedelta(days=1), time.min)
+        d_periods = _period_keys(d_group, f.detail_from_date, f.detail_to_date)
+        staff_of = AdminReportService._staff_of_orders(db, d_start, d_end)
         by_staff: Dict[Hashable, dict] = {}
         by_customer: Dict[Hashable, dict] = {}
         by_product: Dict[Hashable, dict] = {}
         for o in all_orders:
+            if not d_start <= o.order_date < d_end:
+                continue
+            period = _period_key(d_group, o.order_date)
             staff_name, staff_phone = staff_of.get(o.order_id, (UNKNOWN_STAFF, ""))
-            _add(by_staff, (staff_name, staff_phone), staff_name, staff_phone, o.order_date.year, o.final_cost, 1)
+            _add(by_staff, (staff_name, staff_phone), staff_name, staff_phone, period, o.final_cost, 1)
 
             c = o.customer
             customer_name = (_full_name(c) if c else "") or o.recipient_name
-            _add(by_customer, o.customer_id, customer_name, c.phone if c else o.recipient_phone,
-                 _period_key(f.customer_group_by, o.order_date), o.final_cost, 1)
+            _add(by_customer, o.customer_id, customer_name, c.phone if c else o.recipient_phone, period, o.final_cost, 1)
 
-            quarter = _period_key("quarter", o.order_date)
             for d in o.details:
                 category = d.product.category.category_name if d.product and d.product.category else "Khác"
                 product_name = d.product.product_name if d.product else f"#{d.product_id}"
-                _add(by_product, d.product_id, product_name, category, quarter, d.price * d.quantity, d.quantity)
+                _add(by_product, d.product_id, product_name, category, period, d.price * d.quantity, d.quantity)
 
         report = RevenueReportOut(
             from_date=f.from_date,
@@ -238,13 +258,16 @@ class AdminReportService:
             time_to_date=f.time_to_date,
             time_year=f.time_year,
             group_by=f.group_by,
-            customer_group_by=f.customer_group_by,
+            detail_from_date=f.detail_from_date,
+            detail_to_date=f.detail_to_date,
+            detail_group_by=d_group,
             first_year=first_year,
             last_year=last_year,
             summary=summary,
+            product_sales=product_sales,
             by_time=by_time,
-            by_staff=_pivot("year", _period_keys("year", all_from, all_to), by_staff),
-            by_customer=_pivot(f.customer_group_by, _period_keys(f.customer_group_by, all_from, all_to), by_customer),
-            by_product=_pivot("quarter", _period_keys("quarter", all_from, all_to), by_product),
+            by_staff=_pivot(d_group, d_periods, by_staff),
+            by_customer=_pivot(d_group, d_periods, by_customer),
+            by_product=_pivot(d_group, d_periods, by_product),
         )
         return report, orders

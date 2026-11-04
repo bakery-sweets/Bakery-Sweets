@@ -487,10 +487,6 @@ const [exportingPdf, setExportingPdf] = useState(false);
           </div>
 
           <div className="admin-page-actions">
-<button className="btn-pill-outline" type="button" onClick={() => window.print()}>
-              <ion-icon name="print-outline"></ion-icon>
-              <span>In Bảng Đối Soát</span>
-            </button>
             <button className="btn-pill-primary" type="button" onClick={() => setIsCreateModalOpen(true)}>
               <ion-icon name="add-circle-outline"></ion-icon>
               <span>Tạo Đơn Hàng</span>

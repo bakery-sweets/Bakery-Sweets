@@ -9,7 +9,7 @@ from thesweets_common.models.user import User
 from app.services.admin.stats_service import AdminStatsService
 from app.services.admin.report_service import AdminReportService
 from app.schemas.admin.statistical import DashboardOverviewOut
-from app.schemas.admin.report import CustomerGroupBy, GroupBy, ReportFilter, RevenueReportOut
+from app.schemas.admin.report import MAX_DETAIL_DAYS, GroupBy, ReportFilter, RevenueReportOut
 from app.schemas.common import ResponseBase
 
 router = APIRouter()
@@ -21,18 +21,25 @@ def report_filter(
     time_to_date: Optional[date] = Query(None, description="Bảng thu - chi theo ngày: đến ngày, mặc định bằng to_date"),
     time_year: Optional[int] = Query(None, ge=1900, le=9999, description="Bảng thu - chi theo tháng / quý: năm, mặc định năm hiện tại"),
     group_by: GroupBy = Query("month", description="Bảng thu - chi theo: day | month | quarter | year"),
-    customer_group_by: CustomerGroupBy = Query("quarter", description="Bảng theo khách hàng theo: quarter | year"),
+    detail_from_date: Optional[date] = Query(None, description="Bảng nhân viên / khách hàng / sản phẩm: từ ngày, mặc định bằng from_date"),
+    detail_to_date: Optional[date] = Query(None, description="Bảng nhân viên / khách hàng / sản phẩm: đến ngày, mặc định bằng to_date"),
+    detail_group_by: GroupBy = Query("month", description="Cột của bảng nhân viên / khách hàng / sản phẩm: day | month | quarter | year"),
 ) -> ReportFilter:
     to_date = to_date or date.today()
     from_date = from_date or to_date.replace(month=1, day=1)
     time_to_date = time_to_date or to_date
     time_from_date = time_from_date or min(from_date, time_to_date)
-    if from_date > to_date or time_from_date > time_to_date:
+    detail_to_date = detail_to_date or to_date
+    detail_from_date = detail_from_date or min(from_date, detail_to_date)
+    if from_date > to_date or time_from_date > time_to_date or detail_from_date > detail_to_date:
         raise BadRequestError("Từ ngày phải nhỏ hơn hoặc bằng Đến ngày")
+    if detail_group_by == "day" and (detail_to_date - detail_from_date).days + 1 > MAX_DETAIL_DAYS:
+        raise BadRequestError(f"Xem theo ngày chỉ được chọn tối đa {MAX_DETAIL_DAYS} ngày")
     return ReportFilter(
         from_date=from_date, to_date=to_date, time_from_date=time_from_date, time_to_date=time_to_date,
         time_year=time_year or date.today().year,
-        group_by=group_by, customer_group_by=customer_group_by,
+        group_by=group_by,
+        detail_from_date=detail_from_date, detail_to_date=detail_to_date, detail_group_by=detail_group_by,
     )
 
 @router.get("/overview", response_model=ResponseBase[DashboardOverviewOut], summary="Thống kê tổng hợp")

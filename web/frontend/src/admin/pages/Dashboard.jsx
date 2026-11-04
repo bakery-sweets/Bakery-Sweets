@@ -160,31 +160,6 @@ export default function Dashboard() {
     };
   }, [overview]);
 
-  // Xuất dữ liệu CSV
-  const handleExportData = () => {
-    if (!orders.length) return;
-    const headers = ["Mã đơn", "Khách hàng", "Số điện thoại", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày đặt", "Giờ nhận"];
-    const rows = orders.map((o) => [
-      `"${o.order_code || o.order_id}"`,
-      `"${(o.recipient_name || "").replace(/"/g, '""')}"`,
-      `"${o.recipient_phone || ""}"`,
-      o.final_cost,
-      `"${o.payment_status || ""}"`,
-      `"${o.status || ""}"`,
-      `"${o.order_date || ""}"`,
-      `"${o.pickup_time || ""}"`,
-    ]);
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `TheSweets_Bao_Cao_Don_Hang_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <>
@@ -199,10 +174,6 @@ export default function Dashboard() {
           </div>
 
           <div className="admin-page-actions">
-            <button className="btn-pill-outline" type="button" onClick={handleExportData} title="Xuất báo cáo danh sách đơn hàng sang file CSV">
-              <ion-icon name="cloud-upload-outline"></ion-icon>
-              <span>Xuất Dữ Liệu</span>
-            </button>
             <Link to="/admin/orders?create=true" className="btn-pill-primary">
               <ion-icon name="add"></ion-icon>
               <span>Tạo Đơn Nhanh</span>

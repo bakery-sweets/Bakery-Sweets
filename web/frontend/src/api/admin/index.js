@@ -64,7 +64,7 @@ export const adminUsersApi = {
 
 export const adminStatisticalApi = {
   getOverview: () => axiosClient.get("/admin/statistical/overview"),
-  // params: { from_date, to_date (YYYY-MM-DD), time_from_date, time_to_date (thu - chi theo ngày), time_year (thu - chi theo tháng / quý), group_by: day | month | quarter | year, customer_group_by: quarter | year }
+  // params: { from_date, to_date (YYYY-MM-DD), time_from_date, time_to_date (thu - chi theo ngày), time_year (thu - chi theo tháng / quý), group_by: day | month | quarter | year, detail_from_date, detail_to_date, detail_group_by: day | month | quarter | year (bảng nhân viên / khách hàng / sản phẩm) }
   getReport: (params) => axiosClient.get("/admin/statistical/report", { params }),
   // Báo cáo doanh thu dạng Excel (trả về Blob)
   exportReport: (params) => axiosClient.get("/admin/statistical/report/export", { params, responseType: "blob" }),

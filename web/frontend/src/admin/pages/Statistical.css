@@ -91,3 +91,485 @@
   font-size: 12px;
   color: #8c9ba5;
 }
+
+/* ===== Biểu đồ doanh thu theo sản phẩm ===== */
+.product-chart {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.product-chart-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(120px, 220px) 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.product-chart-row:hover,
+.product-chart-row:focus-visible {
+  background: #fff5f8;
+}
+
+.product-chart-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-chart-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.product-chart-name b {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-chart-name small {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.product-chart-track {
+  height: 14px;
+  min-width: 60px;
+}
+
+.product-chart-bar {
+  display: block;
+  height: 100%;
+  background: #de5d7c;
+  border-radius: 0 4px 4px 0;
+  transition: width 0.3s ease;
+}
+
+.product-chart-row:hover .product-chart-bar,
+.product-chart-row:focus-visible .product-chart-bar {
+  background: #c94467;
+}
+
+.product-chart-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 110px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.product-chart-value small {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.product-chart-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 4px);
+  z-index: 5;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);
+}
+
+.product-chart-tip b {
+  font-size: 12.5px;
+  color: #ffffff;
+}
+
+.product-chart-row:hover .product-chart-tip,
+.product-chart-row:focus-visible .product-chart-tip {
+  display: flex;
+}
+
+.report-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #de5d7c;
+  cursor: pointer;
+}
+
+.report-more-btn:hover {
+  text-decoration: underline;
+}
+
+.product-chart-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: #8c9ba5;
+}
+
+@media (max-width: 640px) {
+  .product-chart-row {
+    grid-template-columns: 20px 1fr auto;
+    row-gap: 6px;
+  }
+
+  .product-chart-track {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+
+  .product-chart-value {
+    min-width: 0;
+  }
+}
+
+/* ===== Thanh nút bật / tắt bảng chi tiết ===== */
+.report-detail-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.report-detail-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-detail-buttons .tab-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== Thẻ số liệu tổng quan ===== */
+.report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.report-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid #eef2f6;
+  border-radius: 12px;
+  background: #fbfcfd;
+}
+
+.report-kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.report-kpi-label ion-icon {
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+.report-kpi-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.report-kpi-note {
+  font-size: 12px;
+  color: #8c9ba5;
+}
+
+.report-kpi.primary {
+  background: #fff5f8;
+  border-color: #fbd3de;
+}
+
+.report-kpi.primary .report-kpi-value,
+.report-kpi.primary .report-kpi-label ion-icon {
+  color: #de5d7c;
+}
+
+.report-kpi.good .report-kpi-label ion-icon {
+  color: #16a34a;
+}
+
+.report-kpi.neg .report-kpi-value,
+.report-kpi.neg .report-kpi-label ion-icon {
+  color: #dc2626;
+}
+
+.report-detail-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.report-detail-controls .report-filter-row {
+  margin-bottom: 0;
+}
+
+.report-detail-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* ===== Sản phẩm bán chạy (trong thẻ Tổng quan) ===== */
+.top-products {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.top-products-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.top-products-head h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.top-products-head span {
+  font-size: 12.5px;
+  color: #8c9ba5;
+}
+
+.top-products-head b {
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Biểu đồ xu hướng thu - chi ===== */
+.trend-chart {
+  --trend-h: 240px;
+  --trend-thu: #de5d7c;
+  --trend-chi: #5b8def;
+  transition: opacity 0.2s;
+}
+
+.trend-chart.is-loading {
+  opacity: 0.5;
+}
+
+.trend-legend {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.trend-legend span,
+.trend-tip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.trend-swatch.thu {
+  background: var(--trend-thu);
+}
+
+.trend-swatch.chi {
+  background: var(--trend-chi);
+}
+
+.trend-body {
+  display: flex;
+  gap: 8px;
+}
+
+.trend-yaxis {
+  position: relative;
+  flex: 0 0 52px;
+  height: var(--trend-h);
+}
+
+.trend-yaxis span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.trend-plot {
+  position: relative;
+  display: flex;
+}
+
+.trend-grid {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--trend-h);
+  pointer-events: none;
+}
+
+.trend-grid span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.trend-grid span:first-child {
+  border-top-color: #cbd5e1;
+}
+
+.trend-col {
+  position: relative;
+  flex: 1;
+  min-width: 30px;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+
+.trend-bars {
+  height: var(--trend-h);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 3px;
+  border-radius: 6px 6px 0 0;
+}
+
+.trend-col:hover .trend-bars,
+.trend-col:focus-visible .trend-bars {
+  background: rgba(222, 93, 124, 0.06);
+}
+
+.trend-bar {
+  flex: 1;
+  max-width: 22px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+.trend-bar.thu {
+  background: var(--trend-thu);
+}
+
+.trend-bar.chi {
+  background: var(--trend-chi);
+}
+
+.trend-x {
+  height: 24px;
+  padding-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.trend-tip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  z-index: 5;
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);
+}
+
+.trend-tip.to-left {
+  left: auto;
+  right: 50%;
+}
+
+.trend-tip b {
+  font-size: 12.5px;
+  color: #ffffff;
+}
+
+.trend-tip .neg {
+  color: #fca5a5;
+}
+
+.trend-col:hover .trend-tip,
+.trend-col:focus-visible .trend-tip {
+  display: flex;
+}
+
+.report-time-table {
+  margin-top: 12px;
+}

@@ -26,13 +26,10 @@ const CHANNELS = [
 const PAYMENT_OPTIONS = [
   { key: "COD", label: "Tiền mặt", icon: "cash-outline" },
   { key: "Banking", label: "Chuyển khoản", icon: "swap-horizontal-outline" },
-  { key: "Credit Card", label: "Quẹt thẻ", icon: "card-outline" },
-  { key: "Momo", label: "Momo", icon: "wallet-outline" },
-  { key: "VNPay", label: "VNPay", icon: "qr-code-outline" },
 ];
 
 // Cần khách có mặt mới thu được: đơn qua điện thoại không thể "đã thanh toán" bằng các cách này (khớp backend)
-const IN_PERSON_METHODS = ["COD", "Credit Card"];
+const IN_PERSON_METHODS = ["COD"];
 
 // "15:00, Thứ Năm 05/11/2026": đọc lại giờ hẹn cho khách qua điện thoại
 const formatPickupLong = (d) =>
@@ -1032,7 +1029,7 @@ export default function CreateOrderModal({ onClose, onCreated }) {
                       className={prepaid ? "is-active" : ""}
                       onClick={() => setPreorderPaid(true)}
                       disabled={!canPrepay}
-                      title={canPrepay ? undefined : "Tiền mặt / quẹt thẻ chỉ thu được khi khách đến nhận bánh"}
+                      title={canPrepay ? undefined : "Tiền mặt chỉ thu được khi khách đến nhận bánh"}
                     >
                       {isPhone ? "Khách đã chuyển khoản" : "Đã thanh toán trước"}
                     </button>

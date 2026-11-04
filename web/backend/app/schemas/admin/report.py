@@ -6,8 +6,8 @@ from pydantic import BaseModel
 # Cách gom nhóm bảng thu - chi - lợi nhuận theo thời gian:
 # day -> từng ngày trong khoảng ngày, month / quarter -> 12 tháng / 4 quý của một năm, year -> mọi năm có dữ liệu
 GroupBy = Literal["day", "month", "quarter", "year"]
-# Cột thời gian của bảng thống kê theo khách hàng
-CustomerGroupBy = Literal["quarter", "year"]
+# Gom theo ngày tạo một cột mỗi ngày nên giới hạn độ dài khoảng ngày của bảng thống kê chéo
+MAX_DETAIL_DAYS = 92
 
 class ReportFilter(BaseModel):
     from_date: date             # Khoảng ngày của bảng tổng tiền hóa đơn
@@ -16,7 +16,9 @@ class ReportFilter(BaseModel):
     time_to_date: date
     time_year: int              # Năm của bảng thu - chi khi xem theo tháng / quý
     group_by: GroupBy = "month"
-    customer_group_by: CustomerGroupBy = "quarter"
+    detail_from_date: date      # Khoảng ngày của các bảng nhân viên / khách hàng / sản phẩm
+    detail_to_date: date
+    detail_group_by: GroupBy = "month"    # Mỗi cột của các bảng đó là một ngày / tháng / quý / năm
 
 class ReportSummaryOut(BaseModel):
     """Tổng tiền hóa đơn từ ngày a đến ngày b"""
@@ -38,6 +40,13 @@ class TimeRowOut(BaseModel):
     import_count: int
     expense: Decimal
     profit: Decimal
+
+class ProductSaleOut(BaseModel):
+    """Doanh thu một sản phẩm trong khoảng ngày lọc (dùng cho biểu đồ)"""
+    name: str
+    category: str
+    quantity: int
+    amount: Decimal             # Tiền bánh = đơn giá x số lượng (trước giảm giá voucher)
 
 class PivotRowOut(BaseModel):
     name: str
@@ -61,12 +70,14 @@ class RevenueReportOut(BaseModel):
     time_to_date: date
     time_year: int
     group_by: GroupBy
-    customer_group_by: CustomerGroupBy
-    # Thu - chi theo năm và các bảng nhân viên, khách hàng, sản phẩm không theo khoảng ngày
-    # mà liệt kê đủ mọi quý / năm từ first_year đến last_year
+    detail_from_date: date
+    detail_to_date: date
+    detail_group_by: GroupBy
+    # Thu - chi theo năm không theo khoảng ngày mà liệt kê đủ mọi năm từ first_year đến last_year
     first_year: int
     last_year: int
     summary: ReportSummaryOut
+    product_sales: List[ProductSaleOut]    # Theo khoảng ngày from_date - to_date, giảm dần theo tiền
     by_time: List[TimeRowOut]
     by_staff: PivotTableOut
     by_customer: PivotTableOut

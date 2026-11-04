@@ -235,7 +235,7 @@ class ExcelExportService:
         wb = Workbook()
         range_text = f"từ {date_only(report.from_date)} đến {date_only(report.to_date)}"
         subtitle = f"Kỳ báo cáo {range_text} · Hóa đơn = đơn hàng đã hoàn tất · Chi = phiếu nhập hàng đã hoàn tất"
-        # Các bảng theo quý / năm liệt kê mọi quý / năm có dữ liệu, không theo khoảng ngày
+        # Bảng thu - chi theo năm liệt kê mọi năm có dữ liệu, không theo khoảng ngày
         years_text = (
             f"năm {report.first_year}" if report.first_year == report.last_year
             else f"từ năm {report.first_year} đến năm {report.last_year}"
@@ -306,19 +306,23 @@ class ExcelExportService:
         _setup_print(ws, freeze="B7")
 
         # ---------------- Sheet 3-5: Thống kê chéo ----------------
+        detail_group = GROUP_LABELS[report.detail_group_by]
+        detail_subtitle = subtitle.replace(
+            range_text, f"từ {date_only(report.detail_from_date)} đến {date_only(report.detail_to_date)}"
+        )
         _pivot_sheet(
-            wb.create_sheet("Theo nhân viên"), "THỐNG KÊ HÓA ĐƠN THEO NHÂN VIÊN", all_subtitle,
-            "Tổng tiền hóa đơn theo nhân viên và năm", report.by_staff, "Nhân viên", "SĐT", "Số hóa đơn",
+            wb.create_sheet("Theo nhân viên"), "THỐNG KÊ HÓA ĐƠN THEO NHÂN VIÊN", detail_subtitle,
+            f"Tổng tiền hóa đơn theo nhân viên và {detail_group}", report.by_staff, "Nhân viên", "SĐT", "Số hóa đơn",
             "Nhân viên lập hóa đơn là người chuyển đơn sang trạng thái Hoàn tất.",
         )
         _pivot_sheet(
-            wb.create_sheet("Theo khách hàng"), "THỐNG KÊ HÓA ĐƠN THEO KHÁCH HÀNG", all_subtitle,
-            f"Tổng tiền hóa đơn theo khách hàng và {GROUP_LABELS[report.customer_group_by]}", report.by_customer,
+            wb.create_sheet("Theo khách hàng"), "THỐNG KÊ HÓA ĐƠN THEO KHÁCH HÀNG", detail_subtitle,
+            f"Tổng tiền hóa đơn theo khách hàng và {detail_group}", report.by_customer,
             "Khách hàng", "SĐT", "Số hóa đơn", "Sắp xếp theo tổng tiền giảm dần.",
         )
         _pivot_sheet(
-            wb.create_sheet("Theo sản phẩm"), "THỐNG KÊ HÓA ĐƠN THEO SẢN PHẨM", all_subtitle,
-            "Tổng tiền hóa đơn theo sản phẩm và quý", report.by_product, "Sản phẩm", "Danh mục", "SL bán",
+            wb.create_sheet("Theo sản phẩm"), "THỐNG KÊ HÓA ĐƠN THEO SẢN PHẨM", detail_subtitle,
+            f"Tổng tiền hóa đơn theo sản phẩm và {detail_group}", report.by_product, "Sản phẩm", "Danh mục", "SL bán",
             "Tiền bánh = đơn giá × số lượng trên hóa đơn (trước giảm giá voucher).",
         )
 
