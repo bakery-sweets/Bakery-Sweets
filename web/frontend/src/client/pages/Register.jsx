@@ -60,14 +60,15 @@ export default function Register() {
     }
     setSubmitting(true);
     try {
-      await clientAuthApi.register({
+      const res = await clientAuthApi.register({
         phone: phone.trim(),
         email: email.trim(),
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
       });
-      popup.success("Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
+      // Server báo thêm nếu số điện thoại đã có đơn đặt tại cửa hàng (gắn sẵn vào tài khoản mới)
+      popup.success(`${res?.message || "Đăng ký tài khoản thành công"}. Vui lòng đăng nhập.`);
       navigate('/login');
     } catch (err) {
       popup.error(apiErrorMessage(err, "Đăng ký thất bại, vui lòng thử lại."));
