@@ -62,6 +62,9 @@ export const apiErrorMessage = (err, fallback = "Có lỗi xảy ra, vui lòng t
   return fallback;
 };
 
+// Server báo không đủ tồn kho (thường do khách khác vừa mua trước) — là tình huống nghiệp vụ, không phải lỗi hệ thống
+export const isOutOfStockError = (err) => err?.response?.data?.code === "OUT_OF_STOCK";
+
 export const ORDER_STATUS = {
   Pending: { label: "Chờ tiếp nhận", badge: "pink", dot: "pink" },
   Processing: { label: "Đang chuẩn bị", badge: "amber", dot: "orange" },

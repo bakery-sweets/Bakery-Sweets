@@ -1,7 +1,7 @@
 from typing import List, Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
-from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.exceptions import BadRequestError, NotFoundError, OutOfStockError
 from thesweets_common.models.order import Cart
 from thesweets_common.models.product import ProductSize, Product, Size
 from app.schemas.client.cart import CartItemAdd, CartItemOut, CartSummaryOut
@@ -66,7 +66,7 @@ class ClientCartService:
 
         new_total_qty = (existing.quantity if existing else 0) + data.quantity
         if ps.stock_quantity < new_total_qty:
-            raise BadRequestError(
+            raise OutOfStockError(
                 f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
             )
 
@@ -103,7 +103,7 @@ class ClientCartService:
             ProductSize.size_id == item.size_id
         ).first()
         if ps and ps.stock_quantity < quantity:
-            raise BadRequestError(
+            raise OutOfStockError(
                 f"Số lượng trong kho không đủ (chỉ còn {ps.stock_quantity} cái)",
             )
 

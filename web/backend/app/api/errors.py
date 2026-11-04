@@ -22,4 +22,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_app_error(request: Request, exc: AppError):
         # Giữ định dạng {"detail": ...} giống HTTPException để client không phải đổi cách đọc lỗi
         status_code = next((code for cls, code in STATUS_CODES.items() if isinstance(exc, cls)), 500)
-        return JSONResponse(status_code=status_code, content={"detail": exc.detail})
+        content = {"detail": exc.detail}
+        if exc.code:
+            content["code"] = exc.code
+        return JSONResponse(status_code=status_code, content=content)

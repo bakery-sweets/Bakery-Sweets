@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.exceptions import BadRequestError, NotFoundError, OutOfStockError
 from thesweets_common.models.product import Product, Category, Size, ProductSize
 from app.schemas.product import ProductOut, ProductSizeOut
 
@@ -82,11 +82,17 @@ class ProductService:
         return query.options(joinedload(ProductSize.product), joinedload(ProductSize.size)).first()
 
     @staticmethod
-    def out_of_stock_error(ps: ProductSize) -> BadRequestError:
+    def out_of_stock_error(ps: ProductSize) -> OutOfStockError:
         name = ps.product.product_name if ps.product else f"#{ps.product_id}"
         size = ps.size.size_name if ps.size else f"#{ps.size_id}"
-        return BadRequestError(
-            f"Số lượng trong kho không đủ: '{name}' ({size}) chỉ còn {ps.stock_quantity} cái",
+        if ps.stock_quantity <= 0:
+            return OutOfStockError(
+                f"Bánh '{name}' ({size}) đã hết hàng — đã có khách khác mua trước bạn. "
+                f"Vui lòng xóa món này khỏi giỏ hoặc chọn bánh khác",
+            )
+        return OutOfStockError(
+            f"Bánh '{name}' ({size}) chỉ còn {ps.stock_quantity} cái, không đủ số lượng bạn chọn — "
+            f"có thể đã có khách khác mua trước bạn. Vui lòng giảm số lượng",
         )
 
     @staticmethod

@@ -8,6 +8,7 @@ import '../../../core/utils/opening_hours.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_modal.dart';
 import '../../orders/providers/orders_provider.dart';
+import '../providers/cart_provider.dart';
 import '../../navigation/screens/main_navigation_screen.dart';
 import '../../promotions/models/promotion_model.dart';
 import '../../promotions/screens/voucher_selector_modal.dart';
@@ -431,7 +432,11 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
         'discount_amount': order.totalCost - order.finalCost,
       });
     } on ApiException catch (e) {
-      if (mounted) {
+      if (mounted && e.isOutOfStock) {
+        // Bánh vừa được khách khác mua trước: báo hết hàng thay vì báo lỗi, và tải lại giỏ để thấy tồn kho mới
+        ref.read(cartProvider.notifier).fetchCart();
+        await _showOutOfStockDialog(e.message);
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade700,
@@ -442,6 +447,25 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _showOutOfStockDialog(String message) {
+    return showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Icon(Icons.remove_shopping_cart_outlined, color: Colors.orange.shade700, size: 40),
+        title: const Text('Sản phẩm đã hết', textAlign: TextAlign.center),
+        content: Text(message, textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

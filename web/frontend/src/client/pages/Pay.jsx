@@ -3,7 +3,7 @@ import { useNavigate, Link, Navigate } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import useAuthStore from '../../store/authStore';
 import { clientOrdersApi, clientPromotionsApi } from '../../api/client';
-import { formatVND, apiErrorMessage, toLocalDateInput } from '../../utils/format';
+import { formatVND, apiErrorMessage, isOutOfStockError, toLocalDateInput } from '../../utils/format';
 import popup from '../../utils/popup';
 import { voucherDescription, voucherMinOrder, calcVoucherDiscount } from '../../utils/voucher';
 import './Pay.css';
@@ -225,7 +225,13 @@ export default function Pay() {
       });
       await fetchCart();
     } catch (err) {
-      popup.error(apiErrorMessage(err, "Đặt bánh thất bại, vui lòng thử lại."));
+      if (isOutOfStockError(err)) {
+        // Bánh vừa được khách khác mua trước: báo hết hàng (không phải lỗi hệ thống) và tải lại giỏ để thấy tồn kho mới
+        popup.warning(apiErrorMessage(err), { title: "Sản phẩm đã hết", duration: 7000 });
+        fetchCart().catch(() => {});
+      } else {
+        popup.error(apiErrorMessage(err, "Đặt bánh thất bại, vui lòng thử lại."));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -551,6 +557,13 @@ export default function Pay() {
                       <h4 className="pay-item-name">{item.product_name}</h4>
                       <span className="pay-item-size">Size: {item.size_name}</span>
                       <span className="pay-item-qty">SL: {item.quantity} x {Number(item.price).toLocaleString('vi-VN')}₫</span>
+                      {item.stock_quantity != null && item.quantity > item.stock_quantity && (
+                        <span className="pay-item-stock-warn">
+                          {item.stock_quantity <= 0
+                            ? 'Đã hết hàng — đã có khách khác mua trước'
+                            : `Chỉ còn ${item.stock_quantity} cái, vui lòng giảm số lượng`}
+                        </span>
+                      )}
                     </div>
                     <div className="pay-item-total">
                       {(item.price * item.quantity).toLocaleString('vi-VN')}₫

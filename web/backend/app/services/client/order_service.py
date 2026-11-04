@@ -3,7 +3,7 @@ from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone, time
 from sqlalchemy.orm import Session
-from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.exceptions import BadRequestError, NotFoundError, OutOfStockError
 from thesweets_common.models.order import Order, OrderDetail, Cart, OrderStatusLog
 from thesweets_common.models.product import ProductSize
 from thesweets_common.models.promotion import OrderPromotion
@@ -78,8 +78,14 @@ class ClientOrderService:
             if ps.stock_quantity < quantity:
                 p_name = ps.product.product_name if ps.product else f"#{product_id}"
                 s_name = ps.size.size_name if ps.size else f"#{size_id}"
-                raise BadRequestError(
-                    f"Sản phẩm '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái trong kho, không đủ số lượng yêu cầu ({quantity})",
+                if ps.stock_quantity <= 0:
+                    raise OutOfStockError(
+                        f"Bánh '{p_name}' ({s_name}) đã hết hàng. "
+                        f"Vui lòng chọn sản phẩm khác",
+                    )
+                raise OutOfStockError(
+                    f"Bánh '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái, không đủ {quantity} cái bạn đặt — "
+                    f"có thể đã có khách khác mua trước bạn. Vui lòng giảm số lượng",
                 )
 
             total_quantity += quantity

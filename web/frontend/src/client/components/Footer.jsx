@@ -69,7 +69,7 @@ export default function Footer() {
         {/* BẢN QUYỀN COPYRIGHT CĂN GIỮA CHUẨN XÁC THEO HÌNH DESKTOP */}
         <div className="footer-bottom-info">
           <p className="footer-copyright">
-            &copy; Bản quyền 2024 thuộc The MBM Group | Công ty TNHH The Sweets | Thiết kế bởi The MESince
+            &copy; Bản quyền 2026 thuộc The Sweets Group | Công ty TNHH The Sweets | Thiết kế bởi The Sweets
           </p>
         </div>
 
