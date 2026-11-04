@@ -61,7 +61,7 @@ class AuthService:
 
         if user and is_guest_account(user) and user.phone != WALK_IN_PHONE:
             # Tài khoản ẩn chưa có mật khẩu của khách: hướng dẫn đăng ký để nhận tài khoản
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=GUEST_LOGIN_HINT)
+            raise UnauthorizedError(GUEST_LOGIN_HINT)
 
         if not user or not verify_password(password, user.password):
             raise UnauthorizedError(
@@ -83,16 +83,10 @@ class AuthService:
                 "Vui lòng cung cấp số điện thoại",
             )
         if phone_key == WALK_IN_PHONE:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Số điện thoại không hợp lệ",
-            )
+            raise BadRequestError("Số điện thoại không hợp lệ")
         # Đuôi email dành riêng cho tài khoản ẩn do nhân viên tạo
         if req.email.strip().lower().endswith(f"@{GUEST_EMAIL_DOMAIN}"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email không hợp lệ",
-            )
+            raise BadRequestError("Email không hợp lệ")
 
         existing = db.query(User).filter(User.phone == phone_key).first()
         if existing and not is_guest_account(existing):
@@ -104,16 +98,12 @@ class AuthService:
             raise BadRequestError(
                 "Email này đã được sử dụng",
             )
-            )
 
         if existing:
             # SĐT đã có tài khoản ẩn (khách từng đặt qua điện thoại / tại quầy):
             # chuyển thành tài khoản thật của khách, giữ nguyên lịch sử đơn hàng
             if existing.status == "locked":
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Số điện thoại này đang bị khóa, vui lòng liên hệ cửa hàng để được hỗ trợ",
-                )
+                raise ForbiddenError("Số điện thoại này đang bị khóa, vui lòng liên hệ cửa hàng để được hỗ trợ")
             existing.email = req.email.strip()
             existing.password = get_password_hash(req.password)
             first_name = req.first_name.strip() if req.first_name else ""

@@ -3,7 +3,6 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional, Tuple
-from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -239,7 +238,7 @@ class AdminOrderService:
         except IntegrityError:
             customer = db.query(Customer).filter(Customer.phone == phone).first()
             if not customer:
-                raise HTTPException(status_code=409, detail="Không tạo được hồ sơ khách hàng, vui lòng thử lại")
+                raise BadRequestError("Không tạo được hồ sơ khách hàng, vui lòng thử lại")
             return customer, not is_guest_account(customer.user)
         return customer, has_real_account
 
@@ -261,7 +260,7 @@ class AdminOrderService:
         is_phone = data.order_type == "phone"
         is_immediate = data.order_type == "immediate"
         if is_phone and data.recipient_phone == WALK_IN_PHONE:
-            raise HTTPException(status_code=400, detail="Đơn đặt qua điện thoại cần số điện thoại thật của khách để liên hệ")
+            raise BadRequestError("Đơn đặt qua điện thoại cần số điện thoại thật của khách để liên hệ")
 
         if is_immediate:
             # Khách nhận bánh ngay tại quầy: giờ lấy bánh chính là lúc tạo đơn (giờ Việt Nam)
@@ -292,25 +291,23 @@ class AdminOrderService:
                 ProductSize.size_id == size_id,
             ).with_for_update().first()
             if not ps:
-                raise HTTPException(status_code=400, detail=f"Sản phẩm #{product_id} không có kích cỡ #{size_id}")
+                raise BadRequestError(f"Sản phẩm #{product_id} không có kích cỡ #{size_id}")
 
             p_name = ps.product.product_name if ps.product else f"#{product_id}"
             s_name = ps.size.size_name if ps.size else f"#{size_id}"
 
             if not ps.product or ps.product.status != "Available":
-                raise HTTPException(status_code=400, detail=f"Sản phẩm '{p_name}' hiện không còn kinh doanh")
+                raise BadRequestError(f"Sản phẩm '{p_name}' hiện không còn kinh doanh")
 
             if ps.stock_quantity < quantity:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Sản phẩm '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái trong kho, không đủ số lượng yêu cầu ({quantity})",
+                raise BadRequestError(
+                    f"Sản phẩm '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái trong kho, không đủ số lượng yêu cầu ({quantity})"
                 )
 
             # Luôn tính tiền theo giá hiện hành trong DB; giá trên màn hình đã cũ thì báo để nhân viên báo lại khách
             if quoted_prices[(product_id, size_id)] != ps.price:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Giá '{p_name}' ({s_name}) vừa thay đổi thành {ps.price:,.0f}đ, vui lòng kiểm tra lại đơn",
+                raise BadRequestError(
+                    f"Giá '{p_name}' ({s_name}) vừa thay đổi thành {ps.price:,.0f}đ, vui lòng kiểm tra lại đơn"
                 )
 
             total_quantity += quantity

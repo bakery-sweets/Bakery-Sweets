@@ -61,9 +61,26 @@ const roundUpQuarter = (d) => {
   return r;
 };
 
+// Giờ mở cửa của tiệm: giờ hẹn lấy bánh phải nằm trong khoảng này
+// (đồng bộ với backend _validate_pickup_time, trang Pay.jsx và App)
+const OPEN_TIME = "07:30";
+const CLOSE_TIME = "21:30";
+const OPENING_HOURS_LABEL = `${OPEN_TIME} - ${CLOSE_TIME}`;
+const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const isWithinOpeningHours = (d) => hhmm(d) >= OPEN_TIME && hhmm(d) <= CLOSE_TIME;
+
+// Thời điểm hợp lệ gần nhất: trước giờ mở thì lùi tới giờ mở, sau giờ đóng thì sang giờ mở hôm sau
+const nextValidPickup = (d) => {
+  const [openH, openM] = OPEN_TIME.split(":").map(Number);
+  const r = new Date(d);
+  if (hhmm(r) > CLOSE_TIME) r.setDate(r.getDate() + 1);
+  if (!isWithinOpeningHours(r)) r.setHours(openH, openM, 0, 0);
+  return r;
+};
+
 const PICKUP_PRESETS = [
-  { label: "+1 giờ", at: () => roundUpQuarter(new Date(Date.now() + 60 * 60 * 1000)) },
-  { label: "+3 giờ", at: () => roundUpQuarter(new Date(Date.now() + 3 * 60 * 60 * 1000)) },
+  { label: "+1 giờ", at: () => nextValidPickup(roundUpQuarter(new Date(Date.now() + 60 * 60 * 1000))) },
+  { label: "+3 giờ", at: () => nextValidPickup(roundUpQuarter(new Date(Date.now() + 3 * 60 * 60 * 1000))) },
   {
     label: "Sáng mai 9:00",
     at: () => {
@@ -420,7 +437,10 @@ export default function CreateOrderModal({ onClose, onCreated }) {
   const cashShort = showCash && cashNum > 0 && change < 0;
 
   const pickupDate = pickup ? new Date(pickup) : null;
-  const pickupInvalid = !isImmediate && (!pickupDate || Number.isNaN(pickupDate.getTime()) || pickupDate.getTime() < Date.now());
+  const pickupMissing = !pickupDate || Number.isNaN(pickupDate.getTime());
+  const pickupPast = !pickupMissing && pickupDate.getTime() < Date.now();
+  const pickupClosed = !pickupMissing && !isWithinOpeningHours(pickupDate);
+  const pickupInvalid = !isImmediate && (pickupMissing || pickupPast || pickupClosed);
 
   // Lý do chưa tạo được đơn (hiện lý do đầu tiên cạnh nút tạo đơn)
   const blockers = [];
@@ -431,7 +451,13 @@ export default function CreateOrderModal({ onClose, onCreated }) {
   if (!phoneValid) blockers.push(isPhone ? "Vui lòng nhập số điện thoại người gọi" : "Vui lòng nhập số điện thoại khách");
   if (isPhone && isWalkIn) blockers.push("Đơn qua điện thoại cần SĐT thật của khách để liên hệ");
   if (!name.trim()) blockers.push("Nhập tên khách hàng");
-  if (pickupInvalid) blockers.push("Chọn giờ hẹn lấy bánh sau thời điểm hiện tại");
+  if (pickupInvalid) {
+    blockers.push(
+      pickupClosed && !pickupPast
+        ? `Giờ hẹn lấy bánh phải trong giờ mở cửa của tiệm (${OPENING_HOURS_LABEL})`
+        : "Chọn giờ hẹn lấy bánh sau thời điểm hiện tại"
+    );
+  }
   if (notes.trim().length > NOTES_MAX) blockers.push(`Ghi chú tối đa ${NOTES_MAX} ký tự`);
   if (voucherLoading || voucherStale) blockers.push("Đang tính lại mã giảm giá...");
   if (cashShort) blockers.push(`Khách đưa còn thiếu ${formatVND(-change)}`);
@@ -885,7 +911,9 @@ export default function CreateOrderModal({ onClose, onCreated }) {
                 ) : (
                   <div className="pos-pickup">
                     <label className="pos-field">
-                      <span className="pos-label">Giờ hẹn lấy bánh</span>
+                      <span className="pos-label">
+                        Giờ hẹn lấy bánh <span className="pos-label-meta">Giờ mở cửa {OPENING_HOURS_LABEL}</span>
+                      </span>
                       <input
                         type="datetime-local"
                         value={pickup}

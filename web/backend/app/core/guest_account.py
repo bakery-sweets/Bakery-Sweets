@@ -9,7 +9,7 @@ Tài khoản ẩn của khách đặt bánh qua nhân viên (gọi điện / t�
 Mobile Backend dùng chung DB nên có bản sao các hằng số này (mobile/backend/app/services/auth_service.py).
 """
 from typing import Optional
-from app.models.user import User
+from thesweets_common.models.user import User
 
 GUEST_EMAIL_DOMAIN = "guest.thesweets"
 
