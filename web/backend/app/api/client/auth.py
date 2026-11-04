@@ -25,8 +25,12 @@ def to_profile_out(user: User) -> ClientProfileOut:
 
 @router.post("/register", response_model=ResponseBase[ClientProfileOut], status_code=status.HTTP_201_CREATED, summary="Đăng ký tài khoản khách hàng")
 def register(data: ClientRegisterRequest, db: Session = Depends(get_db)):
-    user = AuthService.register_customer(db, data)
-    return ResponseBase(message="Đăng ký tài khoản thành công", data=to_profile_out(user))
+    user, existing_orders = AuthService.register_customer(db, data)
+    message = "Đăng ký tài khoản thành công"
+    if existing_orders:
+        # Khách từng đặt qua nhân viên (điện thoại / tại quầy): đơn cũ đã nằm sẵn trong tài khoản
+        message += f". {existing_orders} đơn hàng bạn đã đặt tại cửa hàng bằng số điện thoại này đã có trong tài khoản"
+    return ResponseBase(message=message, data=to_profile_out(user))
 
 @router.post("/login", response_model=ClientTokenResponse, summary="Đăng nhập tài khoản khách hàng")
 def login(data: ClientLoginRequest, db: Session = Depends(get_db)):

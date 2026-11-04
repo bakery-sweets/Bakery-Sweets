@@ -48,6 +48,11 @@ export const adminOrdersApi = {
   confirmPayment: (id, note) => axiosClient.patch(`/admin/orders/${id}/payment`, { note }),
   // Hóa đơn bán hàng PDF (trả về Blob)
   exportInvoice: (id) => axiosClient.get(`/admin/orders/${id}/invoice`, { responseType: "blob" }),
+  // Tạo đơn tại quầy (POS) cho nhân viên & admin
+  create: (data) => axiosClient.post("/admin/orders", data),
+  lookupCustomer: (phone) => axiosClient.get("/admin/orders/customer-lookup", { params: { phone } }),
+  getCatalog: () => axiosClient.get("/admin/orders/catalog"),
+  checkVoucher: (data) => axiosClient.post("/admin/orders/voucher-check", data),
 };
 
 export const adminUsersApi = {
