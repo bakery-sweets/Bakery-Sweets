@@ -1,17 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import useAuthStore from '../../store/authStore';
 import { clientOrdersApi, clientPromotionsApi } from '../../api/client';
 import { formatVND, apiErrorMessage, isOutOfStockError, toLocalDateInput } from '../../utils/format';
 import popup from '../../utils/popup';
-import { voucherDescription, voucherMinOrder, calcVoucherDiscount } from '../../utils/voucher';
+import { saveBlob, downloadErrorMessage } from '../../utils/download';
+import { voucherDescription, voucherMinOrder, calcVoucherDiscount, calcSingleUseDiscount } from '../../utils/voucher';
+import { dealLabel, hasDeal } from '../../utils/deal';
 import './Pay.css';
 
 // Giờ mở cửa của tiệm (đồng bộ với App & Backend): giờ lấy bánh phải nằm trong khoảng này
 const OPEN_TIME = '07:30';
 const CLOSE_TIME = '21:30';
 const OPENING_HOURS_LABEL = `${OPEN_TIME} - ${CLOSE_TIME}`;
+
+const PHONE_RE = /^0\d{9}$/;
 
 const toTimeInput = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
@@ -48,10 +52,45 @@ const toVoucher = (p) => ({
   calculateDiscount: (total) => calcVoucherDiscount(p, total),
 });
 
+// Mã dùng 1 lần là mã riêng (không nằm trong danh sách): dựng từ kết quả kiểm tra mã của server
+const toSingleUseVoucher = (r) => ({
+  code: r.promotion_code,
+  name: r.promotion_name,
+  desc: r.description,
+  minOrder: Number(r.single_use.min_order_value || 0),
+  singleUse: true,
+  calculateDiscount: (total) => calcSingleUseDiscount(r.single_use, total),
+});
+
+// Mã trong ví voucher của khách đã đăng nhập (API /client/promotions/saved)
+const toSavedVoucher = (s) => ({
+  ...toSingleUseVoucher({ promotion_code: s.code, promotion_name: s.name, description: s.description, single_use: s.single_use }),
+  voucherId: s.voucher_id,
+});
+
+// Khách chưa đăng nhập: mã đang chọn chỉ nhớ tạm trong sessionStorage của tab
+// (tải lại trang / đi chọn thêm bánh vẫn còn, đóng tab hoặc trình duyệt là quên; không lưu lên server)
+const GUEST_VOUCHER_KEY = 'pay-guest-voucher-code';
+const readGuestVoucher = () => {
+  try { return sessionStorage.getItem(GUEST_VOUCHER_KEY) || ''; } catch { return ''; }
+};
+const writeGuestVoucher = (code) => {
+  try {
+    if (code) sessionStorage.setItem(GUEST_VOUCHER_KEY, code);
+    else sessionStorage.removeItem(GUEST_VOUCHER_KEY);
+  } catch {
+    // Trình duyệt chặn lưu trữ: chỉ mất tính năng nhớ mã, trang vẫn dùng bình thường
+  }
+};
+
 export default function Pay() {
   const items = useCartStore(state => state.items);
   const fetchCart = useCartStore(state => state.fetchCart);
   const user = useAuthStore(state => state.user);
+  // Khách chưa đăng nhập: tự nhập thông tin người đặt, đơn gửi kèm các món trong giỏ tạm của trình duyệt
+  const isGuest = !user;
+  const resetLocalCart = useCartStore(state => state.resetLocal);
+  const revalidateGuestCart = useCartStore(state => state.revalidateGuestCart);
   const navigate = useNavigate();
 
   // Tính giờ mặc định sau 45 phút giống bên Mobile
@@ -82,21 +121,101 @@ export default function Pay() {
   const [customVoucherCode, setCustomVoucherCode] = useState('');
   // Chỉ gồm mã khách còn dùng được (server đã lọc mã hết hạn, tạm dừng, đã dùng hết lượt)
   const [vouchers, setVouchers] = useState([]);
+  const [vouchersLoaded, setVouchersLoaded] = useState(false);
+  // Ví voucher của khách đã đăng nhập (mã dùng 1 lần đã nhập, chưa dùng)
+  const [savedVouchers, setSavedVouchers] = useState([]);
+  const [savedLoaded, setSavedLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
   const [orderSuccessModal, setOrderSuccessModal] = useState(null);
+  // Chỉ tự áp lại mã đã nhớ 1 lần khi mở trang; trước đó không ghi đè mã đang nhớ
+  const restoredRef = useRef(false);
 
   useEffect(() => {
     clientPromotionsApi
       .getAll()
       .then((res) => setVouchers((res.data || []).map(toVoucher)))
-      .catch(() => setVouchers([]));
+      .catch(() => setVouchers([]))
+      .finally(() => setVouchersLoaded(true));
   }, [user?.phone]);
 
+  const loadSaved = useCallback(() =>
+    clientPromotionsApi
+      .getSaved()
+      .then((res) => setSavedVouchers((res.data || []).map(toSavedVoucher)))
+      .catch(() => setSavedVouchers([]))
+      .finally(() => setSavedLoaded(true)), []);
+
+  useEffect(() => {
+    if (!user) {
+      setSavedVouchers([]);
+      return;
+    }
+    // Vừa đăng nhập từ trang này (VD: SĐT đã có tài khoản): mã nhớ tạm lúc chưa đăng nhập được lưu vào tài khoản
+    const guestCode = readGuestVoucher();
+    writeGuestVoucher('');
+    (guestCode ? clientPromotionsApi.saveVoucher(guestCode).catch(() => {}) : Promise.resolve()).then(loadSaved);
+  }, [user, loadSaved]);
+
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Số tiền khách đã được giảm nhờ khuyến mãi sản phẩm, giá trong giỏ đã là giá sau giảm
+  const productSavings = items.reduce(
+    (sum, item) => sum + (hasDeal(item.price, item.original_price) ? (item.original_price - item.price) * item.quantity : 0),
+    0
+  );
   
   // Tính số tiền giảm giá của voucher hiện tại
   const discountAmount = selectedVoucher ? selectedVoucher.calculateDiscount(total) : 0;
+  // Giỏ giảm xuống dưới mức tối thiểu của mã đang chọn: số tiền còn thiếu (0 = mã vẫn dùng được)
+  const voucherShortfall = selectedVoucher ? Math.max(0, selectedVoucher.minOrder - total) : 0;
   const finalTotal = Math.max(0, total - discountAmount);
+
+  // Mở trang thanh toán: tự áp lại mã đã nhớ
+  // - Chưa đăng nhập: mã nhớ tạm trong tab (server kiểm tra lại, mã không còn dùng được thì quên)
+  // - Đã đăng nhập: mã mới lưu gần nhất trong ví mà đơn hiện tại đủ điều kiện
+  useEffect(() => {
+    if (restoredRef.current || items.length === 0) return;
+    if (isGuest) {
+      if (!vouchersLoaded) return;
+      restoredRef.current = true;
+      const code = readGuestVoucher();
+      if (!code) return;
+      const found = vouchers.find((v) => v.code === code);
+      if (found) {
+        if (total >= found.minOrder) setSelectedVoucher(found);
+        return;
+      }
+      clientPromotionsApi
+        .apply({ promotion_code: code, order_amount: total })
+        .then((res) => {
+          if (res.data?.kind === 'single_use') setSelectedVoucher(toSingleUseVoucher(res.data));
+          else writeGuestVoucher('');
+        })
+        .catch(() => writeGuestVoucher(''));
+    } else {
+      if (!savedLoaded) return;
+      restoredRef.current = true;
+      const latest = savedVouchers.find((v) => total >= v.minOrder);
+      if (latest) setSelectedVoucher((cur) => cur || latest);
+    }
+  }, [isGuest, vouchersLoaded, savedLoaded, vouchers, savedVouchers, items.length, total]);
+
+  // Bỏ chọn mã: khách chưa đăng nhập thì quên luôn mã đang nhớ tạm (mã trong ví tài khoản vẫn giữ)
+  const clearSelectedVoucher = () => {
+    setSelectedVoucher(null);
+    if (isGuest) writeGuestVoucher('');
+  };
+
+  const handleRemoveSaved = async (v) => {
+    try {
+      await clientPromotionsApi.removeSaved(v.voucherId);
+      if (selectedVoucher?.code === v.code) setSelectedVoucher(null);
+      await loadSaved();
+      popup.success(`Đã xóa mã ${v.code} khỏi danh sách đã lưu`);
+    } catch (err) {
+      popup.error(apiErrorMessage(err, 'Không xóa được mã, vui lòng thử lại.'));
+    }
+  };
 
   // Chọn nhanh mốc giờ lấy bánh (+30p, +1h, +2h)
   const setQuickPickupTime = (minutes) => {
@@ -114,7 +233,7 @@ export default function Pay() {
     });
   };
 
-  const handleSelectVoucher = (voucher) => {
+  const handleSelectVoucher = (voucher, successNote = '') => {
     if (total < voucher.minOrder) {
       const needed = voucher.minOrder - total;
       popup.warning({
@@ -125,8 +244,9 @@ export default function Pay() {
       return;
     }
     setSelectedVoucher(voucher);
+    if (isGuest) writeGuestVoucher(voucher.code);
     setIsVoucherModalOpen(false);
-    popup.success(`Đã áp dụng mã voucher "${voucher.code}"!`);
+    popup.success(`Đã áp dụng mã voucher "${voucher.code}"!${successNote}`);
   };
 
   const handleApplyCustomCode = async (e) => {
@@ -138,9 +258,21 @@ export default function Pay() {
       handleSelectVoucher(found);
       return;
     }
-    // Mã không có trong danh sách: hỏi server để báo đúng lý do (hết hạn, đã dùng, hết lượt...)
+    // Mã không có trong danh sách: hỏi server — có thể là mã dùng 1 lần, hoặc báo đúng lý do (hết hạn, đã dùng, hết lượt...)
     try {
-      await clientPromotionsApi.apply({ promotion_code: code, order_amount: total });
+      const res = await clientPromotionsApi.apply({ promotion_code: code, order_amount: total });
+      if (res.data?.kind === 'single_use') {
+        setCustomVoucherCode('');
+        if (isGuest) {
+          handleSelectVoucher(toSingleUseVoucher(res.data));
+          return;
+        }
+        // Đã đăng nhập: lưu mã vào tài khoản để lần sau dùng tiếp nếu chưa dùng
+        const saved = await clientPromotionsApi.saveVoucher(code).then(() => true).catch(() => false);
+        handleSelectVoucher(toSingleUseVoucher(res.data), saved ? ' Mã đã được lưu vào tài khoản.' : '');
+        if (saved) loadSaved();
+        return;
+      }
       popup.warning("Mã voucher hiện không áp dụng được cho tài khoản của bạn.", { title: "Voucher không hợp lệ" });
     } catch (err) {
       popup.warning(apiErrorMessage(err, "Mã voucher không tồn tại hoặc đã hết hạn!"), { title: "Voucher không hợp lệ" });
@@ -158,6 +290,14 @@ export default function Pay() {
 
   const handlePay = async (e) => {
     e.preventDefault();
+    if (voucherShortfall > 0) {
+      popup.warning({
+        title: "Mã giảm giá chưa đủ điều kiện",
+        message: `Đơn hàng cần mua thêm ${voucherShortfall.toLocaleString('vi-VN')}₫ để dùng mã "${selectedVoucher.code}".`,
+        subtitle: 'Bạn chọn thêm bánh hoặc bấm "Bỏ chọn" mã để đặt hàng.',
+      });
+      return;
+    }
     if (shippingInfo.recipientMode === 'other') {
       if (!shippingInfo.otherName.trim() || !shippingInfo.otherPhone.trim()) {
         popup.warning("Vui lòng điền đầy đủ họ tên và số điện thoại của người nhận dùm!");
@@ -166,6 +306,18 @@ export default function Pay() {
     } else {
       if (!shippingInfo.selfName.trim() || !shippingInfo.selfPhone.trim()) {
         popup.warning("Vui lòng kiểm tra lại họ tên và số điện thoại của bạn!");
+        return;
+      }
+    }
+    if (isGuest) {
+      // Khách không đăng nhập phải nhập đủ thông tin người đặt (thay cho thông tin tài khoản)
+      if (shippingInfo.selfName.trim().length < 2 || !shippingInfo.selfPhone.trim()) {
+        popup.warning("Vui lòng nhập họ tên và số điện thoại của bạn (người đặt bánh)!");
+        return;
+      }
+      const phones = [shippingInfo.selfPhone, currentRecipientPhone].map((p) => p.replace(/\s+/g, ''));
+      if (phones.some((p) => !PHONE_RE.test(p))) {
+        popup.warning("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng 0!");
         return;
       }
     }
@@ -203,15 +355,24 @@ export default function Pay() {
 
     setSubmitting(true);
     try {
-      // Đơn được tạo từ giỏ hàng trên server (bảng cart), server tự xóa giỏ sau khi đặt
-      const res = await clientOrdersApi.createOrder({
+      const orderData = {
         recipient_name: currentRecipientName.trim(),
-        recipient_phone: currentRecipientPhone.trim(),
+        recipient_phone: currentRecipientPhone.replace(/\s+/g, ''),
         pickup_time: `${shippingInfo.pickupDate}T${shippingInfo.pickupTime}:00`,
         notes: shippingInfo.note.trim() || null,
         payment_method: shippingInfo.paymentMethod,
         voucher_code: selectedVoucher ? selectedVoucher.code : undefined,
-      });
+      };
+      // Đã đăng nhập: đơn tạo từ giỏ hàng trên server (bảng cart), server tự xóa giỏ sau khi đặt.
+      // Khách vãng lai: gửi kèm thông tin người đặt và các món trong giỏ tạm
+      const res = isGuest
+        ? await clientOrdersApi.createGuestOrder({
+            ...orderData,
+            customer_name: shippingInfo.selfName.trim(),
+            customer_phone: shippingInfo.selfPhone.replace(/\s+/g, ''),
+            items: items.map((i) => ({ product_id: i.product_id, size_id: i.size_id, quantity: i.quantity })),
+          })
+        : await clientOrdersApi.createOrder(orderData);
       const order = res.data;
       setOrderSuccessModal({
         order_code: order.order_code,
@@ -222,13 +383,36 @@ export default function Pay() {
           ? 'Tiền mặt khi nhận bánh'
           : 'Chuyển khoản ngân hàng · Đã thanh toán thành công',
         final_cost: order.final_cost,
+        guest_phone: isGuest ? shippingInfo.selfPhone.replace(/\s+/g, '') : null,
+        order_id: order.order_id,
+        // Khách vãng lai không có token đăng nhập: server cấp token riêng để tải hóa đơn của đơn này
+        invoice_token: order.invoice_token || null,
       });
-      await fetchCart();
+      // Mã đã dùng: khách vãng lai quên mã nhớ tạm; ví của khách đăng nhập tự ẩn mã đã dùng
+      if (isGuest) {
+        writeGuestVoucher('');
+        resetLocalCart();
+      } else {
+        loadSaved();
+        await fetchCart();
+      }
     } catch (err) {
       if (isOutOfStockError(err)) {
         // Bánh vừa được khách khác mua trước: báo hết hàng (không phải lỗi hệ thống) và tải lại giỏ để thấy tồn kho mới
         popup.warning(apiErrorMessage(err), { title: "Sản phẩm đã hết", duration: 7000 });
-        fetchCart().catch(() => {});
+        (isGuest ? revalidateGuestCart() : fetchCart()).catch(() => {});
+      } else if (err?.response?.data?.code === 'ACCOUNT_EXISTS') {
+        // SĐT đã có tài khoản: mời đăng nhập; giỏ tạm được đẩy lên tài khoản rồi quay lại trang này
+        const goLogin = await popup.confirm({
+          title: "Số điện thoại đã có tài khoản",
+          message: apiErrorMessage(err),
+          subtitle: "Các món trong giỏ sẽ được giữ nguyên sau khi đăng nhập.",
+          confirmText: "Đăng nhập",
+          cancelText: "Để sau",
+          type: "warning",
+          icon: "lock",
+        });
+        if (goLogin) navigate('/login', { state: { from: '/pay' } });
       } else {
         popup.error(apiErrorMessage(err, "Đặt bánh thất bại, vui lòng thử lại."));
       }
@@ -237,10 +421,26 @@ export default function Pay() {
     }
   };
 
-  const eligibleVouchersCount = vouchers.filter(v => total >= v.minOrder).length;
-  const pickupMessage = pickupError(shippingInfo.pickupDate, shippingInfo.pickupTime);
+  // Tải hóa đơn PDF ngay trong modal đặt hàng thành công (khách vãng lai dùng invoice_token)
+  const handleDownloadInvoice = async () => {
+    const o = orderSuccessModal;
+    if (!o) return;
+    setDownloadingInvoice(true);
+    try {
+      const blob = o.invoice_token
+        ? await clientOrdersApi.downloadGuestInvoice(o.order_id, o.invoice_token)
+        : await clientOrdersApi.downloadInvoice(o.order_id);
+      saveBlob(blob, `hoa-don-${o.order_code}.pdf`);
+    } catch (err) {
+      popup.error(await downloadErrorMessage(err, 'Không tải được hóa đơn, vui lòng thử lại.'));
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  };
 
-  if (!user) return <Navigate to="/login" replace />;
+  // Gồm cả mã trong ví (khách đã đăng nhập)
+  const eligibleVouchersCount = [...vouchers, ...(isGuest ? [] : savedVouchers)].filter(v => total >= v.minOrder).length;
+  const pickupMessage = pickupError(shippingInfo.pickupDate, shippingInfo.pickupTime);
 
   if (items.length === 0 && !orderSuccessModal) {
     return (
@@ -346,6 +546,43 @@ export default function Pay() {
                 </h2>
               </div>
 
+              {/* Khách chưa đăng nhập: nhập tay thông tin người đặt (thay cho thông tin tài khoản) */}
+              {isGuest && (
+                <div className="guest-buyer-box">
+                  <div className="guest-buyer-notice">
+                    Bạn đang đặt bánh không cần tài khoản.{' '}
+                    <Link to="/login" state={{ from: '/pay' }}>Đăng nhập</Link> để dùng thông tin đã lưu và theo dõi đơn hàng.
+                  </div>
+                  <div className="pay-form-row">
+                    <div className="pay-form-group">
+                      <label>Họ tên của bạn *</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={100}
+                        autoComplete="name"
+                        placeholder="VD: Nguyễn Văn An"
+                        value={shippingInfo.selfName}
+                        onChange={e => setShippingInfo({ ...shippingInfo, selfName: e.target.value })}
+                      />
+                    </div>
+                    <div className="pay-form-group">
+                      <label>Số điện thoại của bạn *</label>
+                      <input
+                        type="tel"
+                        required
+                        inputMode="numeric"
+                        maxLength={11}
+                        autoComplete="tel"
+                        placeholder="VD: 0912345678"
+                        value={shippingInfo.selfPhone}
+                        onChange={e => setShippingInfo({ ...shippingInfo, selfPhone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Nút chọn: Tôi tự nhận (Thông tin hiện tại) HOẶC Đổi người khác nhận dùm */}
               <div className="recipient-mode-selector">
                 <button
@@ -356,7 +593,7 @@ export default function Pay() {
                   <span className="radio-circle"></span>
                   <div className="tab-btn-content">
                     <strong>Tôi tự nhận bánh</strong>
-                    <small>Sử dụng thông tin tài khoản hiện tại</small>
+                    <small>{isGuest ? 'Dùng họ tên & SĐT bạn vừa nhập' : 'Sử dụng thông tin tài khoản hiện tại'}</small>
                   </div>
                 </button>
 
@@ -374,7 +611,7 @@ export default function Pay() {
               </div>
 
               {/* TRƯỜNG HỢP 1: TÔI TỰ NHẬN (THÔNG TIN HIỆN TẠI) */}
-              {shippingInfo.recipientMode === 'self' && (
+              {shippingInfo.recipientMode === 'self' && !isGuest && (
                 <div className="self-recipient-container">
                   {!isEditingSelfInfo ? (
                     <div className="current-user-card">
@@ -556,7 +793,16 @@ export default function Pay() {
                     <div className="pay-item-details">
                       <h4 className="pay-item-name">{item.product_name}</h4>
                       <span className="pay-item-size">Size: {item.size_name}</span>
-                      <span className="pay-item-qty">SL: {item.quantity} x {Number(item.price).toLocaleString('vi-VN')}₫</span>
+                      <span className="pay-item-qty">
+                        SL: {item.quantity} x {hasDeal(item.price, item.original_price) && (
+                          <s className="pay-item-price-old">{Number(item.original_price).toLocaleString('vi-VN')}₫</s>
+                        )}{Number(item.price).toLocaleString('vi-VN')}₫
+                      </span>
+                      {hasDeal(item.price, item.original_price) && (
+                        <span className="pay-item-deal">
+                          Khuyến mãi {dealLabel(item.discount_percentage)}
+                        </span>
+                      )}
                       {item.stock_quantity != null && item.quantity > item.stock_quantity && (
                         <span className="pay-item-stock-warn">
                           {item.stock_quantity <= 0
@@ -587,7 +833,9 @@ export default function Pay() {
                           <span className="voucher-name-label">{selectedVoucher.name}</span>
                         </div>
                         <span className="voucher-amount-highlight">
-                          Đã giảm {discountAmount.toLocaleString('vi-VN')}₫
+                          {voucherShortfall > 0
+                            ? `Cần mua thêm ${voucherShortfall.toLocaleString('vi-VN')}₫ để dùng mã`
+                            : `Đã giảm ${discountAmount.toLocaleString('vi-VN')}₫`}
                         </span>
                       </div>
                     ) : (
@@ -619,11 +867,17 @@ export default function Pay() {
                 </div>
 
                 {selectedVoucher && (
-                  <div className="voucher-active-banner">
-                    <span>✓ Áp dụng mã <strong>{selectedVoucher.code}</strong> (-{discountAmount.toLocaleString('vi-VN')}₫)</span>
-                    <button 
-                      type="button" 
-                      onClick={() => setSelectedVoucher(null)} 
+                  <div className={`voucher-active-banner ${voucherShortfall > 0 ? 'is-ineligible' : ''}`}>
+                    {voucherShortfall > 0 ? (
+                      <span>
+                        ⚠ Mã <strong>{selectedVoucher.code}</strong> chưa áp dụng được: cần mua thêm {voucherShortfall.toLocaleString('vi-VN')}₫
+                      </span>
+                    ) : (
+                      <span>✓ Áp dụng mã <strong>{selectedVoucher.code}</strong> (-{discountAmount.toLocaleString('vi-VN')}₫)</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={clearSelectedVoucher}
                       className="btn-remove-selected-voucher"
                       title="Bỏ chọn mã"
                     >
@@ -639,6 +893,13 @@ export default function Pay() {
                   <span>Tạm tính:</span>
                   <span>{total.toLocaleString('vi-VN')}₫</span>
                 </div>
+
+                {productSavings > 0 && (
+                  <div className="cost-line product-savings-line">
+                    <span>Đã giảm nhờ khuyến mãi:</span>
+                    <span>{productSavings.toLocaleString('vi-VN')}₫</span>
+                  </div>
+                )}
                 
                 {discountAmount > 0 && (
                   <div className="cost-line discount-line">
@@ -690,6 +951,65 @@ export default function Pay() {
                 </button>
               </div>
 
+              {/* Ví voucher: mã dùng 1 lần khách đã nhập & lưu vào tài khoản (chưa dùng) */}
+              {!isGuest && savedVouchers.length > 0 && (
+                <div className="voucher-cards-list saved-voucher-list">
+                  <p className="saved-voucher-title">Mã đã lưu của bạn</p>
+                  {savedVouchers.map(v => {
+                    const isEligible = total >= v.minOrder;
+                    // Mã đang chọn nhưng giỏ đã tụt dưới mức tối thiểu thì không hiện "Đang dùng"
+                    const isCurrent = selectedVoucher?.code === v.code && total >= v.minOrder;
+                    return (
+                      <div
+                        key={v.code}
+                        className={`voucher-item-card ${isCurrent ? 'active' : ''} ${!isEligible ? 'ineligible' : ''}`}
+                        onClick={() => isEligible && !isCurrent && handleSelectVoucher(v)}
+                      >
+                        <div className="voucher-item-left">
+                          <div className="voucher-code-badge">{v.code}</div>
+                          <div className="voucher-item-texts">
+                            <h4 className="voucher-item-name">{v.name}</h4>
+                            <p className="voucher-item-desc">{v.desc}</p>
+                            {isEligible ? (
+                              <span className="voucher-eligibility eligible">
+                                ✓ Tiết kiệm được: <strong>{v.calculateDiscount(total).toLocaleString('vi-VN')}₫</strong>
+                              </span>
+                            ) : (
+                              <span className="voucher-eligibility not-enough">
+                                Cần mua thêm {(v.minOrder - total).toLocaleString('vi-VN')}₫ để áp dụng
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="voucher-item-right saved-voucher-actions">
+                          {isCurrent ? (
+                            <span className="voucher-applied-pill">✓ Đang dùng</span>
+                          ) : isEligible ? (
+                            <button
+                              type="button"
+                              className="voucher-select-btn"
+                              onClick={(e) => { e.stopPropagation(); handleSelectVoucher(v); }}
+                            >
+                              Áp dụng
+                            </button>
+                          ) : (
+                            <button type="button" disabled className="voucher-disabled-btn">Chưa đủ ĐK</button>
+                          )}
+                          <button
+                            type="button"
+                            className="saved-voucher-remove-btn"
+                            title="Xóa khỏi danh sách đã lưu"
+                            onClick={(e) => { e.stopPropagation(); handleRemoveSaved(v); }}
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Danh sách các voucher */}
               <div className="voucher-cards-list">
                 {vouchers.length === 0 && (
@@ -697,7 +1017,7 @@ export default function Pay() {
                 )}
                 {vouchers.map(v => {
                   const isEligible = total >= v.minOrder;
-                  const isCurrent = selectedVoucher?.code === v.code;
+                  const isCurrent = selectedVoucher?.code === v.code && total >= v.minOrder;
                   const discount = v.calculateDiscount(total);
                   const needed = v.minOrder - total;
 
@@ -756,7 +1076,7 @@ export default function Pay() {
                 <div className="manual-input-row">
                   <input 
                     type="text" 
-                    placeholder="Nhập mã voucher khác"
+                    placeholder="Nhập mã voucher hoặc mã quà tặng 8 ký tự"
                     value={customVoucherCode}
                     onChange={e => setCustomVoucherCode(e.target.value)}
                   />
@@ -772,7 +1092,7 @@ export default function Pay() {
                     type="button" 
                     className="modal-remove-voucher-btn"
                     onClick={() => {
-                      setSelectedVoucher(null);
+                      clearSelectedVoucher();
                       setIsVoucherModalOpen(false);
                     }}
                   >
@@ -834,6 +1154,24 @@ export default function Pay() {
                 </div>
               </div>
 
+              {orderSuccessModal.guest_phone && (
+                <p className="order-success-guest-note">
+                  Hãy lưu lại mã đơn <strong>#{orderSuccessModal.order_code}</strong>. Tiệm sẽ gọi số{' '}
+                  <strong>{orderSuccessModal.guest_phone}</strong> khi cần xác nhận. Đăng ký tài khoản bằng số này để
+                  xem lại đơn và nhận thông báo khi bánh sẵn sàng.
+                </p>
+              )}
+
+              <button
+                type="button"
+                className="order-success-btn-invoice"
+                onClick={handleDownloadInvoice}
+                disabled={downloadingInvoice}
+              >
+                <ion-icon name="download-outline"></ion-icon>
+                <span>{downloadingInvoice ? 'Đang tạo hóa đơn...' : 'Tải hóa đơn (PDF)'}</span>
+              </button>
+
               <div className="order-success-actions">
                 <button
                   type="button"
@@ -843,14 +1181,26 @@ export default function Pay() {
                   <ion-icon name="arrow-back-outline"></ion-icon>
                   <span>Quay về trang chủ</span>
                 </button>
-                <button
-                  type="button"
-                  className="order-success-btn-receipt"
-                  onClick={() => navigate('/receipt')}
-                >
-                  <ion-icon name="receipt-outline"></ion-icon>
-                  <span>Qua xem hóa đơn</span>
-                </button>
+                {orderSuccessModal.guest_phone ? (
+                  // Khách vãng lai chưa có tài khoản để xem hóa đơn: đăng ký bằng đúng SĐT này sẽ thấy lại đơn
+                  <button
+                    type="button"
+                    className="order-success-btn-receipt"
+                    onClick={() => navigate('/register')}
+                  >
+                    <ion-icon name="person-add-outline"></ion-icon>
+                    <span>Đăng ký để theo dõi đơn</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="order-success-btn-receipt"
+                    onClick={() => navigate('/receipt')}
+                  >
+                    <ion-icon name="receipt-outline"></ion-icon>
+                    <span>Qua xem hóa đơn</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

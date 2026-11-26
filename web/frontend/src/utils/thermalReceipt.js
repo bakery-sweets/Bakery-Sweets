@@ -16,6 +16,9 @@ const buildHtml = (order, { cashReceived, change, cashier }) => {
       <div class="item">
         <div class="item-name">${esc(d.product_name)} <span class="muted">(${esc(d.size_name)})</span></div>
         ${row(`${d.quantity} x ${money(d.price)}`, money(d.total_price))}
+        ${d.original_price != null && Number(d.original_price) > Number(d.price)
+          ? `<div class="muted">Khuyến mãi · giá gốc ${money(d.original_price)}</div>`
+          : ""}
       </div>`
     )
     .join("");

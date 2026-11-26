@@ -1,6 +1,7 @@
 import re
 from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, field_validator
+from pydantic_core import PydanticCustomError
 from datetime import datetime
 from decimal import Decimal
 
@@ -39,6 +40,37 @@ class CheckoutRequest(BaseModel):
             return v_trimmed
         return v
 
+PHONE_PATTERN = re.compile(r"^0\d{9}$")
+
+
+class GuestCheckoutRequest(CheckoutRequest):
+    """
+    Đặt hàng không cần đăng nhập: khách tự nhập thông tin người đặt (thay cho thông tin tài khoản)
+    và gửi kèm danh sách món trong giỏ tạm của trình duyệt.
+    """
+    customer_name: str = Field(..., max_length=100)
+    customer_phone: str
+    items: List[CheckoutOrderItem] = Field(..., min_length=1)
+
+    @field_validator("customer_name", "recipient_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if len(v) < 2:
+            raise PydanticCustomError("name_required", "Vui lòng nhập họ tên (ít nhất 2 ký tự)")
+        if len(v) > 100:
+            raise PydanticCustomError("name_too_long", "Họ tên không được vượt quá 100 ký tự")
+        return v
+
+    @field_validator("customer_phone", "recipient_phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = re.sub(r"\s+", "", v)
+        if not PHONE_PATTERN.match(v):
+            raise PydanticCustomError("phone_invalid", "Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng 0")
+        return v
+
+
 class CancelOrderRequest(BaseModel):
     note: Optional[str] = None
 
@@ -50,6 +82,8 @@ class ClientOrderDetailOut(BaseModel):
     size_name: str
     quantity: int
     price: Decimal
+    # Giá niêm yết trước ưu đãi sản phẩm (None: món không được giảm)
+    original_price: Optional[Decimal] = None
     total_price: Decimal
     note: Optional[str] = None
 
@@ -62,6 +96,8 @@ class ClientOrderOut(BaseModel):
     notes: Optional[str] = None
     promotion_id: Optional[int] = None
     promotion_code: Optional[str] = None
+    # Mã dùng 1 lần đã áp cho đơn (promotion_code cũng trả mã này để hiển thị chung)
+    voucher_code: Optional[str] = None
     total_quantity: int
     total_cost: Decimal
     discount_amount: Decimal
@@ -71,3 +107,5 @@ class ClientOrderOut(BaseModel):
     status: str
     order_date: datetime
     details: List[ClientOrderDetailOut] = []
+    # Chỉ có khi khách đặt không đăng nhập: dùng để tải hóa đơn PDF ngay sau khi đặt (hết hạn sau 7 ngày)
+    invoice_token: Optional[str] = None

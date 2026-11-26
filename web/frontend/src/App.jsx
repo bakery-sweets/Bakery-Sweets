@@ -21,7 +21,7 @@ import OrderList from "./admin/pages/OrderList";
 import UserList from "./admin/pages/UserList";
 import Statistical from "./admin/pages/Statistical";
 import ImportReceiptList from "./admin/pages/ImportReceiptList";
-import PromotionList from "./admin/pages/PromotionList";
+import VoucherPage from "./admin/pages/VoucherPage";
 import { ADMIN_ONLY } from "./admin/access";
 
 import GlobalPopup from "./components/common/GlobalPopup";
@@ -60,7 +60,10 @@ function App() {
               <Route path="products/add" element={<ProductForm />} />
               <Route path="products/edit/:id" element={<ProductForm />} />
               <Route path="imports" element={<ImportReceiptList />} />
-              <Route path="vouchers" element={<PromotionList />} />
+              {/* Voucher chương trình, mã dùng 1 lần & khuyến mãi sản phẩm gộp chung 1 trang, chọn tab bằng ?tab= */}
+              <Route path="vouchers" element={<VoucherPage />} />
+              <Route path="single-use-vouchers" element={<Navigate to="/admin/vouchers?tab=single-use" replace />} />
+              <Route path="product-promotions" element={<Navigate to="/admin/vouchers?tab=products" replace />} />
               <Route path="users" element={<UserList />} />
               <Route path="statistical" element={<Statistical />} />
             </Route>

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from decimal import Decimal
+from datetime import datetime
 
 class CategoryOut(BaseModel):
     category_id: int
@@ -23,6 +24,10 @@ class ProductSizeOut(BaseModel):
     size_name: Optional[str] = None
     price: Decimal
     stock_quantity: int
+    # Đang khuyến mãi: giá niêm yết, % giảm, thời điểm kết thúc (không có lý do khuyến mãi)
+    original_price: Optional[Decimal] = None
+    discount_percentage: Optional[Decimal] = None
+    promo_end_date: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -9,6 +9,8 @@ from thesweets_common.models.user import User
 from app.services.admin.order_service import AdminOrderService, ALLOWED_TRANSITIONS
 from app.services.export.pdf_service import PdfExportService
 from app.services.client.product_service import ClientProductService
+from app.services.client.promotion_service import to_apply_response, SINGLE_USE_DEFAULT_NAME
+from thesweets_common.pricing import PriceBook
 from app.schemas.admin.order import (
     AdminOrderOut,
     AdminOrderDetailOut,
@@ -35,6 +37,7 @@ def _to_order_out(o) -> AdminOrderOut:
             size_name=d.size.size_name if d.size else "",
             quantity=d.quantity,
             price=d.price,
+            original_price=d.original_price,
             total_price=d.price * d.quantity,
             note=d.note,
         )
@@ -54,18 +57,25 @@ def _to_order_out(o) -> AdminOrderOut:
     promo = o.promotion
     if not promo and o.applied_promotions:
         promo = o.applied_promotions[0].promotion if o.applied_promotions[0] else None
+    voucher = o.single_use_voucher
+    customer = o.customer
 
     return AdminOrderOut(
         order_id=o.order_id,
         order_code=o.order_code,
         customer_id=o.customer_id,
+        customer_name=f"{customer.first_name} {customer.last_name}".strip() if customer else None,
+        customer_phone=customer.phone if customer else None,
         recipient_name=o.recipient_name,
         recipient_phone=o.recipient_phone,
         pickup_time=o.pickup_time,
         notes=o.notes,
         promotion_id=o.promotion_id,
-        promotion_code=promo.promotion_code if promo else None,
-        promotion_name=promo.promotion_name if promo else None,
+        promotion_code=promo.promotion_code if promo else (voucher.code if voucher else None),
+        promotion_name=promo.promotion_name if promo else (
+            (voucher.batch_name or SINGLE_USE_DEFAULT_NAME) if voucher else None
+        ),
+        voucher_code=voucher.code if voucher else None,
         total_quantity=o.total_quantity,
         total_cost=o.total_cost,
         discount_amount=o.discount_amount or Decimal("0"),
@@ -90,6 +100,17 @@ def list_orders(
 
 # ===== Tạo đơn tại quầy (POS) — các route tĩnh phải khai báo trước "/{order_id}" =====
 
+def _pos_size_out(s, q) -> ProductSizeOut:
+    return ProductSizeOut(
+        id=s.id,
+        size_id=s.size_id,
+        size_name=s.size.size_name if s.size else None,
+        price=q.price,
+        original_price=q.original_price,
+        discount_percentage=q.discount_percentage,
+        stock_quantity=s.stock_quantity,
+    )
+
 @router.get("/catalog", response_model=ResponseBase[List[AdminProductOut]], summary="Danh sách bánh đang bán để tạo đơn tại quầy")
 def pos_catalog(
     search: Optional[str] = Query(None),
@@ -98,6 +119,8 @@ def pos_catalog(
 ):
     # Nhân viên không có quyền vào /admin/products nên dùng danh mục riêng: chỉ bánh đang bán, kèm tồn kho thật
     products = ClientProductService.get_products(db, search=search)
+    # Giá trên màn hình bán hàng là giá bán thực tế (đã trừ ưu đãi sản phẩm), khớp với lúc tạo đơn
+    book = PriceBook(db, [p.product_id for p in products])
     return ResponseBase(data=[
         AdminProductOut(
             product_id=p.product_id,
@@ -106,16 +129,7 @@ def pos_catalog(
             category_name=p.category.category_name if p.category else None,
             status=p.status,
             image=p.image,
-            sizes=[
-                ProductSizeOut(
-                    id=s.id,
-                    size_id=s.size_id,
-                    size_name=s.size.size_name if s.size else None,
-                    price=s.price,
-                    stock_quantity=s.stock_quantity,
-                )
-                for s in sorted(p.sizes, key=lambda s: s.price)
-            ],
+            sizes=[_pos_size_out(s, book.quote_size(s)) for s in sorted(p.sizes, key=lambda s: s.price)],
         )
         for p in products
     ])
@@ -138,17 +152,20 @@ def voucher_check(
     staff: User = Depends(get_current_staff),
 ):
     phone = re.sub(r"\s+", "", data.recipient_phone or "")
-    promo, discount_amount = AdminOrderService.check_voucher(
+    applied = AdminOrderService.check_voucher(
         db, data.voucher_code, data.order_amount, phone if PHONE_PATTERN.match(phone) else None
     )
+    r = to_apply_response(applied, data.order_amount)
     return ResponseBase(
         message="Áp dụng mã khuyến mãi thành công",
         data=AdminVoucherCheckOut(
-            promotion_id=promo.promotion_id,
-            promotion_code=promo.promotion_code,
-            promotion_name=promo.promotion_name,
-            discount_amount=discount_amount,
-            final_amount=max(Decimal("0.00"), data.order_amount - discount_amount),
+            kind=r.kind,
+            promotion_id=r.promotion_id,
+            promotion_code=r.promotion_code,
+            promotion_name=r.promotion_name,
+            description=r.description,
+            discount_amount=r.discount_amount,
+            final_amount=r.final_amount,
         ),
     )
 

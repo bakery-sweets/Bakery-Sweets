@@ -14,10 +14,17 @@ export default function ClientLayout() {
   const token = useAuthStore((s) => s.token);
   const fetchCart = useCartStore((s) => s.fetchCart);
 
-  // Đồng bộ giỏ hàng từ server mỗi khi có phiên đăng nhập
+  const revalidateGuestCart = useCartStore((s) => s.revalidateGuestCart);
+
+  // Đã đăng nhập: lấy giỏ hàng từ server. Khách vãng lai: đối chiếu giỏ lưu trong trình duyệt với bánh đang bán
   useEffect(() => {
-    if (token) fetchCart().catch(() => {});
-  }, [token, fetchCart]);
+    (token ? fetchCart() : revalidateGuestCart()).catch(() => {});
+  }, [token, fetchCart, revalidateGuestCart]);
+
+  // Admin vừa sửa / ẩn / ngừng bán bánh
+  useRealtimeEvent("products_changed", () => {
+    if (!useAuthStore.getState().token) useCartStore.getState().revalidateGuestCart().catch(() => {});
+  });
 
   // Kết nối realtime: khách vãng lai vẫn nhận tồn kho / sản phẩm, đã đăng nhập nhận thêm sự kiện riêng
   useRealtimeConnection(token);

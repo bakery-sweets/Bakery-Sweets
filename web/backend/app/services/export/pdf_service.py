@@ -266,6 +266,8 @@ class PdfExportService:
             name = d.product.product_name if d.product else f"#{d.product_id}"
             size = d.size.size_name if d.size else ""
             cell = [_p(f"{name} - {size}" if size else name, s.td)]
+            if d.original_price and d.original_price > d.price:
+                cell.append(_p(f"Khuyến mãi · giá gốc {money(d.original_price, '')}", s.td_note))
             if d.note:
                 cell.append(_p(f"Ghi chú: {d.note}", s.td_note))
             rows.append([
@@ -276,7 +278,10 @@ class PdfExportService:
         has_discount = bool(order.discount_amount and order.discount_amount > 0)
         total_lines = [("Cộng tiền hàng", money(order.total_cost, ""), str(order.total_quantity))]
         if has_discount:
-            label = f"Giảm giá voucher ({promo.promotion_code})" if promo else "Giảm giá"
+            voucher_code = promo.promotion_code if promo else (
+                order.single_use_voucher.code if order.single_use_voucher else None
+            )
+            label = f"Giảm giá voucher ({voucher_code})" if voucher_code else "Giảm giá"
             total_lines.append((label, "-" + money(order.discount_amount, ""), ""))
         total_lines.append(("Tổng cộng tiền thanh toán", money(order.final_cost, ""), ""))
         for label, value, qty in total_lines:
@@ -364,6 +369,8 @@ class PdfExportService:
             name = d.product.product_name if d.product else f"#{d.product_id}"
             size = d.size.size_name if d.size else ""
             cell = [_p(f"{name} - {size}" if size else name, s.td)]
+            if d.original_price and d.original_price > d.price:
+                cell.append(_p(f"Ưu đãi sản phẩm · giá gốc {money(d.original_price, '')}", s.td_note))
             if d.note:
                 cell.append(_p(f"Ghi chú: {d.note}", s.td_note))
             rows.append([

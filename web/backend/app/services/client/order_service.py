@@ -1,15 +1,21 @@
-import uuid
 from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone, time
 from sqlalchemy.orm import Session
-from app.core.exceptions import BadRequestError, NotFoundError, OutOfStockError
+from app.core.exceptions import AccountExistsError, BadRequestError, NotFoundError, OutOfStockError
+from app.core.guest_account import WALK_IN_PHONE, is_guest_account
 from thesweets_common.models.order import Order, OrderDetail, Cart, OrderStatusLog
 from thesweets_common.models.product import ProductSize
-from thesweets_common.models.promotion import OrderPromotion
-from app.schemas.client.order import CheckoutRequest
+from thesweets_common.pricing import PriceBook, release_single_use_voucher
+from thesweets_common.order_code import generate_order_code
+from app.schemas.client.order import CheckoutRequest, GuestCheckoutRequest
+from app.services.customer_account_service import get_or_create_customer, split_full_name
+from thesweets_common.models.user import User
 from app.services.client.promotion_service import ClientPromotionService
 from app.services.realtime_service import RealtimeService
+
+# Khách không đăng nhập: tối đa số đơn đang chờ xác nhận trên 1 SĐT, chặn đặt đơn rác hàng loạt
+GUEST_MAX_PENDING_ORDERS = 3
 
 # Giờ hẹn lấy bánh do client gửi là giờ địa phương (Việt Nam, UTC+7, không có giờ mùa hè)
 VN_TZ = timezone(timedelta(hours=7))
@@ -39,7 +45,7 @@ class ClientOrderService:
     @staticmethod
     def create_order(db: Session, customer_id: int, data: CheckoutRequest) -> Order:
         pickup_time = _validate_pickup_time(data.pickup_time)
-        order_code = f"DH{uuid.uuid4().hex[:6].upper()}"
+        order_code = generate_order_code(db)
 
         if data.items:
             items_source = data.items
@@ -58,6 +64,8 @@ class ClientOrderService:
         total_quantity = 0
         total_cost = Decimal("0.00")
         details_to_create = []
+        # Giá bán thực tế: đã trừ khuyến mãi theo sản phẩm
+        price_book = PriceBook(db, [pid for pid, _ in merged])
 
         # Kiểm tra sự tồn tại của sản phẩm và số lượng tồn kho.
         # Khóa dòng tồn kho (SELECT ... FOR UPDATE) tới khi commit để 2 đơn đồng thời không cùng trừ một lượng tồn;
@@ -88,26 +96,30 @@ class ClientOrderService:
                     f"có thể đã có khách khác mua trước bạn. Vui lòng giảm số lượng",
                 )
 
+            q = price_book.quote_size(ps)
             total_quantity += quantity
-            total_cost += ps.price * quantity
+            total_cost += q.price * quantity
             details_to_create.append({
                 "ps_ref": ps,
                 "product_id": product_id,
                 "size_id": size_id,
                 "quantity": quantity,
-                "price": ps.price,
+                "price": q.price,
+                "original_price": q.original_price,
             })
 
-        # Xử lý áp dụng voucher khuyến mãi nếu có
+        # Xử lý áp dụng voucher nếu có (mã dùng 1 lần được khóa dòng tới khi commit)
         discount_amount = Decimal("0.00")
-        applied_promo = None
+        applied = None
         if data.voucher_code and data.voucher_code.strip():
-            applied_promo, discount_amount = ClientPromotionService.calculate_discount(
+            applied = ClientPromotionService.resolve_voucher(
                 db=db,
-                code=data.voucher_code.strip(),
+                code=data.voucher_code,
                 total_amount=total_cost,
                 customer_id=customer_id,
+                lock=True,
             )
+            discount_amount = applied.discount_amount
 
         final_cost = max(Decimal("0.00"), total_cost - discount_amount)
 
@@ -118,7 +130,7 @@ class ClientOrderService:
             recipient_phone=data.recipient_phone,
             pickup_time=pickup_time,
             notes=data.notes,
-            promotion_id=applied_promo.promotion_id if applied_promo else None,
+            promotion_id=applied.promotion_id if applied else None,
             discount_amount=discount_amount,
             total_quantity=total_quantity,
             total_cost=total_cost,
@@ -142,15 +154,11 @@ class ClientOrderService:
                 size_id=d["size_id"],
                 quantity=d["quantity"],
                 price=d["price"],
+                original_price=d["original_price"],
             ))
 
-        # Lưu thông tin voucher đã áp dụng vào bảng order_promotions
-        if applied_promo:
-            db.add(OrderPromotion(
-                order_id=order.order_id,
-                promotion_id=applied_promo.promotion_id,
-                discount_amount=discount_amount,
-            ))
+        # Ghi nhận voucher: chương trình KM -> order_promotions; mã dùng 1 lần -> chuyển sang "Đã dùng"
+        ClientPromotionService.redeem(db, applied, order, customer_id)
 
         # Log trạng thái khởi tạo
         db.add(OrderStatusLog(
@@ -191,6 +199,36 @@ class ClientOrderService:
         return order
 
     @staticmethod
+    def create_guest_order(db: Session, data: GuestCheckoutRequest) -> Order:
+        """
+        Đặt hàng không đăng nhập. Đơn được gắn với tài khoản ẩn theo SĐT người đặt (giống đơn tại quầy);
+        khách đăng ký bằng đúng SĐT này sau sẽ thấy lại các đơn đã đặt.
+        """
+        phone = data.customer_phone
+        if phone == WALK_IN_PHONE:
+            raise BadRequestError("Số điện thoại không hợp lệ")
+
+        user = db.query(User).filter(User.phone == phone).first()
+        # SĐT đã có tài khoản thật: bắt đăng nhập để không ai đặt đơn dưới tên tài khoản của người khác
+        if user and not is_guest_account(user):
+            raise AccountExistsError("Số điện thoại này đã có tài khoản. Vui lòng đăng nhập để đặt bánh")
+        if user and user.status == "locked":
+            raise BadRequestError("Số điện thoại này hiện không thể đặt hàng online, vui lòng liên hệ cửa hàng")
+
+        customer, _ = get_or_create_customer(db, phone, data.customer_name)
+        # Hồ sơ ẩn chưa có chủ: lấy tên khách vừa nhập để lịch sử (VD: người dùng mã giảm giá) hiện đúng người đặt
+        first_name, last_name = split_full_name(data.customer_name)
+        if (customer.first_name, customer.last_name) != (first_name, last_name):
+            customer.first_name, customer.last_name = first_name, last_name
+        pending = db.query(Order).filter(Order.customer_id == customer.customer_id, Order.status == "Pending").count()
+        if pending >= GUEST_MAX_PENDING_ORDERS:
+            raise BadRequestError(
+                f"Số điện thoại này đang có {pending} đơn chờ xác nhận. "
+                "Vui lòng chờ tiệm xác nhận hoặc gọi cho cửa hàng trước khi đặt thêm",
+            )
+        return ClientOrderService.create_order(db, customer.customer_id, data)
+
+    @staticmethod
     def get_my_orders(db: Session, customer_id: int) -> List[Order]:
         return db.query(Order).filter(Order.customer_id == customer_id).order_by(Order.order_id.desc()).all()
 
@@ -224,6 +262,9 @@ class ClientOrderService:
                 ps.stock_quantity += detail.quantity
 
         cancel_note = note or "Khách hàng hủy đơn hàng"
+        released = release_single_use_voucher(db, order.order_id)
+        if released:
+            cancel_note += f" · Hoàn lại mã giảm giá {released}"
         db.add(OrderStatusLog(
             order_id=order.order_id,
             changed_by="Khách hàng",

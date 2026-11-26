@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.exceptions import BadRequestError, NotFoundError, OutOfStockError
 from thesweets_common.models.product import Product, Category, Size, ProductSize
 from app.schemas.product import ProductOut, ProductSizeOut
+from thesweets_common.pricing import PriceBook
 
 class ProductService:
     @staticmethod
@@ -15,15 +16,20 @@ class ProductService:
         return db.query(Size).all()
 
     @staticmethod
-    def to_product_out(p: Product) -> ProductOut:
+    def to_product_out(p: Product, book: PriceBook) -> ProductOut:
         size_list = []
         for ps in p.sizes:
+            # price: giá bán thực tế (đã trừ ưu đãi sản phẩm); original_price: giá niêm yết khi đang giảm
+            q = book.quote_size(ps)
             size_list.append(ProductSizeOut(
                 id=ps.id,
                 size_id=ps.size_id,
                 size_name=ps.size.size_name if ps.size else "",
-                price=ps.price,
+                price=q.price,
                 stock_quantity=ps.stock_quantity,
+                original_price=q.original_price,
+                discount_percentage=q.discount_percentage,
+                promo_end_date=q.promo_end_date,
             ))
 
         return ProductOut(
@@ -68,7 +74,8 @@ class ProductService:
             query = query.filter(Product.product_name.ilike(term))
 
         products = query.offset(skip).limit(limit).all()
-        return [ProductService.to_product_out(p) for p in products]
+        book = PriceBook(db, [p.product_id for p in products])
+        return [ProductService.to_product_out(p, book) for p in products]
 
     @staticmethod
     def get_size(db: Session, product_id: int, size_id: int, lock: bool = False) -> Optional[ProductSize]:
@@ -112,10 +119,13 @@ class ProductService:
         return ps
 
     @staticmethod
-    def get_product_detail(db: Session, product_id: int) -> ProductOut:
-        p = ProductService._base_query(db).filter(Product.product_id == product_id).first()
+    def get_product_detail(db: Session, product_id: int, only_available: bool = True) -> ProductOut:
+        query = ProductService._base_query(db).filter(Product.product_id == product_id)
+        if only_available:
+            query = query.filter(Product.status == "Available")
+        p = query.first()
 
         if not p:
             raise NotFoundError("Không tìm thấy sản phẩm bánh này")
 
-        return ProductService.to_product_out(p)
+        return ProductService.to_product_out(p, PriceBook(db, [p.product_id]))

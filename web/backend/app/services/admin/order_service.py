@@ -1,38 +1,28 @@
-import secrets
-import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional, Tuple
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.core.exceptions import BadRequestError
-from app.core.security import get_password_hash
 # Khách chưa có tài khoản: tạo tài khoản ẩn theo SĐT, khách tự đăng ký sau sẽ nhận lại (xem app/core/guest_account.py)
-from app.core.guest_account import WALK_IN_PHONE, guest_email, is_guest_account
+from app.core.guest_account import WALK_IN_PHONE, is_guest_account
 from thesweets_common.models.order import Order, OrderDetail, OrderStatusLog
 from thesweets_common.models.product import ProductSize
-from thesweets_common.models.promotion import OrderPromotion
+from thesweets_common.pricing import PriceBook, release_single_use_voucher
+from thesweets_common.order_code import generate_order_code
 from thesweets_common.models.notification import Notification
 from thesweets_common.models.user import User, Customer
 from app.schemas.admin.order import AdminOrderCreate
 from app.services.client.order_service import VN_TZ, _validate_pickup_time
-from app.services.client.promotion_service import ClientPromotionService
+from app.services.client.promotion_service import ClientPromotionService, AppliedVoucher
 from app.services.realtime_service import RealtimeService
+from app.services.customer_account_service import get_or_create_customer
 
 
 
 def _full_name(c: Customer) -> str:
     # Quy ước của dự án: first_name lưu Họ, last_name lưu Tên đệm + Tên (VD: "Nguyễn" + "Văn An")
     return f"{c.first_name} {c.last_name}".strip()
-
-
-def _split_name(full_name: str) -> Tuple[str, str]:
-    """Tách "Nguyễn Văn An" thành (first_name="Nguyễn", last_name="Văn An") theo quy ước của dự án."""
-    parts = full_name.split()
-    if len(parts) < 2:
-        return "", full_name.strip()
-    return parts[0], " ".join(parts[1:])
 
 
 # Các bước chuyển trạng thái hợp lệ; Completed và Cancelled là trạng thái cuối
@@ -59,7 +49,16 @@ STATUS_LABELS = {
 class AdminOrderService:
     @staticmethod
     def get_all(db: Session, status: Optional[str] = None) -> List[Order]:
-        query = db.query(Order)
+        # Nạp sẵn các quan hệ dùng khi trả danh sách (chi tiết, log, voucher...) để tránh N+1 query
+        query = db.query(Order).options(
+            selectinload(Order.details).selectinload(OrderDetail.product),
+            selectinload(Order.details).selectinload(OrderDetail.size),
+            selectinload(Order.status_logs),
+            selectinload(Order.promotion),
+            selectinload(Order.applied_promotions),
+            selectinload(Order.single_use_voucher),
+            selectinload(Order.customer),
+        )
         if status and status != "all":
             query = query.filter(Order.status == status)
         return query.order_by(Order.order_id.desc()).all()
@@ -93,6 +92,9 @@ class AdminOrderService:
                 ).with_for_update().first()
                 if ps:
                     ps.stock_quantity += detail.quantity
+            released = release_single_use_voucher(db, order.order_id)
+            if released:
+                note += f" · Hoàn lại mã giảm giá {released}"
 
         if new_status == "Completed" and order.payment_status != "Paid":
             if order.payment_method != "COD":
@@ -204,51 +206,15 @@ class AdminOrderService:
 
     @staticmethod
     def _get_or_create_customer(db: Session, phone: str, full_name: str) -> Tuple[Customer, bool]:
-        """
-        Lấy hồ sơ khách theo SĐT, chưa có thì tạo mới.
-        Trả về (customer, has_real_account): has_real_account = khách tự đăng ký tài khoản (không phải tài khoản tại quầy).
-        """
-        customer = db.query(Customer).filter(Customer.phone == phone).first()
-        if customer:
-            return customer, not is_guest_account(customer.user)
-        if phone == WALK_IN_PHONE:
-            full_name = "Khách vãng lai"
-
-        first_name, last_name = _split_name(full_name)
-        user = db.query(User).filter(User.phone == phone).first()
-        has_real_account = user is not None and not is_guest_account(user)
-        try:
-            # Savepoint: 2 quầy cùng tạo khách cho 1 SĐT mới thì bên chậm hơn lấy lại bản ghi vừa được tạo
-            with db.begin_nested():
-                if not user:
-                    user = User(
-                        phone=phone,
-                        email=guest_email(phone),
-                        # Mật khẩu ngẫu nhiên không ai biết: tài khoản chỉ dùng để gắn đơn hàng
-                        password=get_password_hash(secrets.token_urlsafe(24)),
-                        role="customer",
-                        status="active",
-                    )
-                    db.add(user)
-                    db.flush()
-                # SĐT đã có tài khoản (VD: nhân viên) nhưng chưa có hồ sơ khách: chỉ bổ sung hồ sơ
-                customer = Customer(phone=phone, first_name=first_name, last_name=last_name)
-                db.add(customer)
-                db.flush()
-        except IntegrityError:
-            customer = db.query(Customer).filter(Customer.phone == phone).first()
-            if not customer:
-                raise BadRequestError("Không tạo được hồ sơ khách hàng, vui lòng thử lại")
-            return customer, not is_guest_account(customer.user)
-        return customer, has_real_account
+        return get_or_create_customer(db, phone, full_name)
 
     @staticmethod
-    def check_voucher(db: Session, code: str, order_amount: Decimal, phone: Optional[str] = None):
+    def check_voucher(db: Session, code: str, order_amount: Decimal, phone: Optional[str] = None) -> AppliedVoucher:
         """Tính thử mức giảm của mã cho khách tại quầy (giới hạn lượt dùng tính theo SĐT khách, không theo nhân viên)."""
         c = None
         if phone and phone != WALK_IN_PHONE:
             c = db.query(Customer).filter(Customer.phone == phone).first()
-        return ClientPromotionService.calculate_discount(
+        return ClientPromotionService.resolve_voucher(
             db=db,
             code=code,
             total_amount=order_amount,
@@ -283,6 +249,8 @@ class AdminOrderService:
         total_quantity = 0
         total_cost = Decimal("0.00")
         lines = []
+        # Giá bán thực tế: đã trừ khuyến mãi theo sản phẩm
+        price_book = PriceBook(db, [pid for pid, _ in merged])
 
         # Khóa dòng tồn kho tới khi commit (SELECT ... FOR UPDATE); duyệt theo thứ tự cố định để tránh deadlock
         for (product_id, size_id), quantity in sorted(merged.items()):
@@ -304,26 +272,31 @@ class AdminOrderService:
                     f"Sản phẩm '{p_name}' ({s_name}) chỉ còn {ps.stock_quantity} cái trong kho, không đủ số lượng yêu cầu ({quantity})"
                 )
 
-            # Luôn tính tiền theo giá hiện hành trong DB; giá trên màn hình đã cũ thì báo để nhân viên báo lại khách
-            if quoted_prices[(product_id, size_id)] != ps.price:
+            # Luôn tính tiền theo giá hiện hành trong DB (đã trừ ưu đãi sản phẩm);
+            # giá trên màn hình đã cũ (đổi giá, ưu đãi vừa bắt đầu / kết thúc) thì báo để nhân viên báo lại khách
+            q = price_book.quote_size(ps)
+            if quoted_prices[(product_id, size_id)] != q.price:
                 raise BadRequestError(
-                    f"Giá '{p_name}' ({s_name}) vừa thay đổi thành {ps.price:,.0f}đ, vui lòng kiểm tra lại đơn"
+                    f"Giá '{p_name}' ({s_name}) vừa thay đổi thành {q.price:,.0f}đ, vui lòng kiểm tra lại đơn"
                 )
 
             total_quantity += quantity
-            total_cost += ps.price * quantity
-            lines.append((ps, quantity))
+            total_cost += q.price * quantity
+            lines.append((ps, quantity, q))
 
         discount_amount = Decimal("0.00")
-        applied_promo = None
+        applied = None
+        # Hồ sơ vãng lai dùng chung cho mọi khách lẻ: không áp giới hạn lượt/khách (vẫn áp tổng lượt toàn hệ thống)
+        voucher_customer_id = None if data.recipient_phone == WALK_IN_PHONE else customer.customer_id
         if data.voucher_code:
-            applied_promo, discount_amount = ClientPromotionService.calculate_discount(
+            applied = ClientPromotionService.resolve_voucher(
                 db=db,
                 code=data.voucher_code,
                 total_amount=total_cost,
-                # Hồ sơ vãng lai dùng chung cho mọi khách lẻ: không áp giới hạn lượt/khách (vẫn áp tổng lượt toàn hệ thống)
-                customer_id=None if data.recipient_phone == WALK_IN_PHONE else customer.customer_id,
+                customer_id=voucher_customer_id,
+                lock=True,
             )
+            discount_amount = applied.discount_amount
         final_cost = max(Decimal("0.00"), total_cost - discount_amount)
 
         if is_phone:
@@ -338,13 +311,13 @@ class AdminOrderService:
             log_note = "Nhân viên tạo đơn đặt trước cho khách"
 
         order = Order(
-            order_code=f"DH{uuid.uuid4().hex[:6].upper()}",
+            order_code=generate_order_code(db),
             customer_id=customer.customer_id,
             recipient_name=data.recipient_name,
             recipient_phone=data.recipient_phone,
             pickup_time=pickup_time,
             notes=data.notes,
-            promotion_id=applied_promo.promotion_id if applied_promo else None,
+            promotion_id=applied.promotion_id if applied else None,
             discount_amount=discount_amount,
             total_quantity=total_quantity,
             total_cost=total_cost,
@@ -356,22 +329,18 @@ class AdminOrderService:
         db.add(order)
         db.flush()
 
-        for ps, quantity in lines:
+        for ps, quantity, q in lines:
             ps.stock_quantity -= quantity
             db.add(OrderDetail(
                 order_id=order.order_id,
                 product_id=ps.product_id,
                 size_id=ps.size_id,
                 quantity=quantity,
-                price=ps.price,
+                price=q.price,
+                original_price=q.original_price,
             ))
 
-        if applied_promo:
-            db.add(OrderPromotion(
-                order_id=order.order_id,
-                promotion_id=applied_promo.promotion_id,
-                discount_amount=discount_amount,
-            ))
+        ClientPromotionService.redeem(db, applied, order, voucher_customer_id)
 
         db.add(OrderStatusLog(
             order_id=order.order_id,

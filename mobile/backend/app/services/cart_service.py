@@ -6,11 +6,14 @@ from thesweets_common.models.order import Cart
 from thesweets_common.models.product import ProductSize
 from app.schemas.order import CartItemAdd, CartItemOut
 from app.services.product_service import ProductService
+from thesweets_common.pricing import PriceBook
 
 class CartService:
     @staticmethod
-    def _to_cart_item_out(cart_item: Cart, ps: Optional[ProductSize]) -> CartItemOut:
-        price = ps.price if ps else 0
+    def _to_cart_item_out(cart_item: Cart, ps: Optional[ProductSize], book: PriceBook) -> CartItemOut:
+        # Giá bán thực tế (đã trừ khuyến mãi sản phẩm), khớp với lúc đặt đơn
+        q = book.quote_size(ps) if ps else None
+        price = q.price if q else 0
         return CartItemOut(
             cart_id=cart_item.cart_id,
             product_id=cart_item.product_id,
@@ -19,6 +22,8 @@ class CartService:
             size_id=cart_item.size_id,
             size_name=ps.size.size_name if ps and ps.size else "",
             price=price,
+            original_price=q.original_price if q else None,
+            discount_percentage=q.discount_percentage if q else None,
             quantity=cart_item.quantity,
             subtotal=price * cart_item.quantity,
             stock_quantity=ps.stock_quantity if ps else 0,
@@ -38,8 +43,9 @@ class CartService:
     @staticmethod
     def get_cart(db: Session, customer_id: int) -> List[CartItemOut]:
         items = db.query(Cart).filter(Cart.customer_id == customer_id).all()
+        book = PriceBook(db, [item.product_id for item in items])
         return [
-            CartService._to_cart_item_out(item, ProductService.get_size(db, item.product_id, item.size_id))
+            CartService._to_cart_item_out(item, ProductService.get_size(db, item.product_id, item.size_id), book)
             for item in items
         ]
 
@@ -68,7 +74,7 @@ class CartService:
 
         db.commit()
         db.refresh(cart_item)
-        return CartService._to_cart_item_out(cart_item, ps)
+        return CartService._to_cart_item_out(cart_item, ps, PriceBook(db, [cart_item.product_id]))
 
     @staticmethod
     def update_item(db: Session, customer_id: int, cart_id: int, quantity: int) -> Optional[CartItemOut]:
@@ -88,7 +94,7 @@ class CartService:
         cart_item.quantity = quantity
         db.commit()
         db.refresh(cart_item)
-        return CartService._to_cart_item_out(cart_item, ps)
+        return CartService._to_cart_item_out(cart_item, ps, PriceBook(db, [cart_item.product_id]))
 
     @staticmethod
     def remove_item(db: Session, customer_id: int, cart_id: int) -> None:

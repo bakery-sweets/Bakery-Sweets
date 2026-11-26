@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
+import VoucherTabs from "../components/VoucherTabs";
 import { adminPromotionsApi } from "../../api/admin";
 import { formatVND, formatDate, apiErrorMessage, PROMO_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
@@ -199,7 +200,7 @@ export default function PromotionList() {
         {/* Header Row */}
         <div className="admin-page-header-row">
           <div className="admin-page-title-group">
-            <h1>Quản Lý Voucher</h1>
+            <h1>Voucher &amp; Khuyến Mãi</h1>
             <p>Mã giảm giá theo mức tổng tiền hóa đơn &amp; giới hạn lượt sử dụng</p>
           </div>
 
@@ -212,6 +213,8 @@ export default function PromotionList() {
         </div>
 
         {/* Status Tabs */}
+        <VoucherTabs />
+
         <div className="admin-filter-tabs">
           {TABS.map((t) => (
             <button

@@ -51,6 +51,8 @@ services:
       - db_data:/var/lib/mysql
       - ./database/createTable.sql:/docker-entrypoint-initdb.d/01_createTable.sql:ro
       - ./database/data.sql:/docker-entrypoint-initdb.d/02_data.sql:ro
+      # Dữ liệu 3 tháng gần nhất, sinh lại bằng: python database/generate_recent_data.py
+      - ./database/data_recent.sql:/docker-entrypoint-initdb.d/03_data_recent.sql:ro
     networks:
       - thesweets_network
     healthcheck:

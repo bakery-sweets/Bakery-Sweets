@@ -32,6 +32,29 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
+# ===== Token tải hóa đơn cho khách đặt hàng không đăng nhập =====
+# Ký bằng khóa riêng (suy ra từ SECRET_KEY) nên không server nào giải mã được nó như token đăng nhập,
+# và chỉ mở được hóa đơn của đúng 1 đơn hàng.
+GUEST_INVOICE_TTL = timedelta(days=7)
+
+
+def _guest_invoice_key() -> str:
+    return f"{settings.SECRET_KEY}:guest-invoice"
+
+
+def create_guest_invoice_token(order_id: int) -> str:
+    payload = {"oid": order_id, "exp": datetime.now(timezone.utc) + GUEST_INVOICE_TTL}
+    return jwt.encode(payload, _guest_invoice_key(), algorithm=settings.ALGORITHM)
+
+
+def verify_guest_invoice_token(token: str, order_id: int) -> bool:
+    try:
+        payload = jwt.decode(token, _guest_invoice_key(), algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return False
+    return payload.get("oid") == order_id
+
+
 def decode_access_token(token: str) -> Union[dict[str, Any], None]:
     """Giải mã và kiểm tra tính hợp lệ của JWT token."""
     try:

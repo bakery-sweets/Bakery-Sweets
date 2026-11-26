@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useCartStore from '../../store/cartStore';
 import { clientAuthApi } from '../../api/client';
@@ -12,6 +12,9 @@ export default function Login() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  // Trang thanh toán chuyển sang đây (khi SĐT đã có tài khoản) thì đăng nhập xong quay lại đó
+  const location = useLocation();
+  const backTo = location.state?.from || '/';
   const { setUser } = useAuthStore();
 
   const handleLogin = async (e) => {
@@ -24,7 +27,7 @@ export default function Login() {
       const me = await clientAuthApi.getProfile();
       setUser(me.data, res.access_token);
       await useCartStore.getState().syncAfterLogin();
-      navigate('/');
+      navigate(backTo, { replace: true });
     } catch (err) {
       setError(apiErrorMessage(err, 'Đăng nhập thất bại, vui lòng thử lại.'));
     } finally {

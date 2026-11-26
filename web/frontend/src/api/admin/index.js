@@ -88,3 +88,21 @@ export const adminPromotionsApi = {
   update: (id, data) => axiosClient.put(`/admin/promotions/${id}`, data),
   updateStatus: (id, status) => axiosClient.patch(`/admin/promotions/${id}/status`, { status }),
 };
+
+// Mã giảm giá dùng 1 lần: sinh ngẫu nhiên 8 ký tự theo đợt, dùng xong tự khóa
+export const adminSingleUseVouchersApi = {
+  // params: { status: Unused | Used | Disabled | Expired, search }
+  getAll: (params) => axiosClient.get("/admin/single-use-vouchers", { params }),
+  // data: { quantity, discount_type: percent | fixed, discount_value, max_discount_value, min_order_value, expires_at, batch_name }
+  generate: (data) => axiosClient.post("/admin/single-use-vouchers/generate", data),
+  updateStatus: (id, status) => axiosClient.patch(`/admin/single-use-vouchers/${id}/status`, { status }),
+};
+
+// Khuyến mãi theo sản phẩm (lý do khuyến mãi chỉ ghi ở ghi chú nội bộ, khách không thấy)
+export const adminProductPromotionsApi = {
+  getAll: () => axiosClient.get("/admin/product-promotions"),
+  create: (data) => axiosClient.post("/admin/product-promotions", data),
+  update: (id, data) => axiosClient.put(`/admin/product-promotions/${id}`, data),
+  updateStatus: (id, status) => axiosClient.patch(`/admin/product-promotions/${id}/status`, { status }),
+  delete: (id) => axiosClient.delete(`/admin/product-promotions/${id}`),
+};

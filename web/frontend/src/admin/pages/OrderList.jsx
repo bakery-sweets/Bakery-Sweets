@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AdminHeader from "../components/AdminHeader";
-import CreateOrderModal from "../components/CreateOrderModal";
+import CreateOrderModal, { WALK_IN_PHONE } from "../components/CreateOrderModal";
 import { adminOrdersApi } from "../../api/admin";
 import { formatVND, formatDateTime, apiErrorMessage, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "../../utils/format";
 import popup from "../../utils/popup";
@@ -143,6 +143,8 @@ export default function OrderList() {
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [activeDropdownOrderId, setActiveDropdownOrderId] = useState(null);
+  // Toạ độ nút mở menu đổi trạng thái: menu dùng position: fixed để không bị khung bảng (overflow) cắt mất
+  const [dropdownPos, setDropdownPos] = useState(null);
   const [rowLoadingId, setRowLoadingId] = useState(null);
 const [exportingPdf, setExportingPdf] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -173,13 +175,19 @@ const [exportingPdf, setExportingPdf] = useState(false);
         setActiveDropdownOrderId(null);
       }
     };
+    // Menu đặt cố định theo toạ độ lúc mở: cuộn / đổi kích thước cửa sổ thì đóng để menu không bị lệch khỏi nút
+    const close = () => setActiveDropdownOrderId(null);
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("touchstart", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
     };
   }, [activeDropdownOrderId]);
 
@@ -288,12 +296,32 @@ const [exportingPdf, setExportingPdf] = useState(false);
     }
   };
 
-  const handleChangeStatus = (status) =>
+  // Hoàn tất đơn COD chưa thu tiền: hỏi lại trước khi đánh dấu Đã thanh toán (dùng chung cho dropdown & nút ở khung chi tiết)
+  const confirmCodCollect = (order) =>
+    popup.confirm({
+      title: "Hoàn tất & Xác nhận thu tiền?",
+      message: `Đơn #${order.order_code} đã thanh toán ${formatVND(order.final_cost, " đ")} tiền mặt tại quầy?`,
+      subtitle: "Thao tác sẽ tự động chuyển đơn sang Hoàn Tất và đánh dấu Đã Thanh Toán.",
+      confirmText: "Hoàn tất & Đã thu tiền",
+      cancelText: "Quay lại",
+      type: "success",
+    });
+
+  const handleChangeStatus = async (status) => {
+    if (
+      status === "Completed" &&
+      selectedOrder.payment_status !== "Paid" &&
+      selectedOrder.payment_method === "COD" &&
+      !(await confirmCodCollect(selectedOrder))
+    ) {
+      return;
+    }
     runOrderAction(
       () => adminOrdersApi.updateStatus(selectedOrder.order_id, status),
       (u) => `Đơn #${u.order_code} đã chuyển sang "${ORDER_STATUS[u.status]?.label || u.status}".`,
       "Cập nhật trạng thái thất bại"
     );
+  };
 
   const handleCancelOrder = () => {
     const reason = cancelReason.trim();
@@ -335,16 +363,8 @@ const [exportingPdf, setExportingPdf] = useState(false);
         openOrder(order);
         return;
       }
-      if (order.payment_status !== "Paid" && order.payment_method === "COD") {
-        const confirmed = await popup.confirm({
-          title: "Hoàn tất & Xác nhận thu tiền?",
-          message: `Đơn #${order.order_code} đã thanh toán ${formatVND(order.final_cost, " đ")} tiền mặt tại quầy?`,
-          subtitle: "Thao tác sẽ tự động chuyển đơn sang Hoàn Tất và đánh dấu Đã Thanh Toán.",
-          confirmText: "Hoàn tất & Đã thu tiền",
-          cancelText: "Quay lại",
-          type: "success",
-        });
-        if (!confirmed) return;
+      if (order.payment_status !== "Paid" && order.payment_method === "COD" && !(await confirmCodCollect(order))) {
+        return;
       }
     }
 
@@ -376,7 +396,8 @@ const [exportingPdf, setExportingPdf] = useState(false);
         (o) =>
           normalize(o.order_code).includes(query) ||
           normalize(o.recipient_name).includes(query) ||
-          (o.recipient_phone || "").includes(query.replace(/\s+/g, ""))
+          (o.recipient_phone || "").includes(query.replace(/\s+/g, "")) ||
+          (o.customer_phone || "").includes(query.replace(/\s+/g, ""))
       )
     : orders;
 
@@ -659,6 +680,9 @@ const [exportingPdf, setExportingPdf] = useState(false);
                             className={`badge-pill order-badge order-badge-interactive ${st.badge}`}
                             onClick={(e) => {
                               e.stopPropagation();
+                              const r = e.currentTarget.getBoundingClientRect();
+                              // Mở lên trên khi dưới nút không đủ chỗ (~260px)
+                              setDropdownPos({ left: r.left, top: r.bottom + 6, bottom: window.innerHeight - r.top + 6, up: window.innerHeight - r.bottom < 260 });
                               setActiveDropdownOrderId(isOpen ? null : o.order_id);
                             }}
                             disabled={isRowLoading}
@@ -689,7 +713,13 @@ const [exportingPdf, setExportingPdf] = useState(false);
 
                         {isOpen && canChangeStatus && (
                           <div
-                            className={`order-status-popover ${isNearBottom ? "is-dropup" : ""}`}
+                            className={`order-status-popover ${(dropdownPos ? dropdownPos.up : isNearBottom) ? "is-dropup" : ""}`}
+                            style={dropdownPos ? {
+                              position: "fixed",
+                              left: dropdownPos.left,
+                              top: dropdownPos.up ? "auto" : dropdownPos.top,
+                              bottom: dropdownPos.up ? dropdownPos.bottom : "auto",
+                            } : undefined}
                             onClick={(e) => e.stopPropagation()}
                             role="menu"
                           >
@@ -868,6 +898,18 @@ const [exportingPdf, setExportingPdf] = useState(false);
                     <ion-icon name="copy-outline"></ion-icon>
                   </button>
                 </div>
+                {/* Đơn "Người khác nhận dùm": hiện thêm người đặt để tiệm gọi xác nhận khi cần */}
+                {selectedOrder.customer_phone &&
+                  selectedOrder.customer_phone !== WALK_IN_PHONE &&
+                  selectedOrder.customer_phone !== selectedOrder.recipient_phone && (
+                    <div className="order-panel-orderer">
+                      <span className="order-panel-orderer-label">Người đặt</span>
+                      <span className="order-panel-orderer-name">{selectedOrder.customer_name}</span>
+                      <a href={`tel:${selectedOrder.customer_phone}`} className="order-panel-orderer-phone">
+                        {selectedOrder.customer_phone}
+                      </a>
+                    </div>
+                  )}
               </section>
 
               {selectedOrder.notes && (
@@ -889,7 +931,9 @@ const [exportingPdf, setExportingPdf] = useState(false);
                       <div className="order-panel-item-info">
                         <div className="order-panel-item-name">{it.product_name}</div>
                         <div className="order-panel-item-meta">
-                          {it.size_name} · {formatVND(it.price, " đ")}
+                          {it.size_name} · {it.original_price != null && Number(it.original_price) > Number(it.price) && (
+                            <s style={{ color: "#94a3b8", marginRight: "4px" }}>{formatVND(it.original_price, " đ")}</s>
+                          )}{formatVND(it.price, " đ")}
                         </div>
                         {it.note && <div className="order-panel-item-note">{it.note}</div>}
                       </div>

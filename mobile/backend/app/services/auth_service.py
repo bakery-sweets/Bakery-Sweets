@@ -69,8 +69,9 @@ class AuthService:
             )
 
         if user.status != "active":
+            reason = (user.lock_reason or "").strip()
             raise ForbiddenError(
-                "Tài khoản của bạn đã bị khóa",
+                f"Tài khoản của bạn đã bị khóa. Lý do: {reason}" if reason else "Tài khoản của bạn đã bị khóa",
             )
         return user
 
@@ -84,6 +85,13 @@ class AuthService:
             )
         if phone_key == WALK_IN_PHONE:
             raise BadRequestError("Số điện thoại không hợp lệ")
+        # Cùng luật đăng ký với Web Backend
+        if not re.match(r"^0\d{9}$", phone_key):
+            raise BadRequestError("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng 0")
+        if len(req.password or "") < 6:
+            raise BadRequestError("Mật khẩu phải có ít nhất 6 ký tự")
+        if not (req.first_name or "").strip() or not (req.last_name or "").strip():
+            raise BadRequestError("Vui lòng nhập đầy đủ họ và tên")
         # Đuôi email dành riêng cho tài khoản ẩn do nhân viên tạo
         if req.email.strip().lower().endswith(f"@{GUEST_EMAIL_DOMAIN}"):
             raise BadRequestError("Email không hợp lệ")

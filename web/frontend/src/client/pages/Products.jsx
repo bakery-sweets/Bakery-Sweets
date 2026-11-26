@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { clientProductsApi } from '../../api/client';
 import ProductCard from '../components/ProductCard';
 import { formatVND, apiErrorMessage } from '../../utils/format';
+import { cardPrice } from '../../utils/deal';
 import { useRealtimeVersion } from '../../realtime/useRealtime';
 import { useListReturn, useScrollToReturnAnchor } from '../hooks/useListReturn';
 import './Products.css';
@@ -32,7 +33,8 @@ export default function Products() {
         setProducts(
           productRes.data
             .filter((p) => p.sizes.length > 0)
-            .map((p) => ({ ...p, price: Number(p.min_price) }))
+            // Sắp xếp / lọc theo đúng giá đang hiện trên thẻ bánh (có tính khuyến mãi theo size)
+            .map((p) => ({ ...p, price: cardPrice(p).price }))
         );
         setCategories([
           { id: 'ALL', name: 'Tất cả bánh', icon: 'grid-outline' },

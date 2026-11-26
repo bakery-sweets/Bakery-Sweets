@@ -101,6 +101,50 @@
   margin: 0 0 6px;
 }
 
+/* ƯU ĐÃI SẢN PHẨM: giá gốc gạch ngang + nhãn giảm giá */
+.product-detail-price-old {
+  margin-left: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.product-detail-deal-pill {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #e11d48;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+
+.product-detail-deal-sizes {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e11d48;
+}
+
+.product-detail-deal-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #be123c;
+}
+
+.product-size-btn .size-deal {
+  color: #e11d48;
+  font-weight: 800;
+}
+
 /* BÁO TỒN KHO: CHỈ HIỆN KHI SẮP HẾT HOẶC HẾT HÀNG */
 .product-detail-stock-alert {
   display: inline-flex;
@@ -741,4 +785,20 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
   }
+}
+
+/* Thẻ gợi ý: giá gốc gạch ngang & dòng khuyến mãi theo size (giống thẻ bánh ở trang chủ / thực đơn) */
+.related-product-price-old {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.related-product-deal {
+  margin: 2px 0 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #e11d48;
 }

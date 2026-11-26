@@ -24,9 +24,11 @@ export const imageUrl = (path) => {
   ) {
     return path;
   }
+  // Các thư mục có sẵn trong web/frontend/public/assets/Img
   const staticCategories = [
     "/uploads/Mousse/",
     "/uploads/Croissant/",
+    "/uploads/Drink/",
     "/uploads/Pay_final/",
   ];
   if (staticCategories.some((cat) => path.startsWith(cat))) {

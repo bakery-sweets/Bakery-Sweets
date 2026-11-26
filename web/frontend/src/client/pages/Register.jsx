@@ -50,6 +50,19 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     if (e) e.preventDefault();
+    // Cùng luật với server (services/auth_service.py › validate_register_fields)
+    if (!/^0\d{9}$/.test(phone.replace(/\s+/g, ''))) {
+      popup.warning("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng 0.", { title: "Số điện thoại" });
+      return;
+    }
+    if (!firstName.trim() || !lastName.trim()) {
+      popup.warning("Vui lòng nhập đầy đủ họ và tên.", { title: "Họ và tên" });
+      return;
+    }
+    if (password.length < 6) {
+      popup.warning("Mật khẩu phải có ít nhất 6 ký tự.", { title: "Mật khẩu" });
+      return;
+    }
     if (password !== confirmPassword) {
       popup.warning("Mật khẩu xác nhận không khớp!", { title: "Xác nhận mật khẩu" });
       return;

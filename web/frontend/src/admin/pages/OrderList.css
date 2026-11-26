@@ -218,6 +218,29 @@
   color: var(--admin-muted);
 }
 
+/* Người đặt (khi khác người nhận bánh) */
+.order-panel-orderer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 12px;
+}
+.order-panel-orderer-label {
+  color: var(--admin-muted);
+}
+.order-panel-orderer-name {
+  font-weight: 600;
+}
+.order-panel-orderer-phone {
+  color: inherit;
+  font-weight: 600;
+}
+
 .order-pickup {
   display: inline-flex;
   align-items: center;

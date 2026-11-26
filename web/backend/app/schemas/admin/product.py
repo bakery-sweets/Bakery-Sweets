@@ -14,6 +14,9 @@ class ProductSizeOut(BaseModel):
     size_name: Optional[str] = None
     price: Decimal
     stock_quantity: int
+    # Chỉ có ở danh mục bán tại quầy: giá niêm yết & khuyến mãi sản phẩm đang áp dụng
+    original_price: Optional[Decimal] = None
+    discount_percentage: Optional[Decimal] = None
 
 class ProductCreate(BaseModel):
     product_name: str = Field(..., max_length=255)

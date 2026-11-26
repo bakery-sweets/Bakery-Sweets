@@ -187,4 +187,16 @@ INSERT INTO notifications (phone, title, message, type, reference_id, is_read) V
 ('0912345678', 'Bánh của bạn đã sẵn sàng!', 'Đơn hàng #DH2026100101 đã hoàn thành và sẵn sàng tại quầy. Mời bạn ghé cửa hàng nhận bánh nhé!', 'order', 1, FALSE),
 ('0987654321', 'Đang nướng bánh cho bạn', 'Đơn hàng #DH2026100102 đang được chuẩn bị. Chúng tôi sẽ thông báo ngay khi bánh ra lò.', 'order', 2, FALSE);
 
+-- Khuyến mãi theo sản phẩm (mốc thời gian tính theo lúc khởi tạo DB để dữ liệu mẫu luôn còn hiệu lực)
+INSERT INTO product_promotions (product_id, size_id, discount_percentage, start_date, end_date, status, note) VALUES
+(1, 1, 15.00, NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY), 'Active', 'Mẻ bánh hết hạn trong 1 ngày'),
+(3, NULL, 10.00, NOW(), DATE_ADD(NOW(), INTERVAL 2 DAY), 'Active', 'Mẻ bánh hết hạn trong 2 ngày'),
+(5, 2, 10.00, NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY), 'Active', 'Tuần lễ Mousse');
+
+-- Mã giảm giá dùng 1 lần (8 ký tự)
+INSERT INTO single_use_vouchers (code, discount_type, discount_value, max_discount_value, min_order_value, expires_at, status, batch_name, created_by) VALUES
+('SWT7K2QA', 'percent', 10.00, 50000.00, 100000.00, DATE_ADD(NOW(), INTERVAL 30 DAY), 'Unused', 'Mẫu - Tri ân khách hàng', NULL),
+('SWT9M4XB', 'percent', 10.00, 50000.00, 100000.00, DATE_ADD(NOW(), INTERVAL 30 DAY), 'Unused', 'Mẫu - Tri ân khách hàng', NULL),
+('GIFT5HNC', 'fixed', 30000.00, NULL, 150000.00, DATE_ADD(NOW(), INTERVAL 30 DAY), 'Unused', 'Mẫu - Quà tặng 30K', NULL);
+
 SET FOREIGN_KEY_CHECKS = 1;

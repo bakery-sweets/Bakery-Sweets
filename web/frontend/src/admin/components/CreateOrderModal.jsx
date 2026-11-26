@@ -785,7 +785,14 @@ export default function CreateOrderModal({ onClose, onCreated }) {
                               title={left > 0 ? `Thêm 1 ${p.product_name} (${s.size_name})` : "Hết hàng"}
                             >
                               <span className="pos-size-name">{s.size_name}</span>
-                              <span className="pos-size-price">{formatVND(s.price)}</span>
+                              <span className="pos-size-price">
+                                {formatVND(s.price)}
+                                {s.original_price != null && Number(s.original_price) > Number(s.price) && (
+                                  <s style={{ display: "block", fontSize: "10.5px", color: "#94a3b8", fontWeight: 600 }}>
+                                    {formatVND(s.original_price)} · -{+Number(s.discount_percentage)}%
+                                  </s>
+                                )}
+                              </span>
                               <span className={`pos-size-stock ${left <= 0 ? "is-out" : left <= 3 ? "is-low" : ""}`}>
                                 {left <= 0 ? "Hết hàng" : `Còn ${left}`}
                               </span>

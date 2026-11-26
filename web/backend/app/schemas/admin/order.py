@@ -12,6 +12,7 @@ class AdminOrderDetailOut(BaseModel):
     size_name: str
     quantity: int
     price: Decimal
+    original_price: Optional[Decimal] = None
     total_price: Decimal
     note: Optional[str] = None
 
@@ -27,6 +28,9 @@ class AdminOrderOut(BaseModel):
     order_id: int
     order_code: Optional[str] = None
     customer_id: int
+    # Người đặt đơn (chủ tài khoản); khác người nhận khi chọn "Người khác nhận dùm"
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
     recipient_name: str
     recipient_phone: str
     pickup_time: Optional[datetime] = None
@@ -37,6 +41,7 @@ class AdminOrderOut(BaseModel):
     promotion_id: Optional[int] = None
     promotion_code: Optional[str] = None
     promotion_name: Optional[str] = None
+    voucher_code: Optional[str] = None
     final_cost: Decimal
     status: str
     payment_method: str
@@ -156,8 +161,10 @@ class AdminVoucherCheckIn(BaseModel):
     recipient_phone: Optional[str] = None
 
 class AdminVoucherCheckOut(BaseModel):
-    promotion_id: int
+    kind: str = "promotion"
+    promotion_id: Optional[int] = None
     promotion_code: str
     promotion_name: str
+    description: Optional[str] = None
     discount_amount: Decimal
     final_amount: Decimal

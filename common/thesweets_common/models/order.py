@@ -47,6 +47,8 @@ class Order(Base):
     applied_promotions = relationship("OrderPromotion", back_populates="order", cascade="all, delete-orphan")
     details = relationship("OrderDetail", back_populates="order", cascade="all, delete-orphan")
     status_logs = relationship("OrderStatusLog", back_populates="order", cascade="all, delete-orphan")
+    # Mã dùng 1 lần đã áp cho đơn (nếu có)
+    single_use_voucher = relationship("SingleUseVoucher", back_populates="used_order", uselist=False)
 
 
 class OrderDetail(Base):
@@ -58,6 +60,8 @@ class OrderDetail(Base):
     size_id = Column(Integer, ForeignKey("size.size_id", ondelete="RESTRICT"), primary_key=True)
     quantity = Column(Integer, nullable=False)
     price = Column(Numeric(15, 2), nullable=False)
+    # Giá niêm yết trước ưu đãi sản phẩm; NULL: món không được giảm giá
+    original_price = Column(Numeric(15, 2), nullable=True)
     note = Column(Text, nullable=True)
 
     order = relationship("Order", back_populates="details")

@@ -20,6 +20,8 @@ class CartItemOut(BaseModel):
     size_id: int
     size_name: str
     price: Decimal
+    original_price: Optional[Decimal] = None
+    discount_percentage: Optional[Decimal] = None
     quantity: int
     subtotal: Decimal
     stock_quantity: int = 0  # Tồn kho của size, để giỏ hàng chặn tăng quá số lượng
@@ -51,6 +53,7 @@ class OrderDetailOut(BaseModel):
     size_name: str
     quantity: int
     price: Decimal
+    original_price: Optional[Decimal] = None
     subtotal: Decimal
     note: Optional[str] = None
 

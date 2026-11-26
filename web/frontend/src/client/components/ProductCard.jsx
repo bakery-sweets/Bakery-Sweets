@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
 import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
 import { cheapestAvailableSize, productStock, isLowStock } from '../../utils/stock';
+import { hasDeal, cardPrice, dealTagText } from '../../utils/deal';
 import popup from '../../utils/popup';
 import './ProductCard.css';
 
@@ -13,9 +14,16 @@ export default function ProductCard({ product, anchorId, onOpenDetail }) {
   const { addItem } = useCartStore();
   const [added, setAdded] = useState(false);
   // Thêm nhanh dùng size rẻ nhất còn hàng; không còn size nào thì món đã hết hàng
-  const quickSize = cheapestAvailableSize(product);
+  const cheapestSize = cheapestAvailableSize(product);
+  // Size rẻ nhất không được giảm nhưng size khác đang giảm (VD: chỉ size M khuyến mãi):
+  // thẻ hiện giá của size đang giảm để khớp với nhãn khuyến mãi, và nút thêm nhanh thêm đúng size đó
+  // cardPrice dùng chung với sắp xếp / lọc giá ở trang Thực đơn để thứ tự khớp với giá hiển thị
+  const dealSize = cardPrice(product).size;
+  const showDealSize = !!dealSize;
+  const quickSize = showDealSize ? dealSize : cheapestSize;
   const soldOut = !quickSize;
   const totalStock = productStock(product);
+  const dealTag = dealTagText(product);
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -63,6 +71,13 @@ export default function ProductCard({ product, anchorId, onOpenDetail }) {
             }}
           />
           <span className="product-category-tag">{product.category_name}</span>
+          {/* Nhãn khuyến mãi ghi kèm size được giảm (chỉ tính size còn hàng) để khách không hiểu nhầm mọi size đều giảm */}
+          {dealTag && (
+            <span className="product-deal-tag" title={`Khuyến mãi ${dealTag}`}>
+              <ion-icon name="pricetag"></ion-icon>
+              <span className="product-deal-tag-text">Khuyến mãi {dealTag}</span>
+            </span>
+          )}
         </div>
         <div className="home-product-info">
           <div className="home-product-header-block">
@@ -83,7 +98,20 @@ export default function ProductCard({ product, anchorId, onOpenDetail }) {
               </p>
             ) : null}
             <div className="product-card-bottom">
-              <p className="home-product-price">{formatVND(product.min_price)}</p>
+              {showDealSize ? (
+                <p className="home-product-price">
+                  {formatVND(dealSize.price)}
+                  <span className="home-product-price-old">{formatVND(dealSize.original_price)}</span>
+                  <span className="home-product-price-size">{dealSize.size_name}</span>
+                </p>
+              ) : (
+                <p className="home-product-price">
+                  {formatVND(product.min_price)}
+                  {hasDeal(product.min_price, product.min_original_price) && (
+                    <span className="home-product-price-old">{formatVND(product.min_original_price)}</span>
+                  )}
+                </p>
+              )}
               <button
                 type="button"
                 className={`product-expand-cart-btn ${added ? 'added' : ''}`}

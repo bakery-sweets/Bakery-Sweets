@@ -1,18 +1,17 @@
 import useCartStore from "../../store/cartStore";
 import { useNavigate } from "react-router-dom";
-import useAuthStore from "../../store/authStore";
 import { formatVND, apiErrorMessage } from "../../utils/format";
 import popup from "../../utils/popup";
+import { dealLabel, hasDeal } from "../../utils/deal";
 import "./CartDrawer.css";
 
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQty, totalCost } = useCartStore();
-  const { user } = useAuthStore();
   const navigate = useNavigate();
 
+  // Khách chưa đăng nhập vẫn thanh toán được: trang thanh toán cho tự nhập thông tin người đặt
   const handleCheckout = () => {
     closeCart();
-    if (!user) { navigate("/login"); return; }
     navigate("/pay");
   };
 
@@ -33,9 +32,20 @@ export default function CartDrawer() {
             <p className="empty-cart">Giỏ hàng của bạn đang trống</p>
           ) : items.map((item) => (
             <div className="cart-item" key={`${item.product_id}-${item.size_id}`}>
-              <img src={item.image} alt={item.product_name} width={60} height={75} />
+              <img
+                src={item.image}
+                alt={item.product_name}
+                width={60}
+                height={75}
+                onError={(e) => { e.target.onerror = null; e.target.src = '/assets/Img/Sweets1.png'; }}
+              />
               <div className="cart-item-details">
                 <p>{item.product_name} - {item.size_name}</p>
+                {hasDeal(item.price, item.original_price) && (
+                  <span className="cart-item-deal">
+                    Khuyến mãi {dealLabel(item.discount_percentage)}
+                  </span>
+                )}
                 <div className="qty-controls">
                   <button
                     type="button"
@@ -60,7 +70,12 @@ export default function CartDrawer() {
                 </div>
                 {/* Thành tiền của dòng (đổi theo số lượng) + đơn giá để khách biết giá 1 cái */}
                 <div className="cart-item-price">
-                  <span className="cart-item-unit">{formatVND(item.price)} × {item.quantity}</span>
+                  <span className="cart-item-unit">
+                    {hasDeal(item.price, item.original_price) && (
+                      <s className="cart-item-unit-old">{formatVND(item.original_price)}</s>
+                    )}
+                    {formatVND(item.price)} × {item.quantity}
+                  </span>
                   <strong className="cart-item-total">{formatVND(item.price * item.quantity)}</strong>
                 </div>
               </div>

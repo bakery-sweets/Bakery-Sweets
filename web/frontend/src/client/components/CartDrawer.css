@@ -84,6 +84,24 @@
   color: #64748b;
 }
 
+.cart-item-unit-old {
+  margin-right: 6px;
+  color: #94a3b8;
+}
+
+/* Nhãn khuyến mãi sản phẩm trong giỏ */
+.cart-item-deal {
+  display: inline-block;
+  margin: 2px 0 4px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  background: #e11d48;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+
 .cart-item-total {
   font-size: 14px;
   font-weight: 700;

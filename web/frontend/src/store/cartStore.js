@@ -1,6 +1,6 @@
 ﻿import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { clientCartApi } from "../api/client";
+import { clientCartApi, clientProductsApi } from "../api/client";
 import useAuthStore from "./authStore";
 import { imageUrl } from "../utils/format";
 import { sizeStock } from "../utils/stock";
@@ -12,6 +12,12 @@ const isLoggedIn = () => !!useAuthStore.getState().token;
 const cartError = (detail) => Object.assign(new Error(detail), { response: { data: { detail } } });
 const OVER_STOCK_MSG = "Số lượng bạn chọn đã vượt quá số bánh còn lại trong tiệm.";
 
+// Khuyến mãi sản phẩm: price đã là giá sau giảm, giữ thêm giá gốc để gạch ngang
+const dealOf = (s) => ({
+  original_price: s.original_price != null ? Number(s.original_price) : null,
+  discount_percentage: s.discount_percentage != null ? Number(s.discount_percentage) : null,
+});
+
 const fromServerItem = (i) => ({
   cart_id: i.cart_id,
   product_id: i.product_id,
@@ -20,6 +26,7 @@ const fromServerItem = (i) => ({
   size_id: i.size_id,
   size_name: i.size_name,
   price: Number(i.unit_price),
+  ...dealOf(i),
   quantity: i.quantity,
   stock_quantity: i.stock_quantity,
 });
@@ -38,11 +45,41 @@ const useCartStore = create(
         set({ items: res.data.items.map(fromServerItem) });
       },
 
+      // Giỏ tạm của khách vãng lai là bản chụp lúc bấm thêm, lưu trong localStorage nên còn mãi qua các lần mở web.
+      // Đối chiếu với danh sách bánh đang bán: bỏ bánh đã ngừng bán / bị ẩn / bị xóa size,
+      // cập nhật tên, ảnh, giá, tồn kho mới nhất cho các món còn lại.
+      revalidateGuestCart: async () => {
+        if (isLoggedIn() || !get().items.some((i) => !i.cart_id)) return;
+        const res = await clientProductsApi.getAll();
+        const products = new Map(res.data.map((p) => [p.product_id, p]));
+        set({
+          items: get().items.flatMap((i) => {
+            if (i.cart_id) return [i];
+            const p = products.get(i.product_id);
+            const size = p?.sizes?.find((s) => s.size_id === i.size_id);
+            if (!size) return [];
+            return [{
+              ...i,
+              product_name: p.product_name,
+              image: imageUrl(p.image),
+              size_name: size.size_name,
+              price: Number(size.price),
+              ...dealOf(size),
+              stock_quantity: sizeStock(size),
+            }];
+          }),
+        });
+      },
+
       // Đẩy giỏ tạm của khách vãng lai lên server ngay sau khi đăng nhập
       syncAfterLogin: async () => {
         const guestItems = get().items.filter((i) => !i.cart_id);
         for (const i of guestItems) {
-          await clientCartApi.addToCart({ product_id: i.product_id, size_id: i.size_id, quantity: i.quantity });
+          try {
+            await clientCartApi.addToCart({ product_id: i.product_id, size_id: i.size_id, quantity: i.quantity });
+          } catch {
+            // Bánh đã ngừng bán hoặc không còn đủ hàng: bỏ món này, không để nó làm hỏng cả lần đăng nhập
+          }
         }
         await get().fetchCart();
       },
@@ -80,6 +117,7 @@ const useCartStore = create(
             size_id: size.size_id,
             size_name: size.size_name,
             price: Number(size.price),
+            ...dealOf(size),
             quantity,
             stock_quantity: sizeStock(size),
           }]});

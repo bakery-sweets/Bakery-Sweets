@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import BadRequestError, NotFoundError, OutOfStockError
 from thesweets_common.models.order import Cart
 from thesweets_common.models.product import ProductSize, Product, Size
+from thesweets_common.pricing import PriceBook
 from app.schemas.client.cart import CartItemAdd, CartItemOut, CartSummaryOut
 
 class ClientCartService:
@@ -13,6 +14,8 @@ class ClientCartService:
         items_out: List[CartItemOut] = []
         total_amount = Decimal("0.00")
         total_items = 0
+        # Giá trong giỏ là giá bán thực tế (đã trừ ưu đãi sản phẩm), khớp với lúc đặt hàng
+        price_book = PriceBook(db, [ci.product_id for ci in cart_items])
 
         for ci in cart_items:
             ps = db.query(ProductSize).filter(
@@ -20,7 +23,8 @@ class ClientCartService:
                 ProductSize.size_id == ci.size_id
             ).first()
 
-            price = ps.price if ps else Decimal("0.00")
+            q = price_book.quote_size(ps) if ps else None
+            price = q.price if q else Decimal("0.00")
             item_total = price * ci.quantity
             total_amount += item_total
             total_items += ci.quantity
@@ -33,6 +37,8 @@ class ClientCartService:
                 size_id=ci.size_id,
                 size_name=ci.size.size_name if ci.size else "",
                 unit_price=price,
+                original_price=q.original_price if q else None,
+                discount_percentage=q.discount_percentage if q else None,
                 quantity=ci.quantity,
                 item_total=item_total,
                 stock_quantity=ps.stock_quantity if ps else 0,

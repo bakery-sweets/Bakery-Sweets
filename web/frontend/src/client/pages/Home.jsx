@@ -42,6 +42,16 @@ export default function Home() {
   // Quay lại từ trang chi tiết (Back / "Tiếp tục mua hàng"): cuộn về đúng thẻ bánh vừa xem
   const { restoreCtx, saveReturn } = useListReturn();
   useScrollToReturnAnchor(restoreCtx, !loading);
+
+  // Bánh đang khuyến mãi, mức giảm cao hơn lên trước
+  const deals = useMemo(
+    () =>
+      products
+        .filter((p) => p.max_discount_percentage)
+        .sort((a, b) => Number(b.max_discount_percentage) - Number(a.max_discount_percentage))
+        .slice(0, 4),
+    [products]
+  );
   const handleOpenDetail = (anchorId) => saveReturn(anchorId);
 
   useEffect(() => {
@@ -163,6 +173,28 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* KHUYẾN MÃI HÔM NAY */}
+      {!loading && !loadError && deals.length > 0 && (
+        <section className="home-section">
+          <div className="home-section-head">
+            <div>
+              <p className="home-section-eyebrow">Khuyến mãi hôm nay</p>
+              <h2 className="home-favorite-title">Bánh ngon giá tốt</h2>
+            </div>
+          </div>
+          <div className="home-bestsellers-grid">
+            {deals.map((product) => (
+              <ProductCard
+                key={product.product_id}
+                product={product}
+                anchorId={`home-deal-${product.product_id}`}
+                onOpenDetail={handleOpenDetail}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* NHỮNG CHIẾC BÁNH ĐƯỢC YÊU THÍCH NHẤT */}
       {!loading && !loadError && bestSellers.length > 0 && (

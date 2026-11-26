@@ -17,7 +17,9 @@ class CartItemOut(BaseModel):
     image: Optional[str] = None
     size_id: int
     size_name: str
-    unit_price: Decimal
+    unit_price: Decimal  # Giá bán thực tế (đã trừ ưu đãi sản phẩm)
+    original_price: Optional[Decimal] = None
+    discount_percentage: Optional[Decimal] = None
     quantity: int
     item_total: Decimal
     stock_quantity: int = 0  # Tồn kho của size, để giỏ hàng chặn tăng quá số lượng

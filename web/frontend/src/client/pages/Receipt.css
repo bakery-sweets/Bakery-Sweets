@@ -908,3 +908,38 @@
     padding-right: 16px;
   }
 }
+
+/* Nút hủy đơn (chỉ hiện khi đơn đang chờ xác nhận) đặt cạnh nút tải hóa đơn */
+.receipt-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.receipt-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: #ffffff;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.receipt-cancel-btn:hover:not(:disabled) {
+  background: #e11d48;
+  border-color: #e11d48;
+  color: #ffffff;
+}
+
+.receipt-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

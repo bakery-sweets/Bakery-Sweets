@@ -5,6 +5,7 @@ import useCartStore from '../../store/cartStore';
 import { clientProductsApi } from '../../api/client';
 import { formatVND, imageUrl, apiErrorMessage } from '../../utils/format';
 import { sizeStock, productStock, isLowStock, cheapestAvailableSize } from '../../utils/stock';
+import { dealLabel, dealEndText, hasDeal, dealSizesText, dealTagText, cardPrice } from '../../utils/deal';
 import popup from '../../utils/popup';
 import { useRealtimeEvent } from '../../realtime/useRealtime';
 import { readListReturn } from '../hooks/useListReturn';
@@ -87,7 +88,8 @@ export default function ProductDetail() {
   };
 
   // Mua ngay: Thêm vào giỏ hàng và chuyển ngay đến trang thanh toán
-  // (đã lấy hết số bánh còn lại vào giỏ thì chuyển thẳng tới thanh toán)
+  // (đã lấy hết số bánh còn lại vào giỏ thì chuyển thẳng tới thanh toán).
+  // Khách chưa đăng nhập cũng vào thẳng trang thanh toán và tự nhập thông tin người đặt (giống nút Thanh toán ở giỏ hàng)
   const handleBuyNow = async () => {
     if (!currentSizeObj || currentStock <= 0) return;
     try {
@@ -97,10 +99,6 @@ export default function ProductDetail() {
           currentSizeObj,
           quantity
         );
-      }
-      if (!user) {
-        navigate('/login');
-        return;
       }
       navigate('/pay');
     } catch (err) {
@@ -125,7 +123,8 @@ export default function ProductDetail() {
   const handleQuickAddToCart = async (e, item) => {
     e.preventDefault();
     e.stopPropagation();
-    const size = cheapestAvailableSize(item);
+    // Cùng size với giá đang hiện trên thẻ gợi ý (size đang khuyến mãi nếu có)
+    const size = cardPrice(item).size || cheapestAvailableSize(item);
     if (!size) return;
     try {
       await addToCart(
@@ -154,7 +153,9 @@ export default function ProductDetail() {
     // 1. Cùng loại bánh: +100 điểm
     // 2. Chênh lệch giá: giá càng sát điểm càng cao (tối đa +50 điểm)
     const scored = candidates.map(p => {
-      const pPrice = Number(p.min_price || (p.sizes?.[0]?.price ?? 0));
+      // Giá đang hiện trên thẻ (đã tính khuyến mãi theo size) để gợi ý & hiển thị khớp với các trang khác
+      const shown = cardPrice(p);
+      const pPrice = shown.price || Number(p.sizes?.[0]?.price ?? 0);
       const isSameCategory = p.category_id === currentCatId;
       const priceDiff = Math.abs(pPrice - currentPrice);
 
@@ -165,6 +166,8 @@ export default function ProductDetail() {
       return {
         ...p,
         price: pPrice,
+        originalPrice: shown.original,
+        dealTag: dealTagText(p),
         priceDiff,
         isSameCategory,
         totalScore,
@@ -212,7 +215,27 @@ export default function ProductDetail() {
           </div>
 
           <h1 className="product-detail-title">{product.product_name}</h1>
-          <p className="product-detail-price">{formatVND(currentSizeObj?.price ?? product.min_price)}</p>
+          <p className="product-detail-price">
+            {formatVND(currentSizeObj?.price ?? product.min_price)}
+            {hasDeal(currentSizeObj?.price, currentSizeObj?.original_price) && (
+              <>
+                <span className="product-detail-price-old">{formatVND(currentSizeObj.original_price)}</span>
+                <span className="product-detail-deal-pill">
+                  Khuyến mãi {dealLabel(currentSizeObj.discount_percentage)}
+                </span>
+              </>
+            )}
+          </p>
+          {/* Size nào đang khuyến mãi (khách đang chọn size không giảm vẫn biết để đổi size) */}
+          {dealSizesText(product) && (
+            <p className="product-detail-deal-sizes">{dealSizesText(product)}</p>
+          )}
+          {hasDeal(currentSizeObj?.price, currentSizeObj?.original_price) && (
+            <p className="product-detail-deal-note">
+              <ion-icon name="pricetag-outline"></ion-icon>
+              {dealEndText(currentSizeObj.promo_end_date)}
+            </p>
+          )}
           {soldOut ? (
             <p className="product-detail-stock-alert sold-out">
               <ion-icon name="close-circle-outline"></ion-icon>
@@ -244,7 +267,12 @@ export default function ProductDetail() {
                     disabled={sizeStock(s) <= 0}
                   >
                     <span className="size-name">{s.size_name}</span>
-                    <span className="size-extra">{sizeStock(s) > 0 ? formatVND(s.price) : 'Hết hàng'}</span>
+                    <span className="size-extra">
+                      {sizeStock(s) > 0 ? formatVND(s.price) : 'Hết hàng'}
+                      {sizeStock(s) > 0 && s.discount_percentage && (
+                        <span className="size-deal"> -{+Number(s.discount_percentage)}%</span>
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -354,9 +382,15 @@ export default function ProductDetail() {
                   </div>
                   <div className="related-product-info">
                     <h3 className="related-product-title">{item.product_name}</h3>
+                    {item.dealTag && <p className="related-product-deal">Khuyến mãi {item.dealTag}</p>}
                     {productStock(item) <= 0 && <p className="related-product-stock">Tạm hết hàng</p>}
                     <div className="related-card-bottom">
-                      <p className="related-product-price">{formatVND(item.price)}</p>
+                      <p className="related-product-price">
+                        {formatVND(item.price)}
+                        {item.originalPrice != null && (
+                          <span className="related-product-price-old">{formatVND(item.originalPrice)}</span>
+                        )}
+                      </p>
                       <button
                         type="button"
                         className={`related-cart-btn ${addedId === item.product_id ? 'added' : ''}`}

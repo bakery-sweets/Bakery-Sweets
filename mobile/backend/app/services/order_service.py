@@ -1,13 +1,16 @@
+import re
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone, time
 from decimal import Decimal
-import random
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from thesweets_common.models.user import User
-from thesweets_common.models.order import Order, OrderDetail, OrderStatusLog, Cart
+from thesweets_common.models.order import Order, OrderDetail, OrderStatusLog, Cart, PAYMENT_METHODS
+from thesweets_common.models.product import ProductSize
 from thesweets_common.models.promotion import OrderPromotion
+from thesweets_common.pricing import PriceBook, release_single_use_voucher
+from thesweets_common.order_code import generate_order_code
 from thesweets_common.models.notification import Notification
 from app.schemas.order import OrderCreate, OrderOut, OrderDetailOut, OrderStatusLogOut
 from app.services.product_service import ProductService
@@ -15,6 +18,67 @@ from app.services.promotion_service import PromotionService
 from app.services.realtime_service import RealtimeService
 
 VALID_STATUSES = ["Pending", "Processing", "Ready", "Completed", "Cancelled"]
+
+# Cùng luật với Web Backend (web/backend/app/services/admin/order_service.py):
+# các bước chuyển trạng thái hợp lệ, Completed và Cancelled là trạng thái cuối
+ALLOWED_TRANSITIONS = {
+    "Pending": ("Processing", "Cancelled"),
+    "Processing": ("Ready", "Cancelled"),
+    "Ready": ("Completed", "Cancelled"),
+    "Completed": (),
+    "Cancelled": (),
+}
+
+# Kiểm tra dữ liệu đặt đơn giống Web Backend (schemas/client/order.py); trả lỗi dạng chuỗi để App hiện được
+PHONE_PATTERN = re.compile(r"^0\d{9}$")
+NOTES_MAX_LENGTH = 200
+NOTES_MAX_WORDS = 50
+NOTE_MAX_WORD_LENGTH = 25
+MAX_QUANTITY_PER_LINE = 999
+
+
+def _check_note(text: Optional[str], label: str) -> Optional[str]:
+    if not text or not text.strip():
+        return None
+    text = text.strip()
+    if len(text) > NOTES_MAX_LENGTH:
+        raise BadRequestError(f"{label} không được vượt quá {NOTES_MAX_LENGTH} ký tự")
+    words = text.split()
+    if len(words) > NOTES_MAX_WORDS:
+        raise BadRequestError(f"{label} không được chứa quá {NOTES_MAX_WORDS} chữ")
+    if any(len(w) > NOTE_MAX_WORD_LENGTH for w in words):
+        raise BadRequestError(f"{label} không được chứa từ quá dài")
+    if re.search(r"(.)\1{4,}", text):
+        raise BadRequestError(f"{label} không được chứa ký tự lặp lại nhiều lần")
+    return text
+
+
+def _validate_order_request(req: OrderCreate) -> Tuple[str, str, Optional[str]]:
+    """Trả về (tên người nhận, SĐT người nhận, ghi chú) đã chuẩn hóa; sai thì báo lỗi rõ ràng."""
+    name = " ".join((req.recipient_name or "").split())
+    if len(name) < 2:
+        raise BadRequestError("Vui lòng nhập họ tên người nhận (ít nhất 2 ký tự)")
+    if len(name) > 100:
+        raise BadRequestError("Họ tên người nhận không được vượt quá 100 ký tự")
+
+    phone = re.sub(r"\s+", "", req.recipient_phone or "")
+    if not PHONE_PATTERN.match(phone):
+        raise BadRequestError("Số điện thoại người nhận phải gồm đúng 10 chữ số và bắt đầu bằng 0")
+
+    if req.payment_method not in PAYMENT_METHODS:
+        raise BadRequestError(f"Hình thức thanh toán không hợp lệ. Chọn một trong: {', '.join(PAYMENT_METHODS)}")
+
+    # Số lượng 0 / âm từng lọt qua: số âm còn cộng ngược tồn kho và làm giảm tổng tiền
+    for item in req.items:
+        if item.quantity < 1:
+            raise BadRequestError("Số lượng mỗi món phải từ 1 trở lên")
+        if item.quantity > MAX_QUANTITY_PER_LINE:
+            raise BadRequestError(f"Số lượng mỗi món tối đa {MAX_QUANTITY_PER_LINE}")
+        _check_note(item.note, "Ghi chú món")
+
+    return name, phone, _check_note(req.notes, "Ghi chú")
+
+
 
 # Cùng luật với Web Backend: giờ hẹn lấy bánh là giờ Việt Nam (UTC+7), không ở quá khứ, tối đa 30 ngày tới
 VN_TZ = timezone(timedelta(hours=7))
@@ -63,6 +127,7 @@ class OrderService:
                 size_name=d.size.size_name if d.size else "",
                 quantity=d.quantity,
                 price=d.price,
+                original_price=d.original_price,
                 subtotal=d.price * d.quantity,
                 note=d.note,
             ))
@@ -138,29 +203,39 @@ class OrderService:
     @staticmethod
     def create_order(db: Session, user: User, req: OrderCreate) -> OrderOut:
         customer_id = user.customer.customer_id
+        if not req.items:
+            raise BadRequestError("Đơn hàng phải có ít nhất 1 sản phẩm bánh")
+        recipient_name, recipient_phone, notes = _validate_order_request(req)
         pickup_time = _validate_pickup_time(req.pickup_time)
         merged = _merge_items(req)
-        if not merged:
-            raise BadRequestError("Đơn hàng phải có ít nhất 1 sản phẩm bánh")
+        for line in merged.values():
+            # Gộp dòng trùng có thể vượt giới hạn / làm ghi chú dài quá
+            if line["quantity"] > MAX_QUANTITY_PER_LINE:
+                raise BadRequestError(f"Số lượng mỗi món tối đa {MAX_QUANTITY_PER_LINE}")
+            _check_note("; ".join(line["notes"]), "Ghi chú món")
 
         total_cost = Decimal("0.0")
         total_quantity = 0
         items_to_save = []
+        # Giá bán thực tế: đã trừ khuyến mãi theo sản phẩm
+        price_book = PriceBook(db, [pid for pid, _ in merged])
 
         # Khóa dòng tồn kho (SELECT ... FOR UPDATE) tới khi commit để 2 đơn đồng thời không cùng trừ một lượng tồn;
         # duyệt theo thứ tự khóa cố định để tránh deadlock giữa các giao dịch
         for (product_id, size_id), line in sorted(merged.items()):
             ps = ProductService.get_sellable_size(db, product_id, size_id, line["quantity"], lock=True)
 
+            q = price_book.quote_size(ps)
             ps.stock_quantity -= line["quantity"]
-            total_cost += ps.price * line["quantity"]
+            total_cost += q.price * line["quantity"]
             total_quantity += line["quantity"]
 
             items_to_save.append({
                 "product_id": product_id,
                 "size_id": size_id,
                 "quantity": line["quantity"],
-                "price": ps.price,
+                "price": q.price,
+                "original_price": q.original_price,
                 "note": "; ".join(line["notes"]) or None,
             })
 
@@ -169,15 +244,16 @@ class OrderService:
             discount_amount = PromotionService.calculate_discount(db, req.promotion_id, customer_id, total_cost)
 
         final_cost = max(total_cost - discount_amount, Decimal("0.0"))
-        order_code = f"DH{datetime.now().strftime('%Y%m%d%H%M')}{random.randint(10, 99)}"
+        # Cùng dạng mã với đơn đặt trên Web (DH + 6 ký tự hex), có kiểm tra trùng
+        order_code = generate_order_code(db)
 
         new_order = Order(
             order_code=order_code,
             customer_id=customer_id,
-            recipient_name=req.recipient_name,
-            recipient_phone=req.recipient_phone,
+            recipient_name=recipient_name,
+            recipient_phone=recipient_phone,
             pickup_time=pickup_time,
-            notes=req.notes,
+            notes=notes,
             promotion_id=req.promotion_id,
             discount_amount=discount_amount,
             total_quantity=total_quantity,
@@ -255,15 +331,42 @@ class OrderService:
                 f"Trạng thái không hợp lệ. Các trạng thái hợp lệ: {', '.join(VALID_STATUSES)}"
             )
 
-        o = db.query(Order).filter(Order.order_id == order_id).first()
+        # Khóa dòng đơn tới khi commit để 2 nhân viên không cùng đổi trạng thái 1 đơn
+        o = db.query(Order).filter(Order.order_id == order_id).with_for_update().first()
         if not o:
             raise NotFoundError("Không tìm thấy đơn hàng")
 
         old_status = o.status
-        o.status = new_status
+        if new_status not in ALLOWED_TRANSITIONS.get(old_status, ()):
+            raise BadRequestError(f"Không thể chuyển đơn hàng từ '{old_status}' sang '{new_status}'")
 
-        if new_status == "Completed":
+        note = (note or "").strip()
+        restocked = []
+        if new_status == "Cancelled":
+            if not note:
+                raise BadRequestError("Vui lòng nhập lý do hủy đơn hàng")
+            # Hoàn lại tồn kho các món trong đơn (khóa dòng tồn kho theo thứ tự cố định để tránh deadlock)
+            for d in sorted(o.details, key=lambda d: (d.product_id, d.size_id)):
+                ps = db.query(ProductSize).filter(
+                    ProductSize.product_id == d.product_id,
+                    ProductSize.size_id == d.size_id,
+                ).with_for_update().first()
+                if ps:
+                    ps.stock_quantity += d.quantity
+                    restocked.append((d.product_id, d.size_id))
+            # Đơn dùng mã giảm giá 1 lần (đặt từ Web / tại quầy): trả mã lại cho khách
+            released = release_single_use_voucher(db, o.order_id)
+            if released:
+                note = f"{note} · Hoàn lại mã giảm giá {released}"
+
+        if new_status == "Completed" and o.payment_status != "Paid":
+            if o.payment_method != "COD":
+                raise BadRequestError("Đơn hàng chưa được xác nhận thanh toán, không thể hoàn tất")
+            # Đơn COD: khách trả tiền mặt khi nhận bánh tại quầy
             o.payment_status = "Paid"
+            note = f"{note} · Đã thu tiền mặt" if note else "Đã thu tiền mặt khi giao bánh"
+
+        o.status = new_status
 
         db.add(OrderStatusLog(
             order_id=o.order_id,
@@ -296,3 +399,5 @@ class OrderService:
                 "new_status": new_status,
             })
         RealtimeService.to_staff("order_updated", {"order_id": o.order_id, "status": new_status})
+        if restocked:
+            RealtimeService.stock_changed(db, restocked)

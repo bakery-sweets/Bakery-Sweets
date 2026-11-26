@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.exceptions import BadRequestError
 from thesweets_common.models.order import Order
-from thesweets_common.models.promotion import Promotion, InvoicePromotion
+from thesweets_common.models.promotion import Promotion, InvoicePromotion, SingleUseVoucher
 from app.schemas.admin.promotion import PromotionInput
 
 # Voucher không có chức năng xóa: voucher gắn với hóa đơn (orders.promotion_id, order_promotions),
@@ -38,6 +38,9 @@ class AdminPromotionService:
             query = query.filter(Promotion.promotion_id != promotion_id)
         if query.first():
             raise BadRequestError(f"Mã voucher '{code}' đã tồn tại")
+        # Khách nhập mã ở cùng một ô: mã dùng 1 lần được ưu tiên nên không cho trùng
+        if db.query(SingleUseVoucher.voucher_id).filter(SingleUseVoucher.code == code).first():
+            raise BadRequestError(f"Mã '{code}' đang là mã dùng 1 lần, vui lòng chọn mã khác")
         if data.end_date <= data.start_date:
             raise BadRequestError("Ngày kết thúc phải sau ngày bắt đầu")
         mins = [t.min_order_value for t in data.tiers]

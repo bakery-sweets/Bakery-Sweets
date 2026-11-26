@@ -33,3 +33,17 @@ export const calcVoucherDiscount = (p, total) => {
   }
   return Math.round(Math.min(discount, total) * 100) / 100;
 };
+
+// Mã dùng 1 lần (bảng single_use_vouchers): `rule` là single_use trong kết quả POST /client/promotions/apply.
+// Tính giống single_use_discount ở backend để số tiền giảm tự cập nhật khi giỏ hàng thay đổi
+export const calcSingleUseDiscount = (rule, total) => {
+  if (!rule || total < Number(rule.min_order_value || 0)) return 0;
+  let discount =
+    rule.discount_type === "fixed"
+      ? Number(rule.discount_value)
+      : (total * Number(rule.discount_value)) / 100;
+  if (rule.discount_type !== "fixed" && rule.max_discount_value != null && Number(rule.max_discount_value) > 0) {
+    discount = Math.min(discount, Number(rule.max_discount_value));
+  }
+  return Math.round(Math.min(discount, total) * 100) / 100;
+};

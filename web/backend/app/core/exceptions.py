@@ -18,6 +18,10 @@ class OutOfStockError(BadRequestError):
     """Không đủ tồn kho (thường do khách khác vừa mua trước) — không phải lỗi hệ thống"""
     code = "OUT_OF_STOCK"
 
+class AccountExistsError(BadRequestError):
+    """Khách đặt hàng không đăng nhập bằng SĐT đã có tài khoản thật: phải đăng nhập"""
+    code = "ACCOUNT_EXISTS"
+
 class UnauthorizedError(AppError):
     """Sai thông tin đăng nhập"""
 

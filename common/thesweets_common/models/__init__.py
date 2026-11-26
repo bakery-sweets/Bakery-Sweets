@@ -2,7 +2,7 @@ from .base import Base
 from .user import User, Customer
 from .product import Category, Size, Product, ProductSize
 from .order import Cart, Order, OrderDetail, OrderStatusLog
-from .promotion import Promotion, InvoicePromotion, OrderPromotion
+from .promotion import Promotion, InvoicePromotion, OrderPromotion, ProductPromotion, SingleUseVoucher, CustomerSavedVoucher
 from .import_receipt import Supplier, ImportReceipt, ImportReceiptDetail
 from .notification import Notification
 
@@ -21,6 +21,9 @@ __all__ = [
     "Promotion",
     "InvoicePromotion",
     "OrderPromotion",
+    "ProductPromotion",
+    "SingleUseVoucher",
+    "CustomerSavedVoucher",
     "Supplier",
     "ImportReceipt",
     "ImportReceiptDetail",

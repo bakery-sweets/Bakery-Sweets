@@ -34,6 +34,7 @@ export default function Receipt() {
   const [loadError, setLoadError] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   // Nhân viên đổi trạng thái / xác nhận thanh toán: trạng thái đơn trên trang tự cập nhật
   const realtimeVersion = useRealtimeVersion(['order_status_updated', 'order_updated']);
 
@@ -78,6 +79,32 @@ export default function Receipt() {
       popup.error(await downloadErrorMessage(err, 'Không tải được hóa đơn, vui lòng thử lại.'));
     } finally {
       setDownloading(false);
+    }
+  };
+
+  // Khách chỉ tự hủy được đơn còn "Chờ xác nhận"; server hoàn lại tồn kho và mã giảm giá dùng 1 lần
+  const handleCancelOrder = async () => {
+    const order = selectedOrder;
+    const confirmed = await popup.confirm({
+      title: 'Hủy đơn hàng?',
+      message: `Bạn chắc chắn muốn hủy đơn #${order.order_code}?`,
+      subtitle: order.payment_status === 'Paid'
+        ? 'Đơn đã thanh toán, vui lòng liên hệ cửa hàng để được hoàn tiền. Mã giảm giá (nếu có) sẽ được trả lại.'
+        : 'Mã giảm giá đã dùng cho đơn (nếu có) sẽ được trả lại để bạn dùng tiếp.',
+      confirmText: 'Hủy đơn',
+      cancelText: 'Không hủy',
+      type: 'danger',
+    });
+    if (!confirmed) return;
+    setCancelling(true);
+    try {
+      const res = await clientOrdersApi.cancelOrder(order.order_id, { note: 'Khách hàng tự hủy đơn trên website' });
+      setOrders((prev) => prev.map((o) => (o.order_id === res.data.order_id ? res.data : o)));
+      popup.success(`Đã hủy đơn #${order.order_code}.`);
+    } catch (err) {
+      popup.error(apiErrorMessage(err, 'Không hủy được đơn, vui lòng thử lại.'));
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -291,15 +318,28 @@ export default function Receipt() {
                       </div>
                       <h2 className="receipt-detail-title">Chi Tiết Hóa Đơn</h2>
                     </div>
-                    <button
-                      type="button"
-                      className="receipt-pdf-btn"
-                      onClick={handleDownloadInvoice}
-                      disabled={downloading}
-                    >
-                      <ion-icon name={downloading ? 'hourglass-outline' : 'download-outline'}></ion-icon>
-                      <span>{downloading ? 'Đang tải...' : 'Tải hóa đơn PDF'}</span>
-                    </button>
+                    <div className="receipt-detail-actions">
+                      {selectedOrder.status === 'Pending' && (
+                        <button
+                          type="button"
+                          className="receipt-cancel-btn"
+                          onClick={handleCancelOrder}
+                          disabled={cancelling}
+                        >
+                          <ion-icon name="close-circle-outline"></ion-icon>
+                          <span>{cancelling ? 'Đang hủy...' : 'Hủy đơn'}</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="receipt-pdf-btn"
+                        onClick={handleDownloadInvoice}
+                        disabled={downloading}
+                      >
+                        <ion-icon name={downloading ? 'hourglass-outline' : 'download-outline'}></ion-icon>
+                        <span>{downloading ? 'Đang tải...' : 'Tải hóa đơn PDF'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* THÔNG TIN KHÁCH HÀNG & ĐƠN HÀNG */}
@@ -388,6 +428,11 @@ export default function Receipt() {
                                 {d.quantity}
                               </td>
                               <td style={{ textAlign: 'right', color: '#475569' }}>
+                                {d.original_price != null && Number(d.original_price) > Number(d.price) && (
+                                  <div style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '12px' }}>
+                                    {formatVND(d.original_price)}
+                                  </div>
+                                )}
                                 {formatVND(d.price)}
                               </td>
                               <td style={{ textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
@@ -414,7 +459,9 @@ export default function Receipt() {
 
                       {Number(selectedOrder.discount_amount) > 0 && (
                         <div className="receipt-summary-line discount-line">
-                          <span className="summary-label">Giảm giá voucher:</span>
+                          <span className="summary-label">
+                            Giảm giá voucher{selectedOrder.promotion_code ? ` (${selectedOrder.promotion_code})` : ''}:
+                          </span>
                           <span className="summary-val discount-val">-{formatVND(selectedOrder.discount_amount)}</span>
                         </div>
                       )}

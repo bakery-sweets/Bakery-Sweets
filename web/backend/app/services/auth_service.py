@@ -1,3 +1,4 @@
+import re
 from typing import Optional, Tuple
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -8,6 +9,26 @@ from thesweets_common.models.user import User, Customer
 from app.schemas.client.auth import ClientRegisterRequest
 
 BACKOFFICE_ROLES = ("admin", "staff")
+
+PHONE_PATTERN = re.compile(r"^0\d{9}$")
+PASSWORD_MIN_LENGTH = 6
+
+
+def validate_register_fields(phone: str, password: str, first_name: str, last_name: str) -> None:
+    """Luật đăng ký dùng chung Web & App (trước đây backend nhận cả SĐT "abc", mật khẩu 1 ký tự)."""
+    if not PHONE_PATTERN.match(phone or ""):
+        raise BadRequestError("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng 0")
+    if len(password or "") < PASSWORD_MIN_LENGTH:
+        raise BadRequestError(f"Mật khẩu phải có ít nhất {PASSWORD_MIN_LENGTH} ký tự")
+    if not (first_name or "").strip() or not (last_name or "").strip():
+        raise BadRequestError("Vui lòng nhập đầy đủ họ và tên")
+
+
+def locked_message(user) -> str:
+    """Báo khóa kèm lý do admin đã ghi (nếu có)."""
+    reason = (getattr(user, "lock_reason", None) or "").strip()
+    return f"Tài khoản của bạn đã bị khóa. Lý do: {reason}" if reason else "Tài khoản của bạn đã bị khóa"
+
 
 class AuthService:
     """Xác thực tài khoản dùng chung cho Admin Portal và Storefront"""
@@ -45,7 +66,7 @@ class AuthService:
             raise BadRequestError("Số điện thoại hoặc mật khẩu không chính xác")
 
         if user.status == "locked":
-            raise ForbiddenError("Tài khoản của bạn đã bị khóa")
+            raise ForbiddenError(locked_message(user))
 
         return user, AuthService._issue_token(user)
 
@@ -55,6 +76,7 @@ class AuthService:
         Đăng ký tài khoản khách. Trả về (user, số đơn cũ đã có sẵn trong tài khoản):
         SĐT từng đặt qua nhân viên (có tài khoản ẩn) thì nhận lại tài khoản đó, giữ nguyên lịch sử đơn.
         """
+        validate_register_fields(data.phone, data.password, data.first_name, data.last_name)
         if data.phone == WALK_IN_PHONE:
             raise BadRequestError("Số điện thoại không hợp lệ")
         # Đuôi email dành riêng cho tài khoản ẩn do nhân viên tạo
